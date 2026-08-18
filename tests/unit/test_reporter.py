@@ -64,6 +64,8 @@ def test_markdown_reporter_render_and_write(tmp_path):
     content = written_path.read_text(encoding="utf-8")
     assert "Perez Juan" in content
     assert "123456" in content
+    assert "Configuración:" in content
     assert "Versión 1" in content
     assert "Nota Preliminar Estimada: 10.0 / 10" in content
     assert "ejercicio1" in content
+

@@ -314,9 +314,11 @@ class Evaluator:
             actividad_id=activity_slug.split("_")[-1] if "_" in activity_slug else "0",
             revision_actual=f"r{len(version_contexts)}",
             fecha_generacion=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            origen_configuracion=self.config.origen_configuracion,
             versiones=version_contexts,
             nota_final_preliminar=latest_summary.preliminary_grade,
         )
+
 
         self.reporter.write_student_report(
             output_file=latest_summary.report_file,

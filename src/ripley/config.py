@@ -139,6 +139,7 @@ class RipleyConfig:
     rubric: RubricConfig = field(default_factory=RubricConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
     sandbox: SandboxConfig = field(default_factory=SandboxConfig)
+    origen_configuracion: str = "Valores por defecto del sistema (ripley.toml no encontrado)"
 
     def validate(self) -> None:
         self.rubric.validate()
@@ -160,12 +161,13 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     """Carga y valida ripley.toml. Si no existe, retorna configuración por defecto."""
     path = Path(config_path)
     if not path.exists():
-        cfg = RipleyConfig()
+        cfg = RipleyConfig(origen_configuracion="Valores por defecto del sistema (ripley.toml no encontrado)")
         cfg.validate()
         return cfg
 
     with open(path, "rb") as f:
         data: dict[str, Any] = tomllib.load(f)
+
 
     compiler_data = data.get("compiler", {})
     limits_data = data.get("limits", {})
@@ -269,6 +271,8 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             enabled=sandbox_data.get("enabled", False),
             provider=sandbox_data.get("provider", "bubblewrap"),
         ),
+        origen_configuracion=f"Archivo de configuración: '{path}'",
     )
     cfg.validate()
     return cfg
+

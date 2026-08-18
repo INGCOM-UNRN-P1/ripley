@@ -26,8 +26,8 @@ def test_generate_unified_diff_initial_version(tmp_path):
     (r1 / "main.c").write_text("int main() { return 0; }\n", encoding="utf-8")
 
     diff = generate_unified_diff(old_folder=None, new_folder=r1)
-    assert "+++ b/main.c" in diff
-    assert "+int main() { return 0; }" in diff
+    assert diff == ""
+
 
 
 def test_generate_unified_diff_two_revisions(tmp_path):

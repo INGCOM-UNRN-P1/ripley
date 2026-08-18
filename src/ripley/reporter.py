@@ -38,6 +38,7 @@ class StudentReportContext:
     actividad_id: str
     revision_actual: str
     fecha_generacion: str
+    origen_configuracion: str = "Valores por defecto del sistema (ripley.toml no encontrado)"
     versiones: List[VersionReportContext] = field(default_factory=list)
     nota_final_preliminar: float = 0.0
 
@@ -67,8 +68,10 @@ class MarkdownReporter:
             actividad_id=ctx.actividad_id,
             revision_actual=ctx.revision_actual,
             fecha_generacion=ctx.fecha_generacion,
+            origen_configuracion=ctx.origen_configuracion,
         )
         parts.append(header_rendered.strip())
+
 
         # 2. Versiones acumuladas (r1, r2, ...)
         for v_ctx in ctx.versiones:

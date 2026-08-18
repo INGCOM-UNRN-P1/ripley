@@ -41,22 +41,12 @@ def generate_unified_diff(
         return ""
 
     if old_folder is None or not Path(old_folder).exists():
-        # Si es la primera versión, generamos un diff de creación de archivos
-        diff_chunks: List[str] = []
-        for file in sorted(new_path.glob("*.[ch]")):
-            content = file.read_text(encoding="utf-8", errors="replace")
-            lines = clean_content_for_diff(content, ignore_comments, ignore_blank_lines)
-            diff = difflib.unified_diff(
-                [],
-                lines,
-                fromfile="/dev/null",
-                tofile=f"b/{file.name}",
-            )
-            diff_chunks.extend(diff)
-        return "".join(diff_chunks)
+        # En la primera entrega (r1) sin carpeta previa, no hay diff que comparar
+        return ""
 
     old_path = Path(old_folder)
     diff_chunks: List[str] = []
+
 
     old_files = {f.name: f for f in old_path.glob("*.[ch]")}
     new_files = {f.name: f for f in new_path.glob("*.[ch]")}
