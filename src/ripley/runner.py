@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from ripley.compiler import set_process_limits
 from ripley.config import CppcheckConfig, LimitsConfig, RubricConfig, ValgrindConfig
+from ripley.diagnostics import DiagnosisType, diagnose_runtime_crash
 from ripley.testcases import TestCaseInfo
 
 
@@ -20,11 +21,12 @@ class TestResultDetail:
     ejercicio: str
     nombre_caso: str
     argumentos_cli: str
-    resultado: str  # "PASSED" | "FAILED" | "TIMEOUT" | "ERROR"
+    resultado: str  # "PASSED" | "FAILED" | "TIMEOUT" | "ERROR" | "STACK_OVERFLOW" | "STDIN_DEADLOCK" | ...
     tiempo_ms: float
     stdout: str = ""
     stderr: str = ""
     esperado: str = ""
+    pedagogical_hint: str = ""
 
 
 @dataclass
@@ -59,6 +61,45 @@ def normalize_output_text(text: str) -> str:
     while lines and not lines[-1]:
         lines.pop()
     return "\n".join(lines)
+
+
+def normalize_fuzzy_text(text: str) -> str:
+    """Normalización fuzzy: ignora mayúsculas, signos de puntuación y espacios repetidos."""
+    lower = text.lower()
+    # Eliminar signos de puntuación comunes excepto números y letras
+    no_punct = re.sub(r"[^\w\s\d]", " ", lower)
+    # Colapsar espacios múltiples
+    return re.sub(r"\s+", " ", no_punct).strip()
+
+
+def compare_outputs(
+    actual: str,
+    expected: str,
+    fuzzy: bool = False,
+) -> bool:
+    """Compara la salida real contra la esperada admitiendo regex, igualdad exacta y normalización fuzzy."""
+    norm_actual = normalize_output_text(actual)
+    norm_expected = normalize_output_text(expected)
+
+    # 1. Comparación exacta directa
+    if norm_actual == norm_expected:
+        return True
+
+    # 2. Modo Expresión Regular si la salida esperada tiene directiva REGEX:
+    if norm_expected.startswith("REGEX:"):
+        regex_pattern = norm_expected[len("REGEX:") :].strip()
+        try:
+            return bool(re.search(regex_pattern, norm_actual, re.DOTALL | re.MULTILINE))
+        except re.error:
+            pass
+
+    # 3. Normalización Fuzzy (si está activada o como fallback)
+    if fuzzy:
+        if normalize_fuzzy_text(actual) == normalize_fuzzy_text(expected):
+            return True
+
+    return False
+
 
 
 class DynamicTestRunner:
@@ -118,15 +159,24 @@ class DynamicTestRunner:
             )
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
-            norm_actual = normalize_output_text(proc.stdout)
-            norm_expected = normalize_output_text(expected_out)
+            is_match = compare_outputs(proc.stdout, expected_out, fuzzy=True)
 
             if proc.returncode != 0:
-                result_status = "ERROR"
-            elif norm_actual == norm_expected:
+                diag = diagnose_runtime_crash(
+                    returncode=proc.returncode,
+                    stdout=proc.stdout,
+                    stderr=proc.stderr,
+                    timeout=False,
+                    input_data=stdin_data,
+                )
+                result_status = diag.diagnosis.value if diag.diagnosis != DiagnosisType.CLEAN else "ERROR"
+                pedagogical_hint = diag.pedagogical_hint
+            elif is_match:
                 result_status = "PASSED"
+                pedagogical_hint = ""
             else:
                 result_status = "FAILED"
+                pedagogical_hint = "La salida generada difiere de la esperada por el caso de prueba."
 
             return TestResultDetail(
                 ejercicio=test_case.exercise,
@@ -137,17 +187,26 @@ class DynamicTestRunner:
                 stdout=proc.stdout,
                 stderr=proc.stderr,
                 esperado=expected_out,
+                pedagogical_hint=pedagogical_hint,
             )
         except subprocess.TimeoutExpired:
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            diag = diagnose_runtime_crash(
+                returncode=0,
+                stdout="",
+                stderr="",
+                timeout=True,
+                input_data=stdin_data,
+            )
             return TestResultDetail(
                 ejercicio=test_case.exercise,
                 nombre_caso=test_case.case_name,
                 argumentos_cli=raw_args_str,
-                resultado="TIMEOUT",
+                resultado=diag.diagnosis.value,
                 tiempo_ms=elapsed_ms,
-                stderr=f"Timeout ({self.limits_cfg.timeout_segundos}s excedidos)",
+                stderr=f"Timeout ({self.limits_cfg.timeout_segundos}s excedidos). {diag.message}",
                 esperado=expected_out,
+                pedagogical_hint=diag.pedagogical_hint,
             )
         except Exception as e:
             elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
@@ -160,6 +219,7 @@ class DynamicTestRunner:
                 stderr=str(e),
                 esperado=expected_out,
             )
+
 
 
 class ValgrindRunner:

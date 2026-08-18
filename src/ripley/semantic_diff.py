@@ -39,11 +39,12 @@ def extract_c_functions(code: str) -> Dict[str, CFunctionAST]:
     """Extrae las funciones y su representación normalizada en código C."""
     functions: Dict[str, CFunctionAST] = {}
 
-    # Regex para prototipo e inicio de función en C (permitiendo indentación)
+    # Regex para prototipo e inicio de función en C (debe estar seguido por { en la misma o siguiente línea)
     func_sig_regex = re.compile(
-        r"^[ \t]*(?P<ret>[a-zA-Z_][a-zA-Z0-9_* \t]+?)\s+(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?P<params>[^\)]*)\)\s*\{?",
+        r"^[ \t]*(?P<ret>[a-zA-Z_][a-zA-Z0-9_* \t]+?)\s+(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?P<params>[^\)]*)\)\s*(?=[{]|\n[ \t]*[{])",
         re.MULTILINE,
     )
+
 
 
     for match in func_sig_regex.finditer(code):

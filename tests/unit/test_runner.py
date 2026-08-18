@@ -17,6 +17,7 @@ from ripley.runner import (
     DynamicTestRunner,
     RubricCalculator,
     ValgrindRunner,
+    compare_outputs,
     normalize_output_text,
 )
 from ripley.testcases import TestCaseInfo
@@ -26,6 +27,22 @@ def test_normalize_output_text():
     raw = "line 1   \r\nline 2\t  \n\n\n"
     norm = normalize_output_text(raw)
     assert norm == "line 1\nline 2"
+
+
+def test_compare_outputs_exact_regex_and_fuzzy():
+    # 1. Exacto
+    assert compare_outputs("Hola mundo\n", "Hola mundo")
+
+    # 2. Regex
+    expected_regex = "REGEX: ^Resultado: \\d+$"
+    assert compare_outputs("Resultado: 42\n", expected_regex)
+    assert not compare_outputs("Resultado: cuarenta\n", expected_regex)
+
+    # 3. Fuzzy (casing, espacios, puntuación)
+    actual = "El resultado es: 42!"
+    expected_fuzzy = "el  resultado   es 42"
+    assert compare_outputs(actual, expected_fuzzy, fuzzy=True)
+
 
 
 def test_dynamic_test_runner_with_argv_and_stdin(tmp_path):
