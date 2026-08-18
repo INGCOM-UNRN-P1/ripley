@@ -10,13 +10,15 @@ from rich.table import Table
 
 from ripley.callgraph import CallGraphGenerator
 from ripley.config import load_config
+from ripley.doxygen import DoxygenAuditor
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.flowchart import FlowchartGenerator
 from ripley.fuzzing import Fuzzer
 from ripley.ingest import MoodleIngestor
-from ripley.linters import InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
+from ripley.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
 from ripley.mapping import InteractiveMapper
+from ripley.mocks import MockGenerator
 from ripley.plagiarism import PlagiarismDetector
 from ripley.practice import (
     ExerciseTemplateSpec,
@@ -34,8 +36,6 @@ from ripley.testcases import (
     create_testcase_skeleton,
     discover_testcases,
 )
-
-
 
 app = typer.Typer(
     name="ripley",
@@ -57,13 +57,20 @@ practice_app = typer.Typer(
     help="Gestión, enunciados, casos de prueba y configuración de prácticas en ./practicas.",
     no_args_is_help=True,
 )
+mock_app = typer.Typer(
+    name="mock",
+    help="Generador y gestor de arneses y funciones simuladas (mocks) en C.",
+    no_args_is_help=True,
+)
 
 app.add_typer(template_app, name="template")
 app.add_typer(testcase_app, name="testcase")
 app.add_typer(practice_app, name="practice")
 app.add_typer(practice_app, name="practica")
+app.add_typer(mock_app, name="mock")
 
 console = Console()
+
 
 
 
@@ -763,8 +770,10 @@ def cmd_lint(
     magic_numbers: bool = typer.Option(True, "--magic-numbers/--no-magic-numbers", help="Auditar números mágicos."),
     clones: bool = typer.Option(True, "--clones/--no-clones", help="Auditar código duplicado (copy-paste)."),
     naming: bool = typer.Option(True, "--naming/--no-naming", help="Auditar convenciones de nombres."),
+    dead_code: bool = typer.Option(True, "--dead-code/--no-dead-code", help="Auditar funciones no alcanzables."),
+    doxygen: bool = typer.Option(False, "--doxygen/--no-doxygen", help="Auditar completitud de Doxygen."),
 ) -> None:
-    """Ejecuta análisis de números mágicos, duplicación de código interna y convenciones de nombres."""
+    """Ejecuta análisis de números mágicos, duplicación de código interna, convenciones y código muerto."""
     path = Path(file_path)
     if not path.exists():
         console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
@@ -779,6 +788,9 @@ def cmd_lint(
     if naming:
         all_obs.extend(NamingConventionLinter().analyze(code, filename=path.name))
 
+    if dead_code:
+        all_obs.extend(DeadCodeLinter().analyze(code, filename=path.name))
+
     if clones:
         dup_matches = InternalCloneLinter().analyze(code, filename=path.name)
         for d in dup_matches:
@@ -790,6 +802,20 @@ def cmd_lint(
                     severity="ADVERTENCIA",
                     message=d.description,
                     suggestion="Extraé la lógica común en una función auxiliar parametrizada.",
+                )
+            )
+
+    if doxygen:
+        dox_obs = DoxygenAuditor().audit_code(code, filename=path.name)
+        for dox in dox_obs:
+            all_obs.append(
+                LinterObservation(
+                    linter_name="doxygen",
+                    filename=path.name,
+                    line=dox.line,
+                    severity="ESTILO",
+                    message=dox.message,
+                    suggestion="Agregá @brief, @param y @return en el bloque de documentación.",
                 )
             )
 
@@ -813,6 +839,52 @@ def cmd_lint(
             obs.message,
             obs.suggestion,
         )
+
+    console.print(table)
+
+
+@mock_app.command("generate")
+def cmd_mock_generate(
+    header: str = typer.Option(..., "--header", "-h", help="Ruta al archivo de cabecera (.h) o fuente (.c)."),
+    output_dir: str = typer.Option(".", "--output-dir", "-o", help="Directorio de destino."),
+) -> None:
+    """Genera automáticamente arneses mock (.h y .c) para pruebas unitarias en C."""
+    generator = MockGenerator()
+    try:
+        h_file, c_file = generator.generate_files(input_file=header, output_dir=output_dir)
+        console.print(f"\n[bold green]✓ Arneses Mock generados exitosamente:[/bold green]\n")
+        console.print(f" - [cyan]{h_file}[/cyan]")
+        console.print(f" - [cyan]{c_file}[/cyan]\n")
+    except Exception as e:
+        console.print(f"[bold red]Error al generar mocks:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command("doxygen")
+def cmd_doxygen(
+    file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C (.c o .h)."),
+) -> None:
+    """Audita la presencia y completitud de comentarios Doxygen (@brief, @param, @return)."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    code = path.read_text(encoding="utf-8", errors="replace")
+    auditor = DoxygenAuditor()
+    obs = auditor.audit_code(code, filename=path.name)
+
+    if not obs:
+        console.print(f"\n[bold green]✓ Todas las funciones en '{path.name}' están correctamente documentadas en Doxygen.[/bold green]\n")
+        return
+
+    table = Table(title=f"Auditoría Doxygen - {path.name}")
+    table.add_column("Línea", justify="right", style="bold")
+    table.add_column("Función", style="cyan")
+    table.add_column("Faltantes", style="yellow")
+
+    for o in obs:
+        table.add_row(str(o.line), f"{o.function_name}()", ", ".join(o.missing_items))
 
     console.print(table)
 
@@ -853,6 +925,7 @@ def cmd_property_test(
 
 if __name__ == "__main__":
     app()
+
 
 
 

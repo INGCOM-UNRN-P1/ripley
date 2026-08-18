@@ -111,4 +111,51 @@ class SanitizerAnalyzer:
                 )
             )
 
+        # 3. Desalineación de memoria (UBSan -fsanitize=alignment)
+        align_pattern = re.compile(
+            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*(?P<msg>(?:member access within|load of|store to)\s+misaligned address\s+0x[0-9a-fA-F]+[^\n]*)",
+            re.MULTILINE,
+        )
+        for match in align_pattern.finditer(stderr):
+            findings.append(
+                SanitizerFinding(
+                    category="UNALIGNED_ACCESS",
+                    filename=match.group("file"),
+                    line=int(match.group("line")),
+                    message=f"Acceso a memoria no alineada (Unaligned Memory Access): {match.group('msg')}.",
+                    pedagogical_hint=(
+                        "Accediste a una estructura o puntero cuya dirección no cumple con la alineación natural del tipo en la CPU. "
+                        "Evitá casteos de punteros incompatibles (ej. `char*` a `int*`) sin respetar múltiplos de alineación."
+                    ),
+                    raw_output=match.group(0),
+                )
+            )
+
         return findings
+
+    def parse_conversion_warnings(self, stderr: str) -> List[SanitizerFinding]:
+        """Detecta conversiones implícitas peligrosas (-Wsign-conversion, -Wconversion)."""
+        findings: List[SanitizerFinding] = []
+
+        pattern = re.compile(
+            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*(?:warning|error):\s*(?P<msg>conversion (?:to|from) '[^']+' (?:to|from) '[^']+'[^\n]*)",
+            re.MULTILINE,
+        )
+
+        for match in pattern.finditer(stderr):
+            findings.append(
+                SanitizerFinding(
+                    category="SIGN_CONVERSION",
+                    filename=match.group("file"),
+                    line=int(match.group("line")),
+                    message=f"Conversión implícita peligrosa: {match.group('msg')}.",
+                    pedagogical_hint=(
+                        "La conversión automática entre tipos con y sin signo (o con distinta precisión) puede alterar el valor o "
+                        "provocar desbordamientos silenciosos. Usá un casting explícito o unificá los tipos (ej. `size_t` con `size_t`)."
+                    ),
+                    raw_output=match.group(0),
+                )
+            )
+
+        return findings
+

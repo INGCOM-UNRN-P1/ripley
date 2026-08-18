@@ -31,3 +31,26 @@ def test_parse_ubsan_runtime_errors():
     assert findings[0].line == 15
     assert findings[1].category == "DIVISION_BY_ZERO"
     assert findings[1].line == 25
+
+
+def test_parse_conversion_warnings():
+    analyzer = SanitizerAnalyzer()
+    raw_stderr = """
+    tp.c:30:15: warning: conversion to 'size_t' from 'int' may change the sign of the result [-Wsign-conversion]
+    """
+    findings = analyzer.parse_conversion_warnings(raw_stderr)
+    assert len(findings) == 1
+    assert findings[0].category == "SIGN_CONVERSION"
+    assert findings[0].line == 30
+
+
+def test_parse_alignment_errors():
+    analyzer = SanitizerAnalyzer()
+    raw_stderr = """
+    tp.c:45:8: runtime error: member access within misaligned address 0x7ffd9a for type 'struct Nodo'
+    """
+    findings = analyzer.parse_ubsan_runtime_errors(raw_stderr)
+    assert len(findings) == 1
+    assert findings[0].category == "UNALIGNED_ACCESS"
+    assert findings[0].line == 45
+
