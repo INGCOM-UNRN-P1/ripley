@@ -21,262 +21,199 @@ Actúa como un ingeniero de software senior y especialista en herramientas de ev
 ### 2. Configuración Externa y Persistencia de Estado
 
 1. **Archivo de Configuración Externalizado (`ripley.toml`):**
-   Toda la lógica configurable debe residir en un archivo TOML:
+   Toda la lógica configurable reside en un archivo TOML:
    - Compilador (`gcc`), flags (`-Wall -Wextra -pedantic -std=c11 -fsanitize=address,undefined`).
    - Límites de recursos (`timeout_segundos = 5`, `limite_memoria_mb = 128`, `max_tamaño_ejecutable_mb = 10`).
    - Ruta al directorio de plantillas Jinja2 (ej. `ruta_plantillas = "templates/"`).
    - **Configuración de Linter y Reglas Personalizadas (`cppcheck`):**
      - Ruta al ejecutable de Cppcheck (ej. `cppcheck` del sistema o binario local `./cppcheck`).
      - Parámetros adicionales y reglas (ej. `--enable=all`, `--inline-suppr`).
-     - Soporte para scripts de reglas/addons personalizados en Python (ej. `reglas_python = ["tools/cppcheck_rules.py"]` o `--rule-file` / `--addon`).
+     - Soporte para scripts de reglas/addons personalizados en Python (ej. `reglas_python = ["tools/cppcheck_rules.py"]`).
    - **Análisis de Estilo y Formato Personalizable (`[style]`):**
-     - Reglas personalizables para evaluar el estilo de código C:
-       - **Estilo de llaves (`brace_style`):** `K&R`, `Allman` / `BSD` o `attach`/`break` (ej. si la llave de apertura `{` debe ir en la misma línea o en línea nueva tras `if`/`while`/`for`/funciones).
-       - **Obligatoriedad de llaves (`require_braces`):** Forzar el uso de llaves `{}` en bloques condicionales e iterativos aun si consisten en una sola línea (ej. `if (c) stmt;` prohibido).
-       - **Indentación y Espacios (`indent_style`):** Espacios vs Tabs y tamaño estricto de sangría (ej. 4 espacios).
-       - **Espaciado alrededor de operadores y paréntesis (`spacing`):** Validar espacios antes/después de operadores binarios, comas y palabras clave (ej. `if (` vs `if(`).
-       - **Espacios finales y líneas en blanco (`formatting`):** Detectar espacios en blanco al final de línea (*trailing whitespace*) y número máximo de líneas en blanco consecutivas.
-     - Implementación flexible: Soporte para reglas escritas en Python (módulo interno de inspección AST/Regex) o integración con herramientas de formato externas (ej. `clang-format` con archivo `.clang-format` personalizable).
-   - Comandos y flags de `valgrind`.
-   - Pesos para la rúbrica de calificación (ej. `peso_compilacion = 0.25`, `peso_linter = 0.25`, `peso_estilo = 0.15`, `peso_pruebas = 0.35`).
+     - Estilo de llaves (`brace_style`): `K&R`, `Allman` / `BSD` o `attach`/`break`.
+     - Obligatoriedad de llaves (`require_braces`): Forzar el uso de llaves `{}` en bloques condicionales e iterativos.
+     - Indentación y Espacios (`indent_style`): Espacios vs Tabs y tamaño estricto de sangría (ej. 4 espacios).
+     - Espaciado alrededor de operadores y palabras clave (`spacing_operators`, `spacing_keywords`).
+     - Espacios finales y líneas en blanco (`no_trailing_whitespace`, `max_blank_lines`).
+   - **Auditoría de Memoria con Valgrind y Tolerancia Diferenciada (`[valgrind]`):**
+     - Flags de Valgrind (`--leak-check=full`, `--show-leak-kinds=all`, `--track-origins=yes`).
+     - `tolerar_fugas_en_error = true`: Permite tolerar o reducir penalizaciones por fugas de memoria ocurridas en salidas anormales por error (`exit(EXIT_FAILURE)`).
+   - **Pesos de Rúbrica de Calificación (`[rubric]`):**
+     - `peso_compilacion`, `peso_linter`, `peso_estilo`, `peso_pruebas` (suma = 1.0).
+
 2. **Persistencia de Estado (`.metadata.db` / SQLite):**
-   Guardar el estado global de estudiantes, hashes de archivos, versiones procesadas, resultados de pruebas y notas en una base de datos local SQLite para consultas ultrarrápidas.
+   - Base de datos SQLite local para almacenar estudiantes, revisiones (`r1`, `r2`, ...), hashes SHA-256 de entregas, resultados de compilación, linter, estilo, testcases, métricas de Valgrind y notas acumulativas.
 
 ---
 
-### 3. Estructura de Directorios y Versionado Incremental
+### 3. Estructura de Directorios y Gestión de Prácticas
 
 ```text
 workspace/
-├── ripley.toml                                 # Archivo de configuración global
-├── templates/                                  # Plantillas base Jinja2 para la generación de informes
+├── ripley.toml                                 # Configuración global
+├── templates/                                  # Plantillas base Jinja2 para informes
 │   ├── header.jinja2.md
 │   ├── version_section.jinja2.md
 │   └── footer.jinja2.md
-├── tests/                                      # Casos de prueba agrupados por actividad slugificada
+├── practicas/                                  # Prácticas docentes estructuradas
+│   └── <slug_practica>/                        # ej. practica-1-punteros/
+│       ├── ripley.toml                         # Configuración específica de la práctica
+│       ├── enunciado.md                        # Enunciado general
+│       ├── pautas_evaluacion.md                # Criterios y rúbrica docente
+│       └── ejercicios/
+│           ├── <ejercicio>/
+│           │   ├── enunciado.md
+│           │   ├── solucion_modelo.c           # Solución de referencia docente
+│           │   └── tests/                      # Casos de prueba (.in, .out, .argv)
+├── tests/                                      # Casos de prueba sincronizados por actividad
 │   └── <actividad_slugificada>/                 # ej. entrega-1_1228009/
-│       ├── ejercicio1/
-│       │   ├── caso1.in / caso1.out / caso1.argv
-│       │   └── caso2.in / caso2.out
-│       └── ejercicio2/
-│           └── caso1.in / caso1.out / caso1.argv
-└── <actividad_slugificada>/                     # ej. entrega-1_1228009/
+│       └── <ejercicio>/
+│           ├── caso1.in / caso1.out / caso1.argv
+│           └── caso2.in / caso2.out
+└── <actividad_slugificada>/                     # Entregas procesadas
     ├── dashboard.md                            # Reporte consolidado de la cohorte
-    ├── moodle_grades.csv                       # CSV para importar calificaciones en Moodle
-    ├── retroalimentacion_moodle.zip            # ZIP listo para subir retroalimentación a Moodle
-    └── <estudiante_slugificado>/               # ej. yucra-agustin-daniel_1848964/
-        ├── <estudiante_slugificado>_<actividad_slugificada>.md   # Informe acumulativo
-        ├── .metadata.db                        # Base de datos SQLite o estado local
-        ├── r1/                                 # Primera versión procesada
-        │   ├── ejercicio1.c
-        │   └── ejercicio2.c
-        └── r2/                                 # Reentrega (si hubo cambios)
-            ├── ejercicio1.c
-            └── ejercicio2.c
+    ├── moodle_grades.csv                       # CSV para importar en Moodle
+    ├── retroalimentacion_moodle.zip            # ZIP para subida masiva de retroalimentación
+    ├── plagiarism_report.md                    # Reporte de plagio y similitud (si fue requerido)
+    └── <estudiante_slugificado>/               # ej. perez-juan_123456/
+        ├── <estudiante_slugificado>_<actividad>.md # Informe acumulativo
+        ├── .metadata.db                        # Estado SQLite local
+        ├── mapping.json                        # Mapeo persistente de archivos C a ejercicios
+        ├── r1/                                 # Revisión inicial
+        └── r2/                                 # Reentregas incrementales
 ```
 
 ---
 
 ### 4. Requisitos Funcionales y Comandos CLI
 
-El proyecto estará gestionado con `uv` en un subdirectorio (`ripley/`) e invocado mediante un script Bash wrapper (`./ripley ...`). Debe incluir barra de progreso e indicadores visuales ricos en consola usando `rich.progress`.
+El proyecto está gestionado con `uv` e invocado mediante el wrapper ejecutable `./ripley ...`. Incluye salida visual con Rich Console y barras de progreso.
 
-#### A. Subcomando `ingest`
-- Recibe el ZIP descargado de Moodle. Parsea el nombre con Regex y genera carpetas slugificadas.
-- Soporta la opción `--dry-run` para simular la descompresión y estandarización sin escribir en disco.
-- Realiza conversión UTF-8, aplanamiento de carpetas, segregación de archivos no válidos y verificación SHA-256.
+#### A. Ingesta y Sanitización (`ingest`)
+- `./ripley ingest <archivo.zip> [--dry-run]`
+- Normalización automática UTF-8, aplanamiento de subdirectorios, filtro de extensiones inválidas y cálculo determinista de hashes SHA-256.
 
-#### B. Subcomando `template` (Gestión y Creación de Plantillas Base)
-- **Inicialización de Plantillas (`template init` / `template skeleton`):** Genera o restaura las plantillas Jinja2 por defecto (`header.jinja2.md`, `version_section.jinja2.md`, `footer.jinja2.md`) en el directorio especificado por `ripley.toml` (o por defecto `templates/`). Permite la bandera `--force` para sobrescribir plantillas existentes.
-  - Ejemplo de uso: `./ripley template init` o `./ripley template init --path custom_templates/ --force`
-- **Listado y Verificación (`template list` / `template check`):**
-  - Lista las plantillas disponibles en la carpeta configurada e indica si falta alguna de las 3 requeridas.
-  - Valida la sintaxis de las plantillas Jinja2 y la presencia de las variables críticas `snake_case` obligatorias (ej. `numero_version`, `resultados_compilacion`, `nota_preliminar`).
+#### B. Gestión de Plantillas Jinja2 (`template`)
+- `./ripley template init [--path <dir>] [--force]`
+- `./ripley template list [--path <dir>]`
+- `./ripley template check [--path <dir>]`: Validación de sintaxis y variables obligatorias `snake_case`.
 
-#### C. Subcomando `testcase` (Gestión y Esqueletos de Pruebas)
-- **Generación de Esqueletos (`testcase skeleton`):** Genera automáticamente la estructura de directorios y archivos plantilla vacíos o de ejemplo (`caso1.in`, `caso1.out`, opcionalmente `caso1.argv`) para una actividad y ejercicios dados.
-  - Ejemplo de uso: `./ripley testcase skeleton --activity entrega-1_1228009 --exercise ejercicio1 --cases 3 --with-argv`
-- **Listado y Validación (`testcase list` / `testcase check`):**
-  - Lista los casos de prueba asociados a cada ejercicio en `workspace/tests/<actividad_slugificada>/`.
-  - Verifica la presencia e integridad de parejas `.in` / `.out` e indica si existen `.argv` asociados.
+#### C. Gestión y Esqueletos de Casos de Prueba (`testcase`)
+- `./ripley testcase skeleton --activity <act> --exercise <ex> --cases <n> [--with-argv]`
+- `./ripley testcase list [--activity <act>]`
+- `./ripley testcase check [--activity <act>]`: Verifica integridad de parejas `.in`/`.out` y `.argv`.
+- `./ripley testcase map --activity <act> [--student <st>] [--unmapped-only/--all/--auto]`:
+  - Herramienta interactiva con heurísticas de similitud textual para vincular archivos `.c` con nombres no estándar a sus ejercicios y testcases correspondientes.
+  - Permite visualizar el código fuente en consola, clasificar archivos como `[AUXILIAR]` o `[IGNORAR]`, crear ejercicios en el acto y aplicar mapeos globales a toda la cohorte.
+- `./ripley testcase fuzz --activity <act> --exercise <ex> [--reference-source <solucion.c>] [--count 10]`:
+  - Generador automático de casos de borde (`INT_MAX`, `INT_MIN`, `0`, cadenas límite, mutaciones) calculando los archivos `.out` esperados contra la solución de referencia docente.
 
-#### D. Subcomando `evaluate`
-- Soporta procesamiento concurrente/paralelo mediante `multiprocessing` o `concurrent.futures`.
-- **Diff Inteligente:** Compara $r_N$ contra $r_{N-1}$ generando un `unified diff`, ofreciendo banderas para ignorar cambios en comentarios o líneas en blanco.
-- **Escaneo Preventivo de Llamadas al Sistema:** Valida mediante expresiones regulares/AST que el código C no incluya librerías o llamadas peligrosas (`system()`, `fork()`, `#include <unistd.h>`).
-- **Compilación e Inspección con Límites de Recursos:**
-  - Compila con `gcc` empleando flags de sanitización (`-fsanitize=address,undefined`).
-  - Aplica límites de CPU (timeout), memoria (128 MB) y tamaño de ejecutable utilizando el módulo `resource` de Unix o subprocesos aislados.
-  - *Opción de Sandboxing:* Permite ejecuciones opcionales dentro de contenedores efímeros (Docker/Podman/bubblewrap) si la configuración lo requiere.
-- **Análisis de Estilo y Formato de Código:**
-  - Inspecciona los archivos `.c` evaluando las reglas personalizadas configuradas en `ripley.toml` (estilo de llaves, sangría/espacios, obligación de llaves en bloques, espaciado de operadores).
-  - Emite un reporte detallado con líneas y observaciones específicas de desvíos de estilo.
-- **Evaluación Dinámica (Test Cases I/O y Argumentos CLI):**
-  - Busca los casos de prueba en `workspace/tests/<actividad_slugificada>/`.
-  - Si existe un archivo `.argv` asociado al caso de prueba (ej. `caso1.argv`), lee su contenido y pasa los argumentos de línea de comandos correspondientes al binario durante su ejecución.
-  - Ejecuta el binario suministrando la entrada del archivo `.in` vía `stdin` y compara la salida (`stdout`) contra la salida esperada (`.out`), ignorando espacios o saltos de línea finales.
-- **Análisis de Fugas con Valgrind:**
-  - Si está activado en `ripley.toml`, ejecuta `valgrind --leak-check=full` para auditar el uso de `malloc`/`free`.
-- **Análisis Estático y Reglas Personalizadas (`cppcheck`):**
-  - Ejecuta `cppcheck` utilizando la ruta configurable especificada en `ripley.toml` (ej. binario local `./cppcheck` o de sistema).
-  - Admite e invoca scripts/addons de Python con reglas de análisis personalizado definidos en la configuración (`--rule-file`, `--addon` o invocación directa de scripts Python de inspección AST).
-- **Rúbrica de Calificación:** Calcula una puntuación cuantitativa preliminar (0 a 10) según los pesos definidos en `ripley.toml` (compilación, linter, estilo y casos de prueba).
+#### D. Inicialización y Gestión de Prácticas (`practice` / `practica`)
+- `./ripley practice init --name "Nombre de la Práctica" [--exercises "ej1,ej2"]`
+- `./ripley practice list`: Muestra tabla de prácticas docentes con estado de enunciados, pautas y casos de prueba.
+- `./ripley practice sync --activity <slug>`: Sincroniza casos de prueba desde `./practicas/<slug>/` a `./tests/<slug>/`.
 
-#### E. Subcomando `export` (Reportería y Docencia)
-- **`moodle_grades.csv`:** Exporta un archivo de calificaciones estructurado para ser subido directamente al Libro de Calificaciones de Moodle.
-- **`retroalimentacion_moodle.zip`:** Empaqueta todos los informes `.md` (o convertidos) respetando el formato requerido por Moodle para la "Subida masiva de archivos de retroalimentación".
-- **`dashboard.md`:** Genera un resumen global para el profesor con métricas de la cohorte (% que compila, cumplimiento de estilo, errores más frecuentes, promedio de nota preliminar).
+#### E. Evaluación Dinámica, Diagnósticos y AST (`evaluate`)
+- `./ripley evaluate --activity <slug> [--parallel/--no-parallel] [--check-plagiarism]`:
+  - **Compilación Modular por Mapeo:** Agrupa y compila fuentes `.c` vinculados al ejercicio correspondiente según `mapping.json`.
+  - **Diff Semántico por AST:** Análisis estructural de funciones C ($r_N$ vs $r_{N-1}$), clasificando altas, bajas, modificaciones lógicas y cambios cosméticos.
+  - **Diagnósticos Especializados de Ejecución:**
+    - *Stack Overflow y Recursión Infinita:* Detección dinámica de agotamiento de stack con sugerencias pedagógicas.
+    - *Bloqueos en Stdin (I/O Deadlocks):* Detección de programas colgados esperando más datos por `scanf`/`getchar` de los provistos por el caso de prueba.
+    - *Punteros Colgantes (Dangling Pointers):* Captura de *Use-After-Free*, *Double Free* y reuso de variables tras `free()`.
+  - **Verificación de Restricciones del Enunciado:** Blacklist/Whitelist a nivel AST para estructuras prohibidas (`for`, `while`, `goto`), cabeceras vetadas (`<string.h>`) o requisitos obligatorios (`struct`, `malloc`, recursión).
+  - **Comparación Flexible de Salidas:** Soporte para directivas `REGEX:` en `.out` y comparación normalizada fuzzy (tolerante a espacios, mayúsculas y puntuación redundante).
+  - **Auditoría de Memoria (Valgrind):** Con soporte para tolerancia de fugas en salidas de error (`tolerar_fugas_en_error`).
 
----
+#### F. Análisis de Plagio y Similitud de Código (`plagiarism`)
+- `./ripley plagiarism --activity <slug> [--threshold 0.70] [--output <report.md>]`:
+  - Algoritmo Winnowing con tokenización AST de C ($k$-gramas y ventanas deslizantes) y cálculo de coeficientes de Jaccard y contención entre todas las entregas de la cohorte.
 
-### 5. Generación de Informes Mediante Plantillas (Jinja2)
+#### G. Diagramas de Flujo Tradicionales (`flowchart`)
+- `./ripley flowchart --file <path.c> [--function <nombre>] [--format mermaid|dot] [--output <archivo>]`:
+  - Generación de diagramas de flujo según la norma tradicional ISO/ANSI 5807: óvalos para Inicio/Fin, paralelogramos para Entrada (`scanf`/`getchar`) y Salida (`printf`/`puts`), rombos de decisión (`if`, `while`, `for`) con ramas `Sí`/`No` y rectángulos de proceso.
 
-Toda la generación de informes en Markdown debe usar plantillas en el directorio `templates/` (o el configurado en `ripley.toml`). Todos los tags de las plantillas deben ser simples y seguir strictly la convención `snake_case`.
+#### H. Árboles de Llamadas (`callgraph`)
+- `./ripley callgraph --file <path.c> [--format mermaid|dot] [--stdlib] [--output <archivo>]`:
+  - Extracción y visualización de grafos de invocación entre funciones C, detección de recursión y llamadas a librerías estándar.
 
-#### Plantillas Requeridas:
-1. `header.jinja2.md`: Encabezado con metadatos del estudiante y de la entrega.
-2. `version_section.jinja2.md`: Bloque modular para renderizar diffs, tabla de compilación, análisis de estilo, análisis estático, fugas con Valgrind, resultados de Test Cases y archivos ignorados.
-3. `footer.jinja2.md`: Cierre, versión de `ripley`, timestamp y nota final preliminar.
+#### I. Linters Especializados de Calidad y Estilo (`lint`)
+- `./ripley lint --file <path.c> [--magic-numbers] [--clones] [--naming] [--dead-code] [--doxygen]`:
+  - *Números Mágicos:* Detección de literales numéricos sin nombre fuera de `#define`/`enum`.
+  - *Detector de Clones Internos (Copy-Paste):* Detección de secuencias duplicadas de tokens entre funciones dentro de la misma entrega.
+  - *Convenciones de Nombres:* Validación de nomenclatura (`snake_case`, `UPPER_CASE`, prefijos `t_`).
+  - *Código Muerto:* Identificación de funciones jamás invocadas e inalcanzables desde `main()`.
+  - *Doxygen:* Fiscalización de completitud de comentarios `@brief`, `@param` y `@return`.
 
-#### Ejemplo de Contenido en Plantilla (`version_section.jinja2.md`):
+#### J. Generador de Mocks para Pruebas Unitarias en C (`mock generate`)
+- `./ripley mock generate --header <header.h> [--output-dir <dir>]`:
+  - Generación automática de stubs y mocks (`mock_<fn>.h` y `.c`) con contadores de invocaciones (`mock_<fn>_call_count`), configuración de retornos (`mock_<fn>_set_return`) y reseteo global (`reset_all_mocks`).
 
-```markdown
-<!-- VERSIÓN (Cargado desde plantilla: version_section.jinja2.md) -->
-## Versión {{ numero_version }} - {{ fecha_hora }}
+#### K. Testing Basado en Propiedades / Property-Based Testing (`property-test`)
+- `./ripley property-test --source <path.c> --function <fn> --property <IDEMPOTENCE|COMMUTATIVITY|SORT_INVARIANT> [--iterations 100]`:
+  - Generación y ejecución automatizada de arneses de prueba aleatorios en C para verificar invariantes formales con reporte de contraejemplos.
 
-### Resumen de Cambios y Archivos
-- **Archivos nuevos:** {{ archivos_nuevos }}
-- **Archivos modificados:** {{ archivos_modificados }}
-- **Archivos sin cambios:** {{ archivos_sin_cambios }}
-- **Archivos ignorados/no permitidos:** {{ archivos_ignorados }}
+#### L. Auditoría de Documentación Doxygen (`doxygen`)
+- `./ripley doxygen --file <path.c>`:
+  - Verificación exhaustiva de parámetros y retornos documentados en funciones C.
 
-{% if diff_unificado %}
-```diff
-{{ diff_unificado }}
-```
-{% endif %}
-
-### Compilación, Estilo y Análisis Estático
-
-| Archivo | Estado Compilación | Evaluación de Estilo | Valgrind (Fugas) | Cppcheck / Rules |
-| ----- | ----- | ----- | ----- | ----- |
-{% for item in resultados_compilacion %}
-| `{{ item.nombre_archivo }}` | {{ item.estado }} | {{ item.estado_estilo }} | {{ item.estado_valgrind }} | {{ item.estado_cppcheck }} |
-{% endfor %}
-
-#### Observaciones de Estilo y Formato
-{% for observacion in observaciones_estilo %}
-- **`{{ observacion.archivo }}` (Línea {{ observacion.linea }}):** {{ observacion.mensaje }}
-{% else %}
-_No se detectaron faltas de estilo según las reglas configuradas._
-{% endfor %}
-
-#### Logs de Compilación y Linter
-```text
-{{ logs_detallados_compilacion }}
-```
-
-### Pruebas de Entrada/Salida (Test Cases)
-
-| Ejercicio | Caso de Prueba | Argumentos CLI | Resultado | Tiempo Exec. |
-| ----- | ----- | ----- | ----- | ----- |
-{% for test in resultados_pruebas %}
-| `{{ test.ejercicio }}` | {{ test.nombre_caso }} | `{{ test.argumentos_cli }}` | {{ test.resultado }} | {{ test.tiempo_ms }} ms |
-{% endfor %}
-
-### Nota Preliminar Estimada: {{ nota_preliminar }} / 10
-_Desglose: Compilación ({{ nota_compilacion }}), Estilo ({{ nota_estilo }}), Linter ({{ nota_linter }}), Test Cases ({{ nota_pruebas }})_
-```
+#### M. Exportación y Reportería Moodle (`export`)
+- `./ripley export --activity <actividad>`:
+  - Generación de `moodle_grades.csv`, empaquetado de `retroalimentacion_moodle.zip` y reporte de métricas consolidadas en `dashboard.md`.
 
 ---
 
-### 6. Estrategia de Testing y Calidad de Código (QA)
+### 5. Sanitizadores y Diagnósticos de Bajo Nivel
 
-Para garantizar la fiabilidad de `ripley`, el proyecto debe incluir una suite de pruebas automatizada con `pytest` en un subdirectorio `tests/`:
-
-1. **Pruebas Unitarias (`tests/unit/`):**
-   - **Parsing de Moodle:** Validación de expresiones regulares con nombres de ZIP reales y no válidos.
-   - **Normalización de Encoding:** Verificación de conversión correcta de archivos codificados en `ISO-8859-1`, `Windows-1252` y `UTF-8`.
-   - **Aplanamiento y Filtro:** Test para verificar que carpetas anidadas extraen solo archivos `.c`/`.h` y mueven otros a ignorados.
-   - **Gestor de Plantillas (`template init` / `check`):** Verificación de creación de plantillas Jinja2 por defecto, detección de plantillas faltantes y validación de sintaxis de variables `snake_case`.
-   - **Generación de Esqueletos de Tests:** Test de comandos `testcase skeleton` comprobando la creación de carpetas y archivos `.in`/`.out`/`.argv`.
-   - **Verificación de Reglas de Estilo:** Tests unitarios del analizador de estilo evaluando casos de violación de llaves (K&R vs Allman), omitir llaves en `if` de una línea, espaciado e indentación.
-   - **Generación de Diff:** Test sobre cadenas de texto con y sin ignorar comentarios/espacios.
-   - **Parseo de Argumentos CLI (`.argv`):** Validación de lectura correcta de argumentos en línea de comandos para pasárselos al ejecutable.
-   - **Invocación de Cppcheck con Reglas Personalizadas:** Test unitario verificando el montaje de argumentos para binarios locales (`./cppcheck`) y ejecución de reglas Python/addons.
-   - **Renderizado Jinja2:** Validación de que los contextos en `snake_case` rellenan adecuadamente las plantillas.
-
-2. **Pruebas de Integración y Mocks (`tests/integration/`):**
-   - **Invocación de Subprocesos:** Mocks de `gcc`, `cppcheck` (con sus reglas custom) y `valgrind` mediante `pytest-mock` para probar el parseo de salidas sin depender de ejecutables del sistema.
-   - **Flujo Completo de Ingesta, Generación de Tests y Evaluación:** Creación de archivos ZIP sintéticos en memoria (`io.BytesIO` / `zipfile`) con entregas válidas e inválidas, verificando la creación de la estructura `r1/`, `r2/`, `.metadata.db` e informes finales.
-   - **Timeouts y Límites de Memoria:** Simulación de programas C con bucles infinitos para verificar la interrupción correcta por timeout.
+- **UndefinedBehaviorSanitizer (UBSan):**
+  - Detección y explicación pedagógica de desbordamientos de enteros con signo (`signed-integer-overflow`), división por cero (`division by zero`) y accesos a memoria no alineada (`-fsanitize=alignment`).
+- **MemorySanitizer / GCC Warnings:**
+  - Identificación de lectura de variables locales no inicializadas (`-Wuninitialized`, `-Wmaybe-uninitialized`).
+- **Conversiones Peligrosas:**
+  - Detección de cambios de signo y pérdida de precisión con `-Wsign-conversion` y `-Wconversion`.
+- **Contador Determinista de Instrucciones CPU:**
+  - Medición de instrucciones con Callgrind para detectar loops infinitos independientemente de la carga del servidor.
 
 ---
 
-### 7. Planificación de Tareas y Roadmap de Implementación
+### 6. Estrategia de Testing y QA
 
-Para asegurar una construcción modular y 100% completa (sin código omitido ni placeholders `TODO`), la implementación se estructurará en 6 fases secuenciales:
-
-#### Fase 1: Configuración del Entorno y Estructura CLI
-- Configurar `pyproject.toml` con `uv` y dependencias (`typer`, `rich`, `jinja2`, `python-slugify`, `tomli_w` / `tomllib`).
-- Crear el script wrapper Bash `./ripley`.
-- Implementar la carga y validación de `ripley.toml` (incluyendo ejecutable de `cppcheck`, reglas custom en Python y sección de estilo `[style]`).
-- Implementar el subcomando `template` (`template init`, `template list`, `template check`) para instanciar y validar plantillas base Jinja2.
-
-#### Fase 2: Módulo de Ingesta, Sanitización y Persistencia
-- Implementar expresiones regulares para parseo de nombre del ZIP de Moodle.
-- Crear funciones de descompresión, detección/conversión de encodings, aplanamiento de rutas y hashing SHA-256.
-- Diseñar la base de datos SQLite (`.metadata.db`) y modelos de datos.
-- Implementar el comando `ingest` (incluyendo `--dry-run`).
-
-#### Fase 3: Motor de Compilación Segura, Aislamiento y Analizador de Estilo
-- Crear el ejecutor de subprocesos con restricciones (`resource.setrlimit`, timeouts y flags de sanitización gcc).
-- Implementar el escaneo preventivo de código C (detección de `system`, `fork`, etc.).
-- Desarrollar el analizador de reglas de estilo personalizables (llaves, indentación, espacios, llaves obligatorias).
-- Añadir el soporte para ejecución en sandbox (Docker/Podman/bubblewrap).
-
-#### Fase 4: Gestión de Pruebas (Testcases), Evaluación Dinámica, Valgrind y Linters
-- Implementar el subcomando `testcase` (`skeleton`, `list`, `check`) para crear esqueletos de casos de prueba (`.in`, `.out`, `.argv`) en `workspace/tests/<actividad_slugificada>/`.
-- Implementar el ejecutor de Test Cases leyendo desde `workspace/tests/<actividad_slugificada>/` y comparando `.in` / `.out` con normalización de espacios, soportando argumentos opcionales desde archivos `.argv`.
-- Integrar la auditoría de memoria con `valgrind` y la ejecución de `cppcheck` soportando rutas personalizadas (`./cppcheck`) y reglas/addons en Python.
-- Crear el calculador de notas preliminares según la rúbrica de `ripley.toml`.
-
-#### Fase 5: Versionado Incremental, Diffing y Motor de Plantillas
-- Desarrollar la lógica de comparación $r_N$ vs $r_{N-1}$ (diff unificado).
-- Integrar el renderizado con las plantillas Jinja2 en `templates/` utilizando variables `snake_case`.
-- Implementar la actualización del archivo acumulativo `<estudiante>_<actividad>.md`.
-
-#### Fase 6: Módulo de Exportación y Reportería Moodle
-- Implementar la generación de `moodle_grades.csv`.
-- Implementar la compresión masiva para `retroalimentacion_moodle.zip`.
-- Crear el generador del dashboard consolidado `dashboard.md`.
-- Escribir la suite completa de pruebas unitarias e integración en `pytest`.
+Suite completa de pruebas automatizadas con `pytest` y `pytest-mock` en `tests/`:
+- **`tests/unit/`:** Pruebas unitarias de ingesta, mapping, templates, esqueletos, compilador, config, base de datos, diagnósticos especializados, diffing y AST, evaluador, exportador, diagramas de flujo, árboles de llamadas, fuzzing, linters, doxygen, mocks, sanitizers, restricciones, runner flexible y property testing.
+- **`tests/integration/`:** Pipeline completo de evaluación end-to-end, timeouts, fallas de compilación y generación de reportes consolidados.
+- **Estado Actual:** 76 pruebas pasando al 100% sin dependencias de placeholders temporales.
 
 ---
 
-### 8. Entregables Requeridos
+### 7. Resumen de Archivos y Módulos del Proyecto
 
-1. **Estructura completa del proyecto:** Módulos Python completados en el directorio `ripley/`, carpetas `templates/`, `tests/` y script wrapper Bash.
-2. **`pyproject.toml`:** Configuración de dependencias gestionadas por `uv`.
-3. **`ripley.toml` por defecto:** Configuración inicial con flags de GCC, timeouts, ruta/parámetros/reglas Python de `cppcheck`, sección de reglas de estilo personalizables (`[style]`), ruta de plantillas Jinja2, opciones de Valgrind, pesos de rúbrica y reglas de sanitización.
-4. **Código Python Modular e Íntegro:**
-   - Módulo de parsing de rutas, normalización de encoding (UTF-8) y aplanamiento de entregas.
-   - Módulo de base de datos local SQLite y cálculo de hashes SHA-256.
-   - Módulo gestor de plantillas Jinja2 (`template init` / `list` / `check`).
-   - Módulo gestor de casos de prueba y generación de esqueletos (`testcase skeleton` / `list`).
-   - Módulo de ejecutor seguro (`subprocess` con `resource`/`ulimit`, timeouts, sanitizadores y soporte de sandbox).
-   - Módulo de inspección de estilo y reglas de formato personalizables (llaves, espaciado, sangría, llaves obligatorias).
-   - Módulo de pruebas dinámicas (I/O Testing & CLI Arguments) buscando en `workspace/tests/<actividad_slugificada>/` (soporte para `.in`, `.out` y `.argv`), auditoría de memoria con Valgrind y linter `cppcheck` configurable con reglas Python.
-   - Módulo de diffing inteligente (con opción de ignorar espacios/comentarios).
-   - Módulo de renderizado Jinja2 en `snake_case`.
-   - Módulo exportador a Moodle (`moodle_grades.csv`, ZIP de retroalimentación y `dashboard.md`).
-5. **Suite de Pruebas Automáticas (`pytest`):** Pruebas unitarias y de integración para validar la ingesta, gestión de plantillas base, esqueletos de pruebas, linter de estilo, invocaciones de `cppcheck` personalizado, seguridad y generación de informes.
-6. **Script Bash (`ripley`):** Script ejecutable `+x` que redirija todos los comandos a `uv run main.py ...`.
-7. **Ejemplo de Uso:** Comandos CLI completos para probar:
-   - `./ripley template init`
-   - `./ripley ingest --dry-run entrega1.zip`
-   - `./ripley ingest entrega1.zip`
-   - `./ripley testcase skeleton --activity entrega-1_1228009 --exercise ejercicio1 --cases 2 --with-argv`
-   - `./ripley evaluate --activity entrega-1_1228009`
-   - `./ripley export --activity entrega-1_1228009`
-
+| Módulo | Responsabilidad Principal |
+| :--- | :--- |
+| [`src/ripley/cli.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/cli.py) | Punto de entrada y orquestación de subcomandos Typer y visualización Rich. |
+| [`src/ripley/ingest.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ingest.py) | Parseo de ZIPs de Moodle, descompresión, sanitización UTF-8 y aplanamiento. |
+| [`src/ripley/db.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/db.py) | Persistencia y modelos SQLite para estudiantes, revisiones y evaluaciones. |
+| [`src/ripley/config.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/config.py) | Carga, validación y modelos tipados de configuración TOML (`ripley.toml`). |
+| [`src/ripley/mapping.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/mapping.py) | Mapeo interactivo y heurístico de archivos `.c` a ejercicios y testcases. |
+| [`src/ripley/practice.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/practice.py) | Inicialización, gestión y sincronización de prácticas docentes en `./practicas/`. |
+| [`src/ripley/compiler.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/compiler.py) | Compilación con GCC, sanitizadores y límites de recursos Unix. |
+| [`src/ripley/runner.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/runner.py) | Ejecución dinámica de testcases, comparación regex/fuzzy y auditoría Valgrind. |
+| [`src/ripley/diagnostics.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/diagnostics.py) | Diagnóstico de Stack Overflow, Deadlocks de Stdin y Dangling Pointers. |
+| [`src/ripley/restrictions.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/restrictions.py) | Validador de restricciones del enunciado (blacklist/whitelist AST). |
+| [`src/ripley/sanitizers.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/sanitizers.py) | Analizador de UBSan (overflows, alineación), variables no asignadas y conversiones. |
+| [`src/ripley/fuzzing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/fuzzing.py) | Generación automática de casos de borde por fuzzing con solución modelo. |
+| [`src/ripley/plagiarism.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/plagiarism.py) | Detección de similitud y plagio con algoritmo Winnowing y similitud Jaccard. |
+| [`src/ripley/flowchart.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/flowchart.py) | Generador de diagramas de flujo tradicionales (ISO/ANSI 5807) en Mermaid y DOT. |
+| [`src/ripley/callgraph.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/callgraph.py) | Extracción de árboles de llamadas y análisis de alcanzabilidad de funciones. |
+| [`src/ripley/linters.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/linters.py) | Linters de números mágicos, código duplicado (copy-paste), convenciones y código muerto. |
+| [`src/ripley/doxygen.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/doxygen.py) | Auditor de completitud de documentación Doxygen en C. |
+| [`src/ripley/mocks.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/mocks.py) | Generador automático de arneses y stubs mock para pruebas unitarias en C. |
+| [`src/ripley/property_testing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/property_testing.py) | Framework de pruebas basadas en propiedades (Property-Based Testing) en C. |
+| [`src/ripley/instruction_counter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/instruction_counter.py) | Contador determinista de instrucciones CPU con Callgrind. |
+| [`src/ripley/semantic_diff.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/semantic_diff.py) | Diff semántico por AST para código fuente C. |
+| [`src/ripley/diffing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/diffing.py) | Generación de diffs unificados y resúmenes semánticos entre revisiones. |
+| [`src/ripley/style.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/style.py) | Analizador estático de reglas de estilo configurables (Allman, K&R, indentación). |
+| [`src/ripley/security.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/security.py) | Escáner de llamadas al sistema peligrosas (`system`, `fork`, `exec`). |
+| [`src/ripley/templates.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/templates.py) | Gestor, inicializador y validador de plantillas Jinja2 en `snake_case`. |
+| [`src/ripley/reporter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/reporter.py) | Motor de renderizado Jinja2 para generar informes Markdown acumulativos. |
+| [`src/ripley/exporter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/exporter.py) | Exportador de `moodle_grades.csv`, ZIP de retroalimentación y `dashboard.md`. |
+| [`src/ripley/evaluate.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/evaluate.py) | Evaluador integral que orquesta compilación, diff, estilo, linter, tests y Valgrind. |
