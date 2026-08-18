@@ -8,13 +8,14 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 
+from ripley.callgraph import CallGraphGenerator
 from ripley.config import load_config
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.flowchart import FlowchartGenerator
 from ripley.fuzzing import Fuzzer
 from ripley.ingest import MoodleIngestor
-
+from ripley.linters import InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
 from ripley.mapping import InteractiveMapper
 from ripley.plagiarism import PlagiarismDetector
 from ripley.practice import (
@@ -24,6 +25,8 @@ from ripley.practice import (
     list_practices,
     sync_practice_testcases,
 )
+from ripley.property_testing import PropertyTestRunner
+from ripley.sanitizers import SanitizerAnalyzer
 from ripley.semantic_diff import SemanticDiffer
 from ripley.templates import check_templates, init_templates, list_templates
 from ripley.testcases import (
@@ -31,6 +34,7 @@ from ripley.testcases import (
     create_testcase_skeleton,
     discover_testcases,
 )
+
 
 
 app = typer.Typer(
@@ -725,8 +729,131 @@ def cmd_flowchart(
         raise typer.Exit(code=1)
 
 
+@app.command("callgraph")
+def cmd_callgraph(
+    file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C (.c)."),
+    format_type: str = typer.Option("mermaid", "--format", help="Formato de salida ('mermaid' o 'dot')."),
+    stdlib: bool = typer.Option(False, "--stdlib", help="Incluir llamadas a funciones de biblioteca estándar."),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Archivo donde guardar el callgraph."),
+) -> None:
+    """Genera el árbol de llamadas (Call Graph) entre funciones C en formato Mermaid o DOT."""
+    cg_gen = CallGraphGenerator()
+    try:
+        graph_text = cg_gen.generate_for_file(
+            file_path=file_path,
+            output_format=format_type,
+            include_stdlib=stdlib,
+        )
+
+        if output:
+            out_p = Path(output)
+            out_p.write_text(graph_text, encoding="utf-8")
+            console.print(f"\n[bold green]✓ Árbol de llamadas guardado en:[/bold green] [cyan]{out_p}[/cyan]\n")
+        else:
+            console.print(f"\n[bold green]Árbol de Llamadas ({file_path}):[/bold green]\n")
+            console.print(f"```{format_type}\n{graph_text}\n```\n")
+    except Exception as e:
+        console.print(f"[bold red]Error al generar callgraph:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command("lint")
+def cmd_lint(
+    file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C (.c)."),
+    magic_numbers: bool = typer.Option(True, "--magic-numbers/--no-magic-numbers", help="Auditar números mágicos."),
+    clones: bool = typer.Option(True, "--clones/--no-clones", help="Auditar código duplicado (copy-paste)."),
+    naming: bool = typer.Option(True, "--naming/--no-naming", help="Auditar convenciones de nombres."),
+) -> None:
+    """Ejecuta análisis de números mágicos, duplicación de código interna y convenciones de nombres."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    code = path.read_text(encoding="utf-8", errors="replace")
+    all_obs = []
+
+    if magic_numbers:
+        all_obs.extend(MagicNumberLinter().analyze(code, filename=path.name))
+
+    if naming:
+        all_obs.extend(NamingConventionLinter().analyze(code, filename=path.name))
+
+    if clones:
+        dup_matches = InternalCloneLinter().analyze(code, filename=path.name)
+        for d in dup_matches:
+            all_obs.append(
+                LinterObservation(
+                    linter_name="copy_paste_detector",
+                    filename=path.name,
+                    line=d.line_a,
+                    severity="ADVERTENCIA",
+                    message=d.description,
+                    suggestion="Extraé la lógica común en una función auxiliar parametrizada.",
+                )
+            )
+
+    if not all_obs:
+        console.print(f"\n[bold green]✓ No se detectaron desvíos en '{path.name}'. Código limpio y modular.[/bold green]\n")
+        return
+
+    table = Table(title=f"Observaciones de Calidad y Estilo - {path.name}")
+    table.add_column("Línea", justify="right", style="bold")
+    table.add_column("Regla", style="cyan")
+    table.add_column("Severidad", justify="center")
+    table.add_column("Mensaje")
+    table.add_column("Sugerencia Pedagógica", style="dim")
+
+    for obs in all_obs:
+        sev_style = "[yellow]ESTILO[/yellow]" if obs.severity == "ESTILO" else "[bold red]ADVERTENCIA[/bold red]"
+        table.add_row(
+            str(obs.line),
+            obs.linter_name,
+            sev_style,
+            obs.message,
+            obs.suggestion,
+        )
+
+    console.print(table)
+
+
+@app.command("property-test")
+def cmd_property_test(
+    source: str = typer.Option(..., "--source", "-s", help="Ruta al archivo C del estudiante."),
+    function: str = typer.Option(..., "--function", "-f", help="Nombre de la función a evaluar."),
+    property_type: str = typer.Option(
+        "IDEMPOTENCE",
+        "--property",
+        "-p",
+        help="Tipo de invariante a verificar ('IDEMPOTENCE', 'COMMUTATIVITY', 'SORT_INVARIANT').",
+    ),
+    iterations: int = typer.Option(100, "--iterations", "-i", help="Cantidad de iteraciones aleatorias a ejecutar."),
+) -> None:
+    """Ejecuta pruebas basadas en propiedades (Property-Based Testing) sobre funciones en C."""
+    runner = PropertyTestRunner()
+    console.print(
+        f"\n[bold green]Iniciando Property-Based Testing:[/bold green] [cyan]{function}()[/cyan] | Propiedad: [bold]{property_type}[/bold] ({iterations} iteraciones)\n"
+    )
+
+    res = runner.run_property_test(
+        student_source=source,
+        property_type=property_type,
+        target_function=function,
+        iterations=iterations,
+    )
+
+    if res.passed:
+        console.print(f"[bold green]✓ {res.message}[/bold green]\n")
+    else:
+        console.print(f"[bold red]✗ {res.message}[/bold red]")
+        if res.counterexample_output:
+            console.print(f"[yellow]Contraejemplo hallado:[/yellow] {res.counterexample_output}\n")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
+
 
 
 
