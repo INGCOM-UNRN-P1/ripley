@@ -219,11 +219,8 @@ class NamingConventionLinter:
         return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
-# ============================================================================
-# 4. Detector de Código Muerto y Funciones Jamás Invocadas
-# ============================================================================
 class DeadCodeLinter:
-    """Detecta funciones que nunca son invocadas desde main() ni alcanzadas en el flujo del programa."""
+    """Detecta funciones inalcanzables y sentencias muertas tras return/exit en funciones."""
 
     def analyze(self, code: str, filename: str = "archivo.c") -> List[LinterObservation]:
         from ripley.callgraph import CallGraphGenerator
@@ -233,6 +230,7 @@ class DeadCodeLinter:
         functions = extract_c_functions(code)
 
         observations: List[LinterObservation] = []
+        # 1. Funciones jamás invocadas
         for fn in unreachable:
             fobj = functions.get(fn)
             line = fobj.start_line if fobj else 1
@@ -247,5 +245,31 @@ class DeadCodeLinter:
                 )
             )
 
+        # 2. Sentencias inalcanzables tras return/exit dentro del mismo bloque
+        for fname, fobj in functions.items():
+            body_lines = fobj.raw_body.splitlines()
+            found_return = False
+            for idx, raw_line in enumerate(body_lines):
+                line = raw_line.strip()
+                if not line or line.startswith("//") or line.startswith("/*") or line.startswith("*"):
+                    continue
+                if found_return and line not in ("}", "{", "else", "else {") and not line.startswith("case ") and not line.startswith("default:"):
+                    observations.append(
+                        LinterObservation(
+                            linter_name="dead_code",
+                            filename=filename,
+                            line=fobj.start_line + idx,
+                            severity="ADVERTENCIA",
+                            message=f"Sentencia inalcanzable (Código muerto) tras instrucción de retorno en `{fname}()`.",
+                            suggestion="Eliminá el código posterior a `return` o `exit()` ya que jamás se ejecutará.",
+                        )
+                    )
+                    break
+                if line.startswith("return") or line.startswith("exit("):
+                    found_return = True
+                elif "}" in line or "else" in line:
+                    found_return = False
+
         return observations
+
 
