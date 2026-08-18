@@ -1,0 +1,79 @@
+[compiler]
+executable = "gcc"
+flags = [
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-std=c11",
+    "-fsanitize=address,undefined",
+]
+
+[limits]
+timeout_segundos = 5
+limite_memoria_mb = 128
+max_tamano_ejecutable_mb = 10
+
+[style]
+brace_style = "allman"
+require_braces = true
+indent_style = "spaces"
+indent_size = 4
+spacing_operators = true
+spacing_keywords = true
+no_trailing_whitespace = true
+max_blank_lines = 2
+
+[rubric]
+peso_compilacion = 0.25
+peso_linter = 0.25
+peso_estilo = 0.15
+peso_pruebas = 0.35
+
+[valgrind]
+enabled = true
+flags = [
+    "--leak-check=full",
+    "--show-leak-kinds=all",
+    "--track-origins=yes",
+    "--error-exitcode=1",
+]
+
+[cppcheck]
+ejecutable = "cppcheck"
+parametros = [
+    "--enable=all",
+    "--inline-suppr",
+    "--suppress=missingIncludeSystem",
+]
+reglas_python = []
+
+[security]
+forbidden_calls = [
+    "system",
+    "fork",
+    "execv",
+    "execvp",
+    "execl",
+    "execlp",
+    "execle",
+    "execve",
+    "popen",
+    "kill",
+    "raise",
+    "clone",
+    "ptrace",
+    "socket",
+    "connect",
+    "bind",
+    "listen",
+    "accept",
+]
+forbidden_headers = [
+    "unistd.h",
+    "sys/socket.h",
+    "netinet/in.h",
+    "arpa/inet.h",
+    "sys/wait.h",
+    "signal.h",
+    "sys/ptrace.h",
+]

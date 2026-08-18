@@ -703,7 +703,14 @@ def cmd_practice_sync(
         console.print(f"[bold red]La práctica '{activity}' no existe en '{base_dir}'.[/bold red]")
         raise typer.Exit(code=1)
 
+    count = sync_practice_testcases(p_dir, workspace)
+    console.print(
+        f"\n[bold green]✓ Se sincronizaron {count} archivos de casos de prueba hacia tests/{activity}/[/bold green]\n"
+    )
+
+
 @app.command("flowchart")
+
 def cmd_flowchart(
     file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C (.c)."),
     function: Optional[str] = typer.Option(
