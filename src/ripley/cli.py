@@ -9,13 +9,16 @@ from rich.table import Table
 
 
 from ripley.ast_auditors import (
+    BackwardGotoLinter,
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
     DeepFreeLinter,
+    EvaluationOrderLinter,
     FloatComparisonLinter,
     IWYULinter,
     OverengineeringLinter,
     ShortCircuitLinter,
+    StringLiteralWriteLinter,
     StringNullPointerLinter,
     VariableShadowingLinter,
 )
@@ -27,12 +30,15 @@ from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.flowchart import FlowchartGenerator
 from ripley.fuzzing import Fuzzer
+from ripley.heap_simulator import HeapMemorySimulator
 from ripley.ingest import MoodleIngestor
 from ripley.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
 from ripley.mapping import InteractiveMapper
 from ripley.memory_visualizer import DynamicMemoryVisualizer
 from ripley.mocks import MockGenerator
 from ripley.plagiarism import PlagiarismDetector
+from ripley.pure_functions import PureFunctionAnalyzer
+
 
 from ripley.practice import (
     ExerciseTemplateSpec,
@@ -845,6 +851,9 @@ def cmd_lint(
         all_obs.extend(VariableShadowingLinter().analyze(code, filename=path.name))
         all_obs.extend(DanglingStackPointerLinter().analyze(code, filename=path.name))
         all_obs.extend(OverengineeringLinter().analyze(code, filename=path.name))
+        all_obs.extend(EvaluationOrderLinter().analyze(code, filename=path.name))
+        all_obs.extend(StringLiteralWriteLinter().analyze(code, filename=path.name))
+        all_obs.extend(BackwardGotoLinter().analyze(code, filename=path.name))
 
     if not all_obs:
         console.print(f"\n[bold green]✓ No se detectaron desvíos en '{path.name}'. Código limpio y modular.[/bold green]\n")
@@ -874,6 +883,82 @@ def cmd_lint(
         )
 
     console.print(table)
+
+
+@app.command("heap-simulate")
+def cmd_heap_simulate(
+    capacity: int = typer.Option(1024, "--capacity", "-c", help="Capacidad del heap simulado en bytes."),
+    allocations: str = typer.Option("128,256,64,512", "--allocations", "-a", help="Tamaños de asignación separados por coma."),
+    frees: str = typer.Option("1,3", "--frees", "-f", help="Índices 1-based de asignaciones a liberar separados por coma."),
+) -> None:
+    """Simula un montículo (Heap) para analizar patrones de fragmentación externa e interna."""
+    sim = HeapMemorySimulator(capacity=capacity)
+    sizes = [int(s.strip()) for s in allocations.split(",") if s.strip()]
+    free_indices = [int(idx.strip()) for idx in frees.split(",") if idx.strip()]
+
+    allocated_offsets = []
+    for i, sz in enumerate(sizes):
+        offset = sim.allocate(sz, tag=f"alloc_{i+1}")
+        allocated_offsets.append(offset)
+
+    for f_idx in free_indices:
+        if 1 <= f_idx <= len(allocated_offsets):
+            off = allocated_offsets[f_idx - 1]
+            if off is not None:
+                sim.free(off)
+
+    rep = sim.get_report()
+
+    console.print(f"\n[bold green]Reporte de Fragmentación de Memoria Heap ({capacity} B):[/bold green]")
+    console.print(f" - [cyan]Memoria Ocupada Actual:[/cyan] {rep.current_allocated} B / {rep.total_capacity} B (Pico: {rep.peak_allocated} B)")
+    console.print(f" - [cyan]Memoria Libre Total:[/cyan] {rep.total_free} B")
+    console.print(f" - [cyan]Bloque Libre Contiguo Mayor:[/cyan] {rep.largest_free_block} B")
+    console.print(f" - [cyan]Índice de Fragmentación Externa:[/cyan] [bold yellow]{rep.fragmentation_index * 100:.1f}%[/bold yellow]")
+    console.print(f" - [cyan]Mapa de Memoria:[/cyan] {rep.memory_map}\n")
+
+
+@app.command("pure-audit")
+def cmd_pure_audit(
+    file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C (.c)."),
+    mode: str = typer.Option("pure", "--mode", "-m", help="Modo de auditoría ('pure' o 'const')."),
+    verify_compiler: bool = typer.Option(True, "--verify-compiler/--no-verify-compiler", help="Verificar inyectando atributos con GCC."),
+) -> None:
+    """Audita la pureza y ausencia de efectos colaterales en funciones C (__attribute__((pure|const)))."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    code = path.read_text(encoding="utf-8", errors="replace")
+    analyzer = PureFunctionAnalyzer()
+    obs_list = analyzer.analyze_static(code)
+
+    table = Table(title=f"Auditoría de Funciones Puras - {path.name}")
+    table.add_column("Línea", justify="right", style="bold")
+    table.add_column("Función", style="cyan")
+    table.add_column("Pureza", justify="center")
+    table.add_column("Atributo Sugerido", justify="center")
+    table.add_column("Violaciones Detectadas", style="dim")
+
+    for obs in obs_list:
+        p_str = "[bold green]PURA[/bold green]" if obs.is_pure else "[bold red]IMPURA[/bold red]"
+        viol_str = ", ".join(obs.violations) if obs.violations else "Sin efectos secundarios"
+        table.add_row(
+            str(obs.line),
+            obs.function_name,
+            p_str,
+            obs.suggested_attribute,
+            viol_str,
+        )
+
+    console.print(table)
+
+    if verify_compiler:
+        ok, msg = analyzer.verify_with_compiler(path, mode=mode)
+        if ok:
+            console.print(f"\n[bold green]✓ Verificación con compilador exitosa:[/bold green] {msg}\n")
+        else:
+            console.print(f"\n[bold yellow]! Advertencia del compilador:[/bold yellow] {msg}\n")
 
 
 @app.command("memory-visualize")
@@ -915,6 +1000,7 @@ def cmd_embedded_test(
         if res.stderr:
             console.print(f"[yellow]Stderr:[/yellow] {res.stderr}\n")
         raise typer.Exit(code=1)
+
 
 
 
