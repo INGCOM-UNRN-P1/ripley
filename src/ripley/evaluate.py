@@ -5,8 +5,10 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 from pathlib import Path
+import re
 import tempfile
 from typing import Any, Callable, Dict, List, Optional
+
 
 from ripley.compiler import Compiler
 from ripley.config import RipleyConfig
@@ -122,16 +124,15 @@ class Evaluator:
                             exercise_groups[target] = []
                         exercise_groups[target].append(src)
                     else:
-                        # Si no hay mapeo específico, asignar a default_all
-                        if "default_all" not in exercise_groups:
-                            exercise_groups["default_all"] = []
-                        exercise_groups["default_all"].append(src)
+                        # Cada archivo C no mapeado es un ejercicio independiente
+                        unmapped_key = f"unmapped_{src.stem}"
+                        exercise_groups[unmapped_key] = [src]
 
-                # Si solo hay default_all o un único ejercicio, tratamos todo junto
                 compiled_binaries: Dict[str, Optional[Path]] = {}
                 compilation_results_table: List[Dict[str, str]] = []
                 all_style_obs: List[Dict[str, Any]] = []
                 compilation_logs: List[str] = []
+                file_compilation_status: Dict[str, bool] = {}
                 all_compiled = True
 
                 if security_violations:
@@ -141,29 +142,33 @@ class Evaluator:
                     )
                     compilation_logs.append(comp_log)
                 else:
-                    if len(exercise_groups) == 1 and "default_all" in exercise_groups:
-                        # Compilar todos los c_sources juntos
-                        bin_out = temp_path / f"bin_v{v_num}"
-                        comp_res = self.compiler.compile(c_sources, bin_out)
+                    for ex_name, ex_srcs in exercise_groups.items():
+                        bin_out = temp_path / f"bin_v{v_num}_{ex_name}"
+                        comp_res = self.compiler.compile(ex_srcs + aux_sources, bin_out)
+
+                        for src_f in ex_srcs:
+                            file_compilation_status[src_f.name] = comp_res.success
+
                         if comp_res.success:
-                            compiled_binaries["default_all"] = bin_out
+                            compiled_binaries[ex_name] = bin_out
                         else:
                             all_compiled = False
-                        if comp_res.stderr:
-                            compilation_logs.append(comp_res.stderr)
-                    else:
-                        # Compilar cada ejercicio con sus auxiliares
-                        for ex_name, ex_srcs in exercise_groups.items():
-                            bin_out = temp_path / f"bin_v{v_num}_{ex_name}"
-                            comp_res = self.compiler.compile(ex_srcs + aux_sources, bin_out)
-                            if comp_res.success:
-                                compiled_binaries[ex_name] = bin_out
-                            else:
-                                all_compiled = False
-                            if comp_res.stderr:
-                                compilation_logs.append(f"[{ex_name}] {comp_res.stderr}")
 
-                compiled = all_compiled and len(compiled_binaries) > 0
+                        # Registrar salida completa del compilador (stdout + stderr)
+                        compiler_raw = (comp_res.stdout + "\n" + comp_res.stderr).strip()
+                        display_name = ex_name.replace("unmapped_", "")
+                        src_names = ", ".join(f.name for f in ex_srcs)
+
+                        if compiler_raw:
+                            compilation_logs.append(
+                                f"=== Salida del Compilador ({src_names} -> {display_name}) ===\n{compiler_raw}\n"
+                            )
+                        else:
+                            compilation_logs.append(
+                                f"=== Salida del Compilador ({src_names} -> {display_name}) ===\nCompilación limpia sin errores ni advertencias.\n"
+                            )
+
+                compiled = len(compiled_binaries) > 0 and (all_compiled or any(file_compilation_status.values()))
 
                 # 4. Análisis de Estilo
                 total_style_score = 0.0
@@ -197,12 +202,13 @@ class Evaluator:
                     compilation_logs.append(f"\n--- Logs Valgrind ---\n{valgrind_res.full_output}")
 
                 for src in c_sources:
+                    src_ok = file_compilation_status.get(src.name, False)
                     compilation_results_table.append(
                         {
                             "nombre_archivo": src.name,
-                            "estado": "✓ Compilación OK" if compiled else "✗ Falló Compilación",
-                            "estado_estilo": f"{avg_style_score}/10" if compiled else "-",
-                            "estado_valgrind": valgrind_res.summary if compiled else "-",
+                            "estado": "✓ Compilación OK" if src_ok else "✗ Falló Compilación",
+                            "estado_estilo": f"{avg_style_score}/10" if src_ok else "-",
+                            "estado_valgrind": valgrind_res.summary if src_ok else "-",
                             "estado_cppcheck": cppcheck_res.summary,
                         }
                     )
@@ -214,8 +220,15 @@ class Evaluator:
 
                 if compiled:
                     for ex_name, cases in testcases_by_exercise.items():
-                        # Obtener el binario correspondiente al ejercicio o fallback a default_all
-                        bin_for_ex = compiled_binaries.get(ex_name) or compiled_binaries.get("default_all")
+                        # Obtener el binario correspondiente al ejercicio
+                        bin_for_ex = compiled_binaries.get(ex_name)
+                        if not bin_for_ex:
+                            # Fallback si un binario no mapeado coincide en dígitos
+                            for k, b in compiled_binaries.items():
+                                if re.findall(r"\d+", k) == re.findall(r"\d+", ex_name):
+                                    bin_for_ex = b
+                                    break
+
                         if not bin_for_ex:
                             for tc in cases:
                                 total_tests_count += 1
@@ -244,6 +257,7 @@ class Evaluator:
                                     "tiempo_ms": r_detail.tiempo_ms,
                                 }
                             )
+
 
 
                 # 8. Cálculo de Rúbrica
