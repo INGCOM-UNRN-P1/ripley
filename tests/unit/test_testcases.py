@@ -47,8 +47,9 @@ def test_check_testcases_integrity(tmp_path):
     assert len(errors) == 0
 
     # Romper integridad borrando .out
-    out_file = ws / "tests" / act_slug / "ejercicio1" / "caso1.out"
+    out_file = ws / "practicas" / act_slug / "ejercicios" / "ejercicio1" / "tests" / "caso1.out"
     out_file.unlink()
+
 
     is_valid, errors = check_testcases_integrity(ws, act_slug)
     assert is_valid is False

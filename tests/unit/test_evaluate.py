@@ -53,11 +53,12 @@ def test_evaluator_evaluates_student_successfully(tmp_path):
         ignored=[],
     )
 
-    # Crear caso de prueba en tests/
-    tests_ex_dir = ws / "tests" / act_slug / "ejercicio1"
+    # Crear caso de prueba en practicas/
+    tests_ex_dir = ws / "practicas" / act_slug / "ejercicios" / "ejercicio1" / "tests"
     tests_ex_dir.mkdir(parents=True, exist_ok=True)
     (tests_ex_dir / "caso1.in").write_text("5\n", encoding="utf-8")
     (tests_ex_dir / "caso1.out").write_text("10\n", encoding="utf-8")
+
 
     cfg = RipleyConfig()
     evaluator = Evaluator(config=cfg, workspace_dir=ws)

@@ -3,5 +3,6 @@
 **Última revisión:** {{ revision_actual }} | **Generado el:** {{ fecha_generacion }}
 **Configuración:** {{ origen_configuracion }}
 
+
 ---
 

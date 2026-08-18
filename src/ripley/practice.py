@@ -251,26 +251,17 @@ def init_practice(
                 if not argv_f.exists() or force:
                     argv_f.write_text(f"--test {i}\n", encoding="utf-8")
 
-    # 4. Sincronizar opcionalmente con workspace tests/
-    if workspace_tests_dir:
-        sync_practice_testcases(practice_dir, workspace_tests_dir)
-
     return practice_dir
 
 
 def sync_practice_testcases(practice_dir: Path | str, workspace_dir: Path | str = ".") -> int:
-    """Sincroniza los casos de prueba de una práctica hacia workspace/tests/<slug_practica>/."""
+    """Verifica y contabiliza los casos de prueba existentes dentro de practicas/<slug>/ejercicios/*/tests/."""
     p_dir = Path(practice_dir)
-    ws_dir = Path(workspace_dir)
-    slug = p_dir.name
-
     ejercicios_dir = p_dir / "ejercicios"
     if not ejercicios_dir.exists():
         return 0
 
-    copied_count = 0
-    target_tests_root = ws_dir / "tests" / slug
-
+    valid_cases_count = 0
     for ex_dir in ejercicios_dir.iterdir():
         if not ex_dir.is_dir():
             continue
@@ -278,16 +269,12 @@ def sync_practice_testcases(practice_dir: Path | str, workspace_dir: Path | str 
         if not ex_tests.exists():
             continue
 
-        target_ex_tests = target_tests_root / ex_dir.name
-        target_ex_tests.mkdir(parents=True, exist_ok=True)
-
         for file in ex_tests.iterdir():
-            if file.is_file():
-                dest = target_ex_tests / file.name
-                dest.write_bytes(file.read_bytes())
-                copied_count += 1
+            if file.is_file() and file.name.startswith("caso") and file.suffix in (".in", ".out", ".argv"):
+                valid_cases_count += 1
 
-    return copied_count
+    return valid_cases_count
+
 
 
 def list_practices(base_dir: str | Path = "practicas") -> List[Dict[str, Any]]:

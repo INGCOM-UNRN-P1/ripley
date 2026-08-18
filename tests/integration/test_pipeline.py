@@ -71,11 +71,12 @@ def test_complete_end_to_end_pipeline(tmp_path):
         cases_count=2,
     )
     # Configurar entradas y salidas esperadas
-    t_dir = ws / "tests" / moodle_info.activity_slug / "ejercicio1"
+    t_dir = ws / "practicas" / moodle_info.activity_slug / "ejercicios" / "ejercicio1" / "tests"
     (t_dir / "caso1.in").write_text("10\n", encoding="utf-8")
     (t_dir / "caso1.out").write_text("Resultado: 20\n", encoding="utf-8")
     (t_dir / "caso2.in").write_text("25\n", encoding="utf-8")
     (t_dir / "caso2.out").write_text("Resultado: 50\n", encoding="utf-8")
+
 
     # 4. Evaluación inicial
     cfg = RipleyConfig()
