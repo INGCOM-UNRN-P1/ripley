@@ -108,10 +108,11 @@ El proyecto está gestionado con `uv` e invocado mediante el wrapper ejecutable 
 - `./ripley testcase fuzz --activity <act> --exercise <ex> [--reference-source <solucion.c>] [--count 10]`:
   - Generador automático de casos de borde (`INT_MAX`, `INT_MIN`, `0`, cadenas límite, mutaciones) calculando los archivos `.out` esperados contra la solución de referencia docente.
 
-#### D. Inicialización y Gestión de Prácticas (`practice` / `practica`)
-- `./ripley practice init --name "Nombre de la Práctica" [--exercises "ej1,ej2"]`
-- `./ripley practice list`: Muestra tabla de prácticas docentes con estado de enunciados, pautas y casos de prueba.
-- `./ripley practice sync --activity <slug>`: Sincroniza casos de prueba desde `./practicas/<slug>/` a `./tests/<slug>/`.
+#### D. Inicialización y Gestión de Prácticas (`practica`)
+- `./ripley practica init --name "Nombre de la Práctica" [--exercises "ej1,ej2"]`
+- `./ripley practica list`: Muestra tabla de prácticas docentes con estado de enunciados, pautas y casos de prueba.
+- `./ripley practica sync --activity <slug>`: Sincroniza casos de prueba desde `./practicas/<slug>/` a `./tests/<slug>/`.
+
 
 #### E. Evaluación Dinámica, Diagnósticos y AST (`evaluate`)
 - `./ripley evaluate --activity <slug> [--parallel/--no-parallel] [--check-plagiarism]`:

@@ -66,8 +66,8 @@ testcase_app = typer.Typer(
     help="Gestión y esqueletos de casos de prueba.",
     no_args_is_help=True,
 )
-practice_app = typer.Typer(
-    name="practice",
+practica_app = typer.Typer(
+    name="practica",
     help="Gestión, enunciados, casos de prueba y configuración de prácticas en ./practicas.",
     no_args_is_help=True,
 )
@@ -79,9 +79,9 @@ mock_app = typer.Typer(
 
 app.add_typer(template_app, name="template")
 app.add_typer(testcase_app, name="testcase")
-app.add_typer(practice_app, name="practice")
-app.add_typer(practice_app, name="practica")
+app.add_typer(practica_app, name="practica")
 app.add_typer(mock_app, name="mock")
+
 
 console = Console()
 
@@ -522,7 +522,7 @@ def cmd_export(
         console.print(f" - [cyan]Dashboard Consolidado Docente:[/cyan] {dash_path.name}\n")
     except Exception as e:
         console.print(f"[bold red]Error durante la exportación:[/bold red] {e}")
-@practice_app.command("init")
+@practica_app.command("init")
 def cmd_practice_init(
     name: Optional[str] = typer.Option(
         None,
@@ -650,15 +650,16 @@ def cmd_practice_init(
         raise typer.Exit(code=1)
 
 
-@practice_app.command("list")
+@practica_app.command("list")
 def cmd_practice_list(
     base_dir: str = typer.Option("practicas", "--path", "-p", help="Directorio base de prácticas."),
 ) -> None:
     """Lista las prácticas configuradas en ./practicas/."""
     practices = list_practices(base_dir)
     if not practices:
-        console.print(f"[yellow]No se encontraron prácticas en '{base_dir}/'. Usá './ripley practice init' para crear una.[/yellow]")
+        console.print(f"[yellow]No se encontraron prácticas en '{base_dir}/'. Usá './ripley practica init' para crear una.[/yellow]")
         return
+
 
     table = Table(title=f"Prácticas en '{base_dir}/'")
     table.add_column("Slug / Directorio", style="bold cyan")
@@ -682,7 +683,7 @@ def cmd_practice_list(
     console.print(table)
 
 
-@practice_app.command("sync")
+@practica_app.command("sync")
 def cmd_practice_sync(
     activity: str = typer.Option(..., "--activity", "-a", help="Slug de la práctica en ./practicas/."),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
