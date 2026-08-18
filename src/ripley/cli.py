@@ -11,8 +11,10 @@ from rich.table import Table
 from ripley.config import load_config
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
+from ripley.flowchart import FlowchartGenerator
 from ripley.fuzzing import Fuzzer
 from ripley.ingest import MoodleIngestor
+
 from ripley.mapping import InteractiveMapper
 from ripley.plagiarism import PlagiarismDetector
 from ripley.practice import (
@@ -667,12 +669,65 @@ def cmd_practice_sync(
         console.print(f"[bold red]La práctica '{activity}' no existe en '{base_dir}'.[/bold red]")
         raise typer.Exit(code=1)
 
-    copied = sync_practice_testcases(practice_dir=p_dir, workspace_dir=workspace)
-    console.print(f"[bold green]✓ Se sincronizaron {copied} archivos de prueba hacia 'tests/{activity}/'.[/bold green]")
+@app.command("flowchart")
+def cmd_flowchart(
+    file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C (.c)."),
+    function: Optional[str] = typer.Option(
+        None,
+        "--function",
+        help="Nombre específico de la función a graficar (por defecto todas las funciones).",
+    ),
+    output_format: str = typer.Option(
+        "mermaid",
+        "--format",
+        help="Formato de salida del diagrama ('mermaid' o 'dot').",
+    ),
+    output: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Ruta donde guardar el archivo generado (ej. flujo.md o flujo.dot).",
+    ),
+) -> None:
+    """Genera diagramas de flujo con la notación tradicional (ISO/ANSI) a partir de código C."""
+    generator = FlowchartGenerator()
+    try:
+        diagrams = generator.generate_for_file(
+            c_file_path=file_path,
+            target_function=function,
+            output_format=output_format,
+        )
+
+        if not diagrams:
+            console.print(f"[yellow]No se detectaron funciones en '{file_path}'.[/yellow]")
+            return
+
+        combined_output = []
+        for fname, chart in diagrams.items():
+            if output_format == "mermaid":
+                combined_output.append(f"### Diagrama de Flujo: `{fname}()`\n\n```mermaid\n{chart}\n```\n")
+            else:
+                combined_output.append(f"// --- Función {fname} ---\n{chart}\n")
+
+        full_text = "\n".join(combined_output)
+
+        if output:
+            out_p = Path(output)
+            out_p.write_text(full_text, encoding="utf-8")
+            console.print(f"\n[bold green]✓ Diagrama(s) de flujo guardado(s) exitosamente en:[/bold green] [cyan]{out_p}[/cyan]\n")
+        else:
+            console.print(f"\n[bold green]Diagramas de Flujo Tradicionales ({file_path}):[/bold green]\n")
+            for fname, chart in diagrams.items():
+                console.print(f"[bold cyan]Función {fname}():[/bold cyan]")
+                console.print(f"```{output_format}\n{chart}\n```\n")
+    except Exception as e:
+        console.print(f"[bold red]Error al generar diagrama de flujo:[/bold red] {e}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
     app()
+
 
 
 
