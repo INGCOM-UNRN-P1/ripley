@@ -137,27 +137,44 @@ El proyecto está gestionado con `uv` e invocado mediante el wrapper ejecutable 
 - `./ripley callgraph --file <path.c> [--format mermaid|dot] [--stdlib] [--output <archivo>]`:
   - Extracción y visualización de grafos de invocación entre funciones C, detección de recursión y llamadas a librerías estándar.
 
-#### I. Linters Especializados de Calidad y Estilo (`lint`)
-- `./ripley lint --file <path.c> [--magic-numbers] [--clones] [--naming] [--dead-code] [--doxygen]`:
+#### I. Linters Especializados de Calidad, AST y Buenas Prácticas (`lint`)
+- `./ripley lint --file <path.c> [--magic-numbers] [--clones] [--naming] [--dead-code] [--doxygen] [--advanced]`:
   - *Números Mágicos:* Detección de literales numéricos sin nombre fuera de `#define`/`enum`.
   - *Detector de Clones Internos (Copy-Paste):* Detección de secuencias duplicadas de tokens entre funciones dentro de la misma entrega.
   - *Convenciones de Nombres:* Validación de nomenclatura (`snake_case`, `UPPER_CASE`, prefijos `t_`).
-  - *Código Muerto:* Identificación de funciones jamás invocadas e inalcanzables desde `main()`.
+  - *Código Muerto y Sentencias Inalcanzables:* Identificación de funciones inalcanzables desde `main()` y código posterior a `return`/`exit()`.
   - *Doxygen:* Fiscalización de completitud de comentarios `@brief`, `@param` y `@return`.
+  - *Comparaciones de Punto Flotante:* Detección de `==` / `!=` directos en `float`/`double` sin margen épsilon.
+  - *Inclusiones Innecesarias (IWYU):* Detección de `#include` de librerías cuyos símbolos no se utilizan.
+  - *Calificación `const` (Const-Correctness):* Validación de parámetros puntero de solo lectura que deben ser `const`.
+  - *Efectos Colaterales en Cortocircuitos:* Alerta de `++`, `--` o asignaciones dentro de `&&` / `||`.
+  - *Deep Free Verifier:* Detección de `free(nodo)` en estructuras sin liberar antes sus campos dinámicos internos.
+  - *Protección contra NULL en `<string.h>`:* Invocación de `strlen`/`strcmp`/`strcpy` sin validación previa.
+  - *Variable Shadowing:* Ocultamiento de parámetros de funciones por variables locales con el mismo identificador.
+  - *Dangling Stack Pointer Return:* Detección de retorno de direcciones de memoria local del stack `&var` (severidad `ERROR`).
+  - *Sobre-Ingeniería:* Detección de trucos de intercambio con XOR (`a ^= b`) y ternarios triplemente anidados.
 
-#### J. Generador de Mocks para Pruebas Unitarias en C (`mock generate`)
+#### J. Visualizador Gráfico de Estructuras Dinámicas en Memoria (`memory-visualize`)
+- `./ripley memory-visualize --file <path.c> [--format mermaid|dot] [--output <archivo>]`:
+  - Generación de diagramas de topología de nodos y estructuras dinámicas en memoria (Graphviz DOT y Mermaid).
+
+#### K. Emulador de Memoria Restringida para Sistemas Embebidos (`embedded-test`)
+- `./ripley embedded-test --binary <path_binario> [--limit-kb 64] [--stdin <data>]`:
+  - Ejecución de binarios bajo límites estrictos de heap/stack en memoria física (`RLIMIT_AS` y `RLIMIT_DATA`).
+
+#### L. Generador de Mocks para Pruebas Unitarias en C (`mock generate`)
 - `./ripley mock generate --header <header.h> [--output-dir <dir>]`:
   - Generación automática de stubs y mocks (`mock_<fn>.h` y `.c`) con contadores de invocaciones (`mock_<fn>_call_count`), configuración de retornos (`mock_<fn>_set_return`) y reseteo global (`reset_all_mocks`).
 
-#### K. Testing Basado en Propiedades / Property-Based Testing (`property-test`)
+#### M. Testing Basado en Propiedades / Property-Based Testing (`property-test`)
 - `./ripley property-test --source <path.c> --function <fn> --property <IDEMPOTENCE|COMMUTATIVITY|SORT_INVARIANT> [--iterations 100]`:
   - Generación y ejecución automatizada de arneses de prueba aleatorios en C para verificar invariantes formales con reporte de contraejemplos.
 
-#### L. Auditoría de Documentación Doxygen (`doxygen`)
+#### N. Auditoría de Documentación Doxygen (`doxygen`)
 - `./ripley doxygen --file <path.c>`:
   - Verificación exhaustiva de parámetros y retornos documentados en funciones C.
 
-#### M. Exportación y Reportería Moodle (`export`)
+#### O. Exportación y Reportería Moodle (`export`)
 - `./ripley export --activity <actividad>`:
   - Generación de `moodle_grades.csv`, empaquetado de `retroalimentacion_moodle.zip` y reporte de métricas consolidadas en `dashboard.md`.
 
@@ -179,9 +196,9 @@ El proyecto está gestionado con `uv` e invocado mediante el wrapper ejecutable 
 ### 6. Estrategia de Testing y QA
 
 Suite completa de pruebas automatizadas con `pytest` y `pytest-mock` en `tests/`:
-- **`tests/unit/`:** Pruebas unitarias de ingesta, mapping, templates, esqueletos, compilador, config, base de datos, diagnósticos especializados, diffing y AST, evaluador, exportador, diagramas de flujo, árboles de llamadas, fuzzing, linters, doxygen, mocks, sanitizers, restricciones, runner flexible y property testing.
+- **`tests/unit/`:** Pruebas unitarias de ingesta, mapping, templates, esqueletos, compilador, config, base de datos, diagnósticos especializados, diffing y AST, evaluador, exportador, diagramas de flujo, árboles de llamadas, fuzzing, linters, ast auditors, memory visualizer, embedded runner, doxygen, mocks, sanitizers, restricciones, runner flexible y property testing.
 - **`tests/integration/`:** Pipeline completo de evaluación end-to-end, timeouts, fallas de compilación y generación de reportes consolidados.
-- **Estado Actual:** 76 pruebas pasando al 100% sin dependencias de placeholders temporales.
+- **Estado Actual:** 87 pruebas pasando al 100% sin dependencias de placeholders temporales.
 
 ---
 
@@ -190,6 +207,9 @@ Suite completa de pruebas automatizadas con `pytest` y `pytest-mock` en `tests/`
 | Módulo | Responsabilidad Principal |
 | :--- | :--- |
 | [`src/ripley/cli.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/cli.py) | Punto de entrada y orquestación de subcomandos Typer y visualización Rich. |
+| [`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py) | Linters avanzados AST: punto flotante, IWYU, const, short-circuit, deep free, string NULL, shadowing, dangling stack, overengineering. |
+| [`src/ripley/memory_visualizer.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/memory_visualizer.py) | Visualizador de topología de estructuras dinámicas de datos en memoria (DOT/Mermaid). |
+| [`src/ripley/embedded.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/embedded.py) | Emulador y ejecutor bajo límites estrictos de memoria para sistemas embebidos. |
 | [`src/ripley/ingest.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ingest.py) | Parseo de ZIPs de Moodle, descompresión, sanitización UTF-8 y aplanamiento. |
 | [`src/ripley/db.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/db.py) | Persistencia y modelos SQLite para estudiantes, revisiones y evaluaciones. |
 | [`src/ripley/config.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/config.py) | Carga, validación y modelos tipados de configuración TOML (`ripley.toml`). |
