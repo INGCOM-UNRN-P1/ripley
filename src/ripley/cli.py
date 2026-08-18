@@ -112,6 +112,12 @@ def cmd_ingest(
         "-w",
         help="Directorio raíz del workspace donde se almacenarán las actividades.",
     ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Crear automáticamente la práctica en blanco si no existe, sin confirmación interactiva.",
+    ),
 ) -> None:
     """Procesa e ingesta un archivo ZIP de entregas descargado de Moodle."""
     ingestor = MoodleIngestor(workspace_dir=workspace)
@@ -150,6 +156,42 @@ def cmd_ingest(
         )
 
     console.print(table)
+
+    # Verificación de existencia de práctica en ./practicas/
+    if not dry_run:
+        practice_dir = Path(workspace) / "practicas" / moodle_info.activity_slug
+        if not practice_dir.exists():
+            console.print(
+                f"\n[bold yellow]! No se encontró una práctica definida para '{moodle_info.activity_slug}' en './practicas/'.[/bold yellow]"
+            )
+            should_create = yes or typer.confirm(
+                "¿Deseás crear un enunciado en blanco con la configuración por defecto para esta práctica?",
+                default=True,
+            )
+            if should_create:
+                spec = PracticeSpec(
+                    name=moodle_info.activity_name,
+                    practice_id=moodle_info.activity_id,
+                    description=f"Práctica académica de C: {moodle_info.activity_name}.",
+                    exercises=[
+                        ExerciseTemplateSpec(
+                            slug="ejercicio1",
+                            title="Ejercicio 1",
+                            description="Consigna del Ejercicio 1.",
+                            cases_count=2,
+                        )
+                    ],
+                )
+                init_practice(
+                    spec=spec,
+                    base_dir=Path(workspace) / "practicas",
+                    workspace_tests_dir=workspace,
+                    force=False,
+                )
+                console.print(
+                    f"[bold green]✓ Enunciado en blanco y configuración por defecto inicializados en '{practice_dir}' y sincronizados con tests/{moodle_info.activity_slug}/[/bold green]\n"
+                )
+
 
 
 

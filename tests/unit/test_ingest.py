@@ -143,3 +143,29 @@ def test_ingest_dry_run(tmp_path):
     _, results = ingestor.process_zip(zip_file, dry_run=True)
     assert len(results) == 1
     assert not ws.exists()  # Dry run no crea directorios en disco
+
+
+def test_cmd_ingest_creates_blank_practice_if_missing(tmp_path):
+    from typer.testing import CliRunner
+    from ripley.cli import app
+
+    runner = CliRunner()
+    ws = tmp_path / "workspace"
+    ws.mkdir()
+    zip_file = tmp_path / "(B6003)-40-Programación I COM 1-2026-Entrega #2-999999.zip"
+    student_folder = "Alumno Test_123456_assignsubmission_file"
+    files = {"ej1.c": b'int main() { return 0; }\n'}
+    create_synthetic_moodle_zip(zip_file, student_folder, files)
+
+    # Ingest con flag -y (auto-confirmar creacion de practica)
+    res = runner.invoke(app, ["ingest", str(zip_file), "-w", str(ws), "-y"])
+    assert res.exit_code == 0
+    assert "Actividad procesada" in res.output
+
+    # Verificar que se creo la practica en blanco
+    practice_dir = ws / "practicas" / "entrega-2_999999"
+    assert practice_dir.exists()
+    assert (practice_dir / "enunciado.md").exists()
+    assert (practice_dir / "pautas_evaluacion.md").exists()
+    assert (practice_dir / "ripley.toml").exists()
+

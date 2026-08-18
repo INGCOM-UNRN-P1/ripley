@@ -106,12 +106,18 @@ workspace/
 Procesa un archivo ZIP descargado directamente de Moodle. Normaliza codificaciones a UTF-8, aplana subcarpetas accidentales, filtra binarios no permitidos y calcula hashes SHA-256 para evitar reprocesar reentregas idénticas.
 
 ```bash
-./ripley ingest <archivo_moodle.zip> [--dry-run]
+./ripley ingest <archivo_moodle.zip> [--dry-run] [--yes]
 ```
 
 **Opciones:**
 - `<archivo_moodle.zip>`: Ruta al archivo comprimido exportado de Moodle.
-- `--dry-run`: Simula la ingesta mostrando en consola la estructura resultante sin escribir en disco.
+- `--dry-run`, `-d`: Simula la ingesta mostrando en consola la estructura resultante sin escribir en disco.
+- `--workspace`, `-w`: Directorio raíz del workspace (por defecto `.`).
+- `--yes`, `-y`: Si no existe una práctica coincidente en `./practicas/<activity_slug>`, inicializa automáticamente un enunciado en blanco con la configuración por defecto sin requerir confirmación interactiva.
+
+> [!NOTE]
+> Si la práctica no existe en `./practicas/` al ejecutar `ingest`, Ripley consulta interactivamente si se desea inicializar un enunciado en blanco con `ripley.toml` por defecto y sincronizar automáticamente con `tests/<activity_slug>/`.
+
 
 ---
 
