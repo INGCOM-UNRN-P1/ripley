@@ -60,6 +60,7 @@ class StyleConfig:
 @dataclass
 class ValgrindConfig:
     enabled: bool = True
+    tolerar_fugas_en_error: bool = True
     flags: List[str] = field(
         default_factory=lambda: [
             "--leak-check=full",
@@ -68,6 +69,7 @@ class ValgrindConfig:
             "--error-exitcode=1",
         ]
     )
+
 
 
 @dataclass

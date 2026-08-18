@@ -234,6 +234,7 @@ class ValgrindRunner:
         binary_path: Path | str,
         stdin_data: str = "",
         cli_args: Sequence[str] = (),
+        is_error_exit: bool = False,
     ) -> ValgrindResult:
         if not self.valgrind_cfg.enabled:
             return ValgrindResult(
@@ -274,6 +275,9 @@ class ValgrindRunner:
             if not has_errors:
                 summary = "Limpio (0 fugas / 0 errores)"
                 passed = True
+            elif is_error_exit and self.valgrind_cfg.tolerar_fugas_en_error:
+                summary = "Fugas toleradas en ruta de salida por error (exit != 0)"
+                passed = True
             else:
                 summary = "Fugas o accesos inválidos detectados"
                 passed = False
@@ -284,6 +288,7 @@ class ValgrindRunner:
                 summary=summary,
                 full_output=output,
             )
+
         except subprocess.TimeoutExpired:
             return ValgrindResult(
                 enabled=True,
