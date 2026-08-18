@@ -36,8 +36,10 @@ from ripley.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinte
 from ripley.mapping import InteractiveMapper
 from ripley.memory_visualizer import DynamicMemoryVisualizer
 from ripley.mocks import MockGenerator
+from ripley.p1_rules import P1RuleChecker
 from ripley.plagiarism import PlagiarismDetector
 from ripley.pure_functions import PureFunctionAnalyzer
+
 
 
 from ripley.practice import (
@@ -794,8 +796,9 @@ def cmd_lint(
     dead_code: bool = typer.Option(True, "--dead-code/--no-dead-code", help="Auditar funciones/código inalcanzable."),
     doxygen: bool = typer.Option(False, "--doxygen/--no-doxygen", help="Auditar completitud de Doxygen."),
     advanced: bool = typer.Option(True, "--advanced/--no-advanced", help="Auditar reglas avanzadas de AST (float, const, short-circuit, deep-free, shadowing, dangling)."),
+    p1_rules: bool = typer.Option(True, "--p1-rules/--no-p1-rules", help="Auditar reglas de estilo oficiales de Programación I (0xXXXXh)."),
 ) -> None:
-    """Ejecuta análisis de números mágicos, código duplicado, convenciones, código muerto y buenas prácticas AST."""
+    """Ejecuta análisis de números mágicos, código duplicado, convenciones, código muerto y reglas de estilo P1 (0xXXXXh)."""
     path = Path(file_path)
     if not path.exists():
         console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
@@ -804,8 +807,23 @@ def cmd_lint(
     code = path.read_text(encoding="utf-8", errors="replace")
     all_obs = []
 
+    if p1_rules:
+        p1_obs = P1RuleChecker().analyze(code, filename=path.name)
+        for p in p1_obs:
+            all_obs.append(
+                LinterObservation(
+                    linter_name=f"{p.rule_code} ({p.title})",
+                    filename=path.name,
+                    line=p.line,
+                    severity=p.severity,
+                    message=p.message,
+                    suggestion=p.suggestion,
+                )
+            )
+
     if magic_numbers:
         all_obs.extend(MagicNumberLinter().analyze(code, filename=path.name))
+
 
     if naming:
         all_obs.extend(NamingConventionLinter().analyze(code, filename=path.name))
