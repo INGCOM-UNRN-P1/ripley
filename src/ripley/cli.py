@@ -10,6 +10,7 @@ from ripley.config import load_config
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.ingest import MoodleIngestor
+from ripley.mapping import InteractiveMapper
 from ripley.templates import check_templates, init_templates, list_templates
 from ripley.testcases import (
     check_testcases_integrity,
@@ -251,7 +252,58 @@ def cmd_testcase_check(
         )
         for err in errors:
             console.print(f" [red]- {err}[/red]")
+        raise typer.Exit(code=1)
+
+
+@testcase_app.command("map")
+@app.command("map")
+def cmd_testcase_map(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad (ej. entrega-1_1228009)."),
+    unmapped_only: bool = typer.Option(
+        False,
+        "--unmapped-only",
+        "-u",
+        help="Revisar únicamente los archivos que no pudieron ser conectados automáticamente.",
+    ),
+    all_files: bool = typer.Option(
+        False,
+        "--all",
+        help="Revisar todos los archivos (conectados y no conectados).",
+    ),
+    auto: bool = typer.Option(
+        False,
+        "--auto",
+        help="Aplica automáticamente las coincidencias heurísticas no ambiguas.",
+    ),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Herramienta interactiva para revisar el mapeo de archivos fuente (.c) a testcases."""
+    # Descubrir ejercicios existentes
+    exercises = discover_testcases(workspace_dir=workspace, activity_slug=activity)
+    available_exercises = list(exercises.keys())
+
+    mapper = InteractiveMapper(
+        workspace_dir=workspace,
+        activity_slug=activity,
+        console=console,
+    )
+
+    # Por defecto, si no se especifica --all, se revisan los no mapeados
+    review_unmapped = not all_files if not unmapped_only else True
+
+    try:
+        changes = mapper.run_interactive_session(
+            available_exercises=available_exercises,
+            unmapped_only=review_unmapped,
+            auto_apply=auto,
+        )
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]Sesión interactiva cancelada.[/yellow]")
+        return
+
+
 @app.command("evaluate")
+
 def cmd_evaluate(
     activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a evaluar (ej. entrega-1_1228009)."),
     parallel: bool = typer.Option(True, "--parallel/--no-parallel", help="Procesamiento concurrente."),

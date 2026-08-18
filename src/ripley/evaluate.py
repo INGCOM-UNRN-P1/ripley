@@ -12,7 +12,9 @@ from ripley.compiler import Compiler
 from ripley.config import RipleyConfig
 from ripley.db import DatabaseManager
 from ripley.diffing import generate_unified_diff
+from ripley.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
 from ripley.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
+
 from ripley.runner import (
     CppcheckRunner,
     DynamicTestRunner,
@@ -101,25 +103,67 @@ class Evaluator:
                 # 2. Escaneo de seguridad preventivo
                 security_violations = self.security_scanner.scan_files(all_sources)
 
-                # 3. Compilación segura
+                # 3. Mapeo y Compilación por Ejercicio
+                mapping_store = MappingStore(self.workspace_dir, activity_slug)
+                available_ex_names = list(testcases_by_exercise.keys())
+
+                exercise_groups: Dict[str, List[Path]] = {}
+                aux_sources: List[Path] = []
+                ignored_sources: List[Path] = []
+
+                for src in c_sources:
+                    target = mapping_store.get_effective_mapping(student_slug, src.name, available_ex_names)
+                    if target == SPECIAL_IGNORE:
+                        ignored_sources.append(src)
+                    elif target == SPECIAL_AUXILIARY:
+                        aux_sources.append(src)
+                    elif target:
+                        if target not in exercise_groups:
+                            exercise_groups[target] = []
+                        exercise_groups[target].append(src)
+                    else:
+                        # Si no hay mapeo específico, asignar a default_all
+                        if "default_all" not in exercise_groups:
+                            exercise_groups["default_all"] = []
+                        exercise_groups["default_all"].append(src)
+
+                # Si solo hay default_all o un único ejercicio, tratamos todo junto
+                compiled_binaries: Dict[str, Optional[Path]] = {}
                 compilation_results_table: List[Dict[str, str]] = []
                 all_style_obs: List[Dict[str, Any]] = []
                 compilation_logs: List[str] = []
+                all_compiled = True
 
                 if security_violations:
-                    compiled = False
+                    all_compiled = False
                     comp_log = "Violaciones de seguridad detectadas:\n" + "\n".join(
                         f"- [{v.filename}:{v.line}] {v.message}" for v in security_violations
                     )
                     compilation_logs.append(comp_log)
                 else:
-                    bin_out = temp_path / f"bin_v{v_num}"
-                    comp_res = self.compiler.compile(c_sources, bin_out)
-                    compiled = comp_res.success
-                    if comp_res.stderr:
-                        compilation_logs.append(comp_res.stderr)
-                    if comp_res.stdout:
-                        compilation_logs.append(comp_res.stdout)
+                    if len(exercise_groups) == 1 and "default_all" in exercise_groups:
+                        # Compilar todos los c_sources juntos
+                        bin_out = temp_path / f"bin_v{v_num}"
+                        comp_res = self.compiler.compile(c_sources, bin_out)
+                        if comp_res.success:
+                            compiled_binaries["default_all"] = bin_out
+                        else:
+                            all_compiled = False
+                        if comp_res.stderr:
+                            compilation_logs.append(comp_res.stderr)
+                    else:
+                        # Compilar cada ejercicio con sus auxiliares
+                        for ex_name, ex_srcs in exercise_groups.items():
+                            bin_out = temp_path / f"bin_v{v_num}_{ex_name}"
+                            comp_res = self.compiler.compile(ex_srcs + aux_sources, bin_out)
+                            if comp_res.success:
+                                compiled_binaries[ex_name] = bin_out
+                            else:
+                                all_compiled = False
+                            if comp_res.stderr:
+                                compilation_logs.append(f"[{ex_name}] {comp_res.stderr}")
+
+                compiled = all_compiled and len(compiled_binaries) > 0
 
                 # 4. Análisis de Estilo
                 total_style_score = 0.0
@@ -145,8 +189,9 @@ class Evaluator:
                     compilation_logs.append(f"\n--- Logs Cppcheck ---\n{cppcheck_res.full_output}")
 
                 # 6. Auditoría de Memoria (Valgrind)
+                valgrind_sample_bin = next(iter(compiled_binaries.values()), None) if compiled else None
                 valgrind_res = self.valgrind_runner.audit(
-                    bin_out if compiled else "none"
+                    valgrind_sample_bin if valgrind_sample_bin else "none"
                 )
                 if valgrind_res.full_output:
                     compilation_logs.append(f"\n--- Logs Valgrind ---\n{valgrind_res.full_output}")
@@ -169,9 +214,25 @@ class Evaluator:
 
                 if compiled:
                     for ex_name, cases in testcases_by_exercise.items():
+                        # Obtener el binario correspondiente al ejercicio o fallback a default_all
+                        bin_for_ex = compiled_binaries.get(ex_name) or compiled_binaries.get("default_all")
+                        if not bin_for_ex:
+                            for tc in cases:
+                                total_tests_count += 1
+                                test_results.append(
+                                    {
+                                        "ejercicio": tc.exercise,
+                                        "nombre_caso": tc.case_name,
+                                        "argumentos_cli": "-",
+                                        "resultado": "NO_SOURCE",
+                                        "tiempo_ms": 0.0,
+                                    }
+                                )
+                            continue
+
                         for tc in cases:
                             total_tests_count += 1
-                            r_detail = self.test_runner.run_case(bin_out, tc)
+                            r_detail = self.test_runner.run_case(bin_for_ex, tc)
                             if r_detail.resultado == "PASSED":
                                 tests_passed_count += 1
                             test_results.append(
@@ -183,6 +244,7 @@ class Evaluator:
                                     "tiempo_ms": r_detail.tiempo_ms,
                                 }
                             )
+
 
                 # 8. Cálculo de Rúbrica
                 breakdown = self.rubric_calc.calculate(
