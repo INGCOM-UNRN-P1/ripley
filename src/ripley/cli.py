@@ -1,16 +1,22 @@
 """Ripley CLI interface."""
 
+from pathlib import Path
+from typing import Optional
+import typer
+from rich.console import Console
+from rich.table import Table
+
 from ripley.config import load_config
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.ingest import MoodleIngestor
 from ripley.templates import check_templates, init_templates, list_templates
-
 from ripley.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
     discover_testcases,
 )
+
 
 
 app = typer.Typer(
