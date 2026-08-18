@@ -58,7 +58,13 @@ def test_naming_convention_linter():
     typedef struct { int x; } MiNodo;
 
     void ProcesarDatos(int x) {
+        int i = 0;
+        int z = 10;
+        int num = 20;
         (void)x;
+        (void)i;
+        (void)z;
+        (void)num;
     }
     """
     config = NamingConfig(
@@ -72,3 +78,7 @@ def test_naming_convention_linter():
     assert any("ProcesarDatos" in o.message and "snake_case" in o.message for o in obs)
     assert any("max_size" in o.message and "UPPER_CASE" in o.message for o in obs)
     assert any("MiNodo" in o.message and "t_" in o.message for o in obs)
+    assert any("Variable de 1 letra: `i`" in o.message for o in obs)
+    assert any("Variable de 1 letra no descriptiva: `z`" in o.message for o in obs)
+    assert any("Nombre de variable corto (3 letras): `num`" in o.message for o in obs)
+

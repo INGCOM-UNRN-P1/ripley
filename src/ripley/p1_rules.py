@@ -23,10 +23,11 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
     "0x0001h": P1Rule(
         code="0x0001h",
         category="Sintaxis y Nomenclatura",
-        title="Los identificadores deben ser descriptivos",
-        description="Los nombres de variables deben reflejar con precisión su propósito (evitar nombres de 1 letra salvo i, j, k en bucles).",
+        title="Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+        description="Los nombres de variables deben reflejar con precisión su propósito (identificadores < 5 letras a mejorar, y 1 letra requiere revisión manual salvo i, j, k).",
         severity="ESTILO",
     ),
+
     "0x0002h": P1Rule(
         code="0x0002h",
         category="Sintaxis y Nomenclatura",
@@ -337,8 +338,67 @@ class P1RuleChecker:
         functions = extract_c_functions(code)
 
         # --------------------------------------------------------------------
+        # 0. 0x0001h: Variables cortas (< 5 letras: "A mejorar" / 1 letra: "Revisión manual")
+        # --------------------------------------------------------------------
+        var_decl_pattern = re.compile(
+            r"\b(?:int|char|float|double|size_t|ssize_t|long|short|unsigned|signed|uint8_t|uint16_t|uint32_t|uint64_t|int8_t|int16_t|int32_t|int64_t|bool|FILE|struct\s+[a-zA-Z0-9_]+|[a-zA-Z0-9_]+_t|t_[a-zA-Z0-9_]+)\s+(?P<decl>[^;{}()]+);",
+            re.MULTILINE,
+        )
+        for m in var_decl_pattern.finditer(clean):
+            decl_str = m.group("decl")
+            line_num = clean[: m.start()].count("\n") + 1
+            items = decl_str.split(",")
+            for item in items:
+                item_clean = re.sub(r"=.*$", "", item).strip()
+                item_clean = re.sub(r"\[.*\]", "", item_clean).strip()
+                var_match = re.search(r"[*]*\s*([a-zA-Z_][a-zA-Z0-9_]*)$", item_clean)
+                if var_match:
+                    vname = var_match.group(1)
+                    if vname in ("main", "setUp", "tearDown"):
+                        continue
+                    if len(vname) < 5:
+                        if len(vname) == 1:
+                            if vname.lower() in ("i", "j", "k"):
+                                observations.append(
+                                    P1RuleObservation(
+                                        rule_code="0x0001h",
+                                        filename=filename,
+                                        line=line_num,
+                                        severity="ESTILO",
+                                        title=P1_RULES_CATALOG["0x0001h"].title,
+                                        message=f"Variable de 1 letra: `{vname}` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
+                                        suggestion="Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h).",
+                                    )
+                                )
+                            else:
+                                observations.append(
+                                    P1RuleObservation(
+                                        rule_code="0x0001h",
+                                        filename=filename,
+                                        line=line_num,
+                                        severity="ADVERTENCIA",
+                                        title=P1_RULES_CATALOG["0x0001h"].title,
+                                        message=f"Variable de 1 letra no descriptiva: `{vname}` (Requiere revisión manual obligatoria).",
+                                        suggestion=f"Renombrá la variable `{vname}` por un identificador representativo del dominio (Regla 0x0001h).",
+                                    )
+                                )
+                        else:
+                            observations.append(
+                                P1RuleObservation(
+                                    rule_code="0x0001h",
+                                    filename=filename,
+                                    line=line_num,
+                                    severity="ESTILO",
+                                    title=P1_RULES_CATALOG["0x0001h"].title,
+                                    message=f"Nombre de variable corto ({len(vname)} letras): `{vname}` (A mejorar).",
+                                    suggestion=f"Se recomienda utilizar identificadores más descriptivos y expresivos que expliciten el propósito de la variable (Regla 0x0001h).",
+                                )
+                            )
+
+        # --------------------------------------------------------------------
         # 1. 0x0002h: Una declaración de variable por línea
         # --------------------------------------------------------------------
+
         multi_decl_regex = re.compile(
             r"^[ \t]*(?:int|char|float|double|size_t|long|short)\s+([a-zA-Z_][a-zA-Z0-9_]*\s*(?:=\s*[^,;]+)?\s*,\s*)+[a-zA-Z_][a-zA-Z0-9_]*",
             re.MULTILINE,

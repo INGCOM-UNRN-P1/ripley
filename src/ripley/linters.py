@@ -212,7 +212,60 @@ class NamingConventionLinter:
                     )
                 )
 
+        # 4. Validar Longitud de Variables (< 5 letras: A mejorar / 1 letra: Revisión manual)
+        var_decl_pattern = re.compile(
+            r"\b(?:int|char|float|double|size_t|ssize_t|long|short|unsigned|signed|uint8_t|uint16_t|uint32_t|uint64_t|int8_t|int16_t|int32_t|int64_t|bool|FILE|struct\s+[a-zA-Z0-9_]+|[a-zA-Z0-9_]+_t|t_[a-zA-Z0-9_]+)\s+(?P<decl>[^;{}()]+);",
+            re.MULTILINE,
+        )
+        for m in var_decl_pattern.finditer(clean):
+            decl_str = m.group("decl")
+            line_num = clean[: m.start()].count("\n") + 1
+            for item in decl_str.split(","):
+                item_clean = re.sub(r"=.*$", "", item).strip()
+                item_clean = re.sub(r"\[.*\]", "", item_clean).strip()
+                var_match = re.search(r"[*]*\s*([a-zA-Z_][a-zA-Z0-9_]*)$", item_clean)
+                if var_match:
+                    vname = var_match.group(1)
+                    if vname in ("main", "setUp", "tearDown"):
+                        continue
+                    if len(vname) < 5:
+                        if len(vname) == 1:
+                            if vname.lower() in ("i", "j", "k"):
+                                observations.append(
+                                    LinterObservation(
+                                        linter_name="naming_conventions",
+                                        filename=filename,
+                                        line=line_num,
+                                        severity="ESTILO",
+                                        message=f"Variable de 1 letra: `{vname}` (Aceptable para iteradores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
+                                        suggestion="Conservar únicamente como contador local de iteración efímero.",
+                                    )
+                                )
+                            else:
+                                observations.append(
+                                    LinterObservation(
+                                        linter_name="naming_conventions",
+                                        filename=filename,
+                                        line=line_num,
+                                        severity="ADVERTENCIA",
+                                        message=f"Variable de 1 letra no descriptiva: `{vname}` (Requiere revisión manual obligatoria).",
+                                        suggestion=f"Renombrá `{vname}` por un identificador representativo del dominio.",
+                                    )
+                                )
+                        else:
+                            observations.append(
+                                LinterObservation(
+                                    linter_name="naming_conventions",
+                                    filename=filename,
+                                    line=line_num,
+                                    severity="ESTILO",
+                                    message=f"Nombre de variable corto ({len(vname)} letras): `{vname}` (A mejorar).",
+                                    suggestion=f"Se recomienda utilizar identificadores más descriptivos y expresivos.",
+                                )
+                            )
+
         return observations
+
 
     def _to_snake(self, name: str) -> str:
         s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)

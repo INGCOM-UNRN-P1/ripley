@@ -47,6 +47,27 @@ def test_p1_rules_syntax_and_nomenclature():
     obs_camel = checker.analyze(code_camel)
     assert any(o.rule_code == "0x0007h" for o in obs_camel)
 
+    # 5. 0x0001h: Variables cortas (< 5 letras) y revisión manual de 1 letra (i vs z)
+    code_short_vars = """
+    int main() {
+        int i = 0;
+        int z = 10;
+        int aux = 5;
+        int contador = 20;
+        return i + z + aux + contador;
+    }
+    """
+    obs_short = checker.analyze(code_short_vars)
+    obs_0x0001 = [o for o in obs_short if o.rule_code == "0x0001h"]
+    assert len(obs_0x0001) == 3
+    # i -> Aceptable para contador pero revisión manual
+    assert any("Variable de 1 letra: `i`" in o.message and o.severity == "ESTILO" for o in obs_0x0001)
+    # z -> 1 letra no descriptiva -> ADVERTENCIA
+    assert any("Variable de 1 letra no descriptiva: `z`" in o.message and o.severity == "ADVERTENCIA" for o in obs_0x0001)
+    # aux -> corto (3 letras) -> ESTILO / A mejorar
+    assert any("Nombre de variable corto (3 letras): `aux` (A mejorar)" in o.message for o in obs_0x0001)
+
+
 
 def test_p1_rules_control_structures():
     checker = P1RuleChecker()

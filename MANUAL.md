@@ -252,8 +252,9 @@ Audita el cumplimiento de buenas prácticas en C:
 - `--dead-code / --no-dead-code`: Funciones inalcanzables desde `main()` y código posterior a `return`/`exit()`.
 - `--doxygen / --no-doxygen`: Verificación de comentarios `@brief`, `@param` y `@return`.
 - `--p1-rules / --no-p1-rules`: (Por defecto activo) Audita el catálogo oficial de reglas de estilo de Programación I bajo la nomenclatura hexadecimal `0xXXXXh`:
-  - `0x0001h`: Identificadores descriptivos.
+  - `0x0001h`: Identificadores descriptivos: variables de menos de 5 letras se listan como "A mejorar", y variables de 1 sola letra se marcan para revisión manual (diferenciando las convencionales de bucles como `i`, `j`, `k` de identificadores crípticos no descriptivos).
   - `0x0002h`: Una declaración de variable por línea.
+
   - `0x0003h`: Inicialización obligatoria de variables locales.
   - `0x0004h`: Un espacio antes y después de operadores binarios.
   - `0x0005h`: Indentación estricta de 4 espacios.
