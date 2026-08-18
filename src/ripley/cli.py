@@ -1,6 +1,7 @@
 """Ripley CLI interface."""
 
 from ripley.config import load_config
+from ripley.evaluate import Evaluator
 from ripley.ingest import MoodleIngestor
 from ripley.templates import check_templates, init_templates, list_templates
 from ripley.testcases import (
@@ -8,6 +9,7 @@ from ripley.testcases import (
     create_testcase_skeleton,
     discover_testcases,
 )
+
 
 app = typer.Typer(
     name="ripley",
@@ -241,9 +243,56 @@ def cmd_testcase_check(
         )
         for err in errors:
             console.print(f" [red]- {err}[/red]")
+@app.command("evaluate")
+def cmd_evaluate(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a evaluar (ej. entrega-1_1228009)."),
+    parallel: bool = typer.Option(True, "--parallel/--no-parallel", help="Procesamiento concurrente."),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Ejecuta la compilación, linters, estilo, pruebas y calificación de los estudiantes."""
+    cfg = load_config()
+    evaluator = Evaluator(config=cfg, workspace_dir=workspace)
+
+    console.print(f"\n[bold green]Iniciando evaluación para la actividad:[/bold green] [cyan]{activity}[/cyan]\n")
+
+    try:
+        results = evaluator.evaluate_activity(
+            activity_slug=activity,
+            parallel=parallel,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Error durante la evaluación:[/bold red] {e}")
         raise typer.Exit(code=1)
+
+    if not results:
+        console.print("[yellow]No se encontraron estudiantes para evaluar en la actividad indicada.[/yellow]")
+        return
+
+    table = Table(title=f"Resultados de Evaluación - {activity}")
+    table.add_column("Estudiante", style="bold")
+    table.add_column("Revisión", justify="center")
+    table.add_column("Compilación", justify="center")
+    table.add_column("Estilo", justify="center")
+    table.add_column("Tests I/O", justify="center")
+    table.add_column("Nota Estimada", justify="right", style="bold green")
+
+    for res in results:
+        comp_str = "[green]OK[/green]" if res.compiled else "[red]FAIL[/red]"
+        test_str = f"{res.tests_passed}/{res.total_tests}" if res.compiled else "-"
+        table.add_row(
+            res.student_slug,
+            f"r{res.version_evaluated}",
+            comp_str,
+            f"{res.style_score:.1f}/10",
+            test_str,
+            f"{res.preliminary_grade:.2f} / 10",
+        )
+
+    console.print(table)
+    console.print(f"\n[bold green]✓ Evaluación finalizada exitosamente para {len(results)} estudiantes.[/bold green]\n")
 
 
 if __name__ == "__main__":
     app()
+
 
