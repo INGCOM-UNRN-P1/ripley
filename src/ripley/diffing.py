@@ -112,3 +112,34 @@ def generate_unified_diff(
             diff_chunks.extend(diff)
 
     return "".join(diff_chunks)
+
+
+def generate_semantic_diff_summary(
+    old_folder: Optional[Path | str],
+    new_folder: Path | str,
+) -> str:
+    """Genera un resumen en Markdown de cambios estructurales y semánticos por AST."""
+    from ripley.semantic_diff import SemanticDiffer
+
+    differ = SemanticDiffer()
+    file_diffs = differ.compare_folders(old_folder, new_folder)
+
+    if not file_diffs:
+        return "_Sin cambios semánticos registrados._"
+
+    lines: List[str] = []
+    for fd in file_diffs:
+        lines.append(f"#### `{fd.filename}`")
+        if not fd.changes:
+            lines.append("- _Sin modificaciones en funciones o estructuras._")
+        for ch in fd.changes:
+            badge = {
+                "AGREGADO": "[+] **Nueva función**",
+                "ELIMINADO": "[-] **Función eliminada**",
+                "MODIFICADO_LOGICA": "[Δ] **Cambio lógico**",
+                "COSMETICO": "[*] _Cambio cosmético/formato_",
+            }.get(ch.category, "[*]")
+            lines.append(f"- {badge}: {ch.description} *(Línea {ch.line_number})*")
+
+    return "\n".join(lines)
+

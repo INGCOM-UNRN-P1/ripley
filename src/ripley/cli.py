@@ -11,8 +11,10 @@ from rich.table import Table
 from ripley.config import load_config
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
+from ripley.fuzzing import Fuzzer
 from ripley.ingest import MoodleIngestor
 from ripley.mapping import InteractiveMapper
+from ripley.plagiarism import PlagiarismDetector
 from ripley.practice import (
     ExerciseTemplateSpec,
     PracticeSpec,
@@ -20,12 +22,14 @@ from ripley.practice import (
     list_practices,
     sync_practice_testcases,
 )
+from ripley.semantic_diff import SemanticDiffer
 from ripley.templates import check_templates, init_templates, list_templates
 from ripley.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
     discover_testcases,
 )
+
 
 app = typer.Typer(
     name="ripley",
@@ -317,11 +321,113 @@ def cmd_testcase_map(
         return
 
 
-@app.command("evaluate")
+@testcase_app.command("fuzz")
+def cmd_testcase_fuzz(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad (ej. entrega-1_1228009)."),
+    exercise: str = typer.Option(..., "--exercise", "-e", help="Nombre del ejercicio (ej. ejercicio1)."),
+    cases: int = typer.Option(4, "--cases", "-c", help="Cantidad de casos de borde a generar por fuzzing."),
+    solution: Optional[str] = typer.Option(
+        None,
+        "--solution",
+        "-s",
+        help="Ruta al código C o binario de solución de referencia docente para generar las salidas esperadas (.out).",
+    ),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Genera automáticamente casos de prueba de borde y entradas fuzzed."""
+    target_dir = Path(workspace) / "tests" / activity / exercise
+    fuzzer = Fuzzer()
 
+    # Si no se pasó solución pero existe en practicas/<activity>/ejercicios/<exercise>/solucion_modelo.c
+    ref_path = Path(solution) if solution else Path(workspace) / "practicas" / activity / "ejercicios" / exercise / "solucion_modelo.c"
+    ref_to_use = ref_path if ref_path.exists() else None
+
+    # Detectar el índice de inicio
+    existing = list(target_dir.glob("caso*.in")) if target_dir.exists() else []
+    start_idx = len(existing) + 1
+
+    try:
+        pairs = fuzzer.generate_testcases(
+            target_dir=target_dir,
+            cases_count=cases,
+            reference_source_or_binary=ref_to_use,
+            start_index=start_idx,
+        )
+        console.print(
+            f"\n[bold green]✓ Se generaron {len(pairs)} casos de prueba por fuzzing en 'tests/{activity}/{exercise}/':[/bold green]\n"
+        )
+        for in_f, out_f in pairs:
+            console.print(f" - [cyan]{in_f.name}[/cyan] / [cyan]{out_f.name}[/cyan]")
+        if ref_to_use:
+            console.print(f"\n[green]Salidas esperadas (.out) calculadas automáticamente con la solución modelo: '{ref_to_use}'[/green]\n")
+    except Exception as e:
+        console.print(f"[bold red]Error durante el fuzzing de casos de prueba:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command("plagiarism")
+def cmd_plagiarism(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a analizar."),
+    threshold: float = typer.Option(
+        0.70,
+        "--threshold",
+        "-t",
+        help="Umbral de similitud mínima para sospecha de plagio (0.0 a 1.0).",
+    ),
+    output: Optional[str] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="Archivo donde guardar el informe de plagio (por defecto <actividad>/plagiarism_report.md).",
+    ),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Analiza la similitud estructural de código y sospechas de plagio entre entregas de la cohorte."""
+    act_dir = Path(workspace) / activity
+    if not act_dir.exists():
+        console.print(f"[bold red]Directorio de actividad no encontrado: '{act_dir}'[/bold red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold green]Analizando similitud de código para la actividad:[/bold green] [cyan]{activity}[/cyan] (Umbral: {int(threshold * 100)}%)\n")
+    detector = PlagiarismDetector(threshold=threshold)
+    matches = detector.analyze_activity(act_dir, threshold=threshold)
+
+    if not matches:
+        console.print(f"[bold green]✓ No se detectaron pares de estudiantes con similitud superior al {int(threshold * 100)}%.[/bold green]\n")
+    else:
+        table = Table(title=f"Sospechas de Similitud / Plagio ({activity})")
+        table.add_column("Estudiante A", style="bold")
+        table.add_column("Estudiante B", style="bold")
+        table.add_column("Similitud", justify="right", style="bold red")
+        table.add_column("Huellas Compartidas", justify="center")
+        table.add_column("Archivos", style="dim")
+
+        for m in matches:
+            table.add_row(
+                m.student_a,
+                m.student_b,
+                f"{m.similarity_pct:.1f}%",
+                str(m.shared_fingerprints_count),
+                ", ".join(m.common_files) or "-",
+            )
+
+        console.print(table)
+
+    report_content = detector.generate_report(activity, matches)
+    out_path = Path(output) if output else act_dir / "plagiarism_report.md"
+    out_path.write_text(report_content, encoding="utf-8")
+    console.print(f"\n[bold cyan]Informe guardado en:[/bold cyan] {out_path}\n")
+
+
+@app.command("evaluate")
 def cmd_evaluate(
     activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a evaluar (ej. entrega-1_1228009)."),
     parallel: bool = typer.Option(True, "--parallel/--no-parallel", help="Procesamiento concurrente."),
+    check_plagiarism: bool = typer.Option(
+        False,
+        "--check-plagiarism",
+        help="Ejecutar análisis de similitud/plagio al finalizar la evaluación.",
+    ),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Ejecuta la compilación, linters, estilo, pruebas y calificación de los estudiantes."""
@@ -365,6 +471,10 @@ def cmd_evaluate(
 
     console.print(table)
     console.print(f"\n[bold green]✓ Evaluación finalizada exitosamente para {len(results)} estudiantes.[/bold green]\n")
+
+    if check_plagiarism:
+        cmd_plagiarism(activity=activity, workspace=workspace)
+
 
 
 @app.command("export")
