@@ -8,9 +8,21 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 
+from ripley.ast_auditors import (
+    ConstCorrectnessLinter,
+    DanglingStackPointerLinter,
+    DeepFreeLinter,
+    FloatComparisonLinter,
+    IWYULinter,
+    OverengineeringLinter,
+    ShortCircuitLinter,
+    StringNullPointerLinter,
+    VariableShadowingLinter,
+)
 from ripley.callgraph import CallGraphGenerator
 from ripley.config import load_config
 from ripley.doxygen import DoxygenAuditor
+from ripley.embedded import EmbeddedMemoryRunner
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.flowchart import FlowchartGenerator
@@ -18,8 +30,10 @@ from ripley.fuzzing import Fuzzer
 from ripley.ingest import MoodleIngestor
 from ripley.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
 from ripley.mapping import InteractiveMapper
+from ripley.memory_visualizer import DynamicMemoryVisualizer
 from ripley.mocks import MockGenerator
 from ripley.plagiarism import PlagiarismDetector
+
 from ripley.practice import (
     ExerciseTemplateSpec,
     PracticeSpec,
@@ -770,10 +784,11 @@ def cmd_lint(
     magic_numbers: bool = typer.Option(True, "--magic-numbers/--no-magic-numbers", help="Auditar números mágicos."),
     clones: bool = typer.Option(True, "--clones/--no-clones", help="Auditar código duplicado (copy-paste)."),
     naming: bool = typer.Option(True, "--naming/--no-naming", help="Auditar convenciones de nombres."),
-    dead_code: bool = typer.Option(True, "--dead-code/--no-dead-code", help="Auditar funciones no alcanzables."),
+    dead_code: bool = typer.Option(True, "--dead-code/--no-dead-code", help="Auditar funciones/código inalcanzable."),
     doxygen: bool = typer.Option(False, "--doxygen/--no-doxygen", help="Auditar completitud de Doxygen."),
+    advanced: bool = typer.Option(True, "--advanced/--no-advanced", help="Auditar reglas avanzadas de AST (float, const, short-circuit, deep-free, shadowing, dangling)."),
 ) -> None:
-    """Ejecuta análisis de números mágicos, duplicación de código interna, convenciones y código muerto."""
+    """Ejecuta análisis de números mágicos, código duplicado, convenciones, código muerto y buenas prácticas AST."""
     path = Path(file_path)
     if not path.exists():
         console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
@@ -819,6 +834,17 @@ def cmd_lint(
                 )
             )
 
+    if advanced:
+        all_obs.extend(FloatComparisonLinter().analyze(code, filename=path.name))
+        all_obs.extend(IWYULinter().analyze(code, filename=path.name))
+        all_obs.extend(ConstCorrectnessLinter().analyze(code, filename=path.name))
+        all_obs.extend(ShortCircuitLinter().analyze(code, filename=path.name))
+        all_obs.extend(DeepFreeLinter().analyze(code, filename=path.name))
+        all_obs.extend(StringNullPointerLinter().analyze(code, filename=path.name))
+        all_obs.extend(VariableShadowingLinter().analyze(code, filename=path.name))
+        all_obs.extend(DanglingStackPointerLinter().analyze(code, filename=path.name))
+        all_obs.extend(OverengineeringLinter().analyze(code, filename=path.name))
+
     if not all_obs:
         console.print(f"\n[bold green]✓ No se detectaron desvíos en '{path.name}'. Código limpio y modular.[/bold green]\n")
         return
@@ -831,7 +857,13 @@ def cmd_lint(
     table.add_column("Sugerencia Pedagógica", style="dim")
 
     for obs in all_obs:
-        sev_style = "[yellow]ESTILO[/yellow]" if obs.severity == "ESTILO" else "[bold red]ADVERTENCIA[/bold red]"
+        if obs.severity == "ERROR":
+            sev_style = "[bold red]ERROR[/bold red]"
+        elif obs.severity == "ADVERTENCIA":
+            sev_style = "[bold yellow]ADVERTENCIA[/bold yellow]"
+        else:
+            sev_style = "[cyan]ESTILO[/cyan]"
+
         table.add_row(
             str(obs.line),
             obs.linter_name,
@@ -841,6 +873,48 @@ def cmd_lint(
         )
 
     console.print(table)
+
+
+@app.command("memory-visualize")
+def cmd_memory_visualize(
+    file_path: str = typer.Option(..., "--file", "-f", help="Ruta al archivo fuente C con estructuras (.c o .h)."),
+    format_type: str = typer.Option("mermaid", "--format", help="Formato de salida ('mermaid' o 'dot')."),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Archivo de salida."),
+) -> None:
+    """Genera diagramas visuales de la topología de estructuras dinámicas de datos en memoria."""
+    vis = DynamicMemoryVisualizer()
+    try:
+        diagram = vis.generate_diagram(c_file=file_path, output_format=format_type)
+        if output:
+            out_p = Path(output)
+            out_p.write_text(diagram, encoding="utf-8")
+            console.print(f"\n[bold green]✓ Diagrama de memoria guardado en:[/bold green] [cyan]{out_p}[/cyan]\n")
+        else:
+            console.print(f"\n[bold green]Topología de Estructuras Dinámicas ({file_path}):[/bold green]\n")
+            console.print(f"```{format_type}\n{diagram}\n```\n")
+    except Exception as e:
+        console.print(f"[bold red]Error al visualizar memoria:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command("embedded-test")
+def cmd_embedded_test(
+    binary: str = typer.Option(..., "--binary", "-b", help="Ruta al binario compilado."),
+    limit_kb: int = typer.Option(64, "--limit-kb", "-l", help="Límite máximo de memoria en KB."),
+    stdin_data: str = typer.Option("", "--stdin", help="Entrada estándar."),
+) -> None:
+    """Ejecuta un binario bajo límites estrictos de memoria de sistemas embebidos."""
+    runner = EmbeddedMemoryRunner(memory_limit_kb=limit_kb)
+    res = runner.run(binary_path=binary, stdin_data=stdin_data)
+
+    if res.success:
+        console.print(f"\n[bold green]✓ {res.message}[/bold green]\n")
+    else:
+        console.print(f"\n[bold red]✗ {res.message}[/bold red]")
+        if res.stderr:
+            console.print(f"[yellow]Stderr:[/yellow] {res.stderr}\n")
+        raise typer.Exit(code=1)
+
 
 
 @mock_app.command("generate")
