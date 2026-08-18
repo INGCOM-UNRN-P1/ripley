@@ -217,3 +217,35 @@ class NamingConventionLinter:
     def _to_snake(self, name: str) -> str:
         s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
         return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+# ============================================================================
+# 4. Detector de Código Muerto y Funciones Jamás Invocadas
+# ============================================================================
+class DeadCodeLinter:
+    """Detecta funciones que nunca son invocadas desde main() ni alcanzadas en el flujo del programa."""
+
+    def analyze(self, code: str, filename: str = "archivo.c") -> List[LinterObservation]:
+        from ripley.callgraph import CallGraphGenerator
+
+        cg_gen = CallGraphGenerator()
+        unreachable = cg_gen.find_unreachable_functions(code)
+        functions = extract_c_functions(code)
+
+        observations: List[LinterObservation] = []
+        for fn in unreachable:
+            fobj = functions.get(fn)
+            line = fobj.start_line if fobj else 1
+            observations.append(
+                LinterObservation(
+                    linter_name="dead_code",
+                    filename=filename,
+                    line=line,
+                    severity="ADVERTENCIA",
+                    message=f"Función jamás invocada (Código muerto): `{fn}()` no es alcanzable desde `main()`.",
+                    suggestion="Si la función no es requerida por la consigna o pruebas externas, eliminala para mantener el código limpio.",
+                )
+            )
+
+        return observations
+

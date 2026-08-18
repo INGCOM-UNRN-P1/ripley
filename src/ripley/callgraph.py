@@ -127,3 +127,36 @@ class CallGraphGenerator:
         if output_format == "mermaid":
             return self.to_mermaid(cg, include_stdlib=include_stdlib)
         return self.to_dot(cg, include_stdlib=include_stdlib)
+
+    def find_unreachable_functions(
+        self,
+        code: str,
+        entrypoints: Optional[Set[str]] = None,
+    ) -> List[str]:
+        """Identifica funciones definidas que no son alcanzables desde los puntos de entrada (código muerto)."""
+        cg = self.build_callgraph(code)
+        entries = entrypoints or ({"main"} if "main" in cg.defined_functions else set(cg.defined_functions))
+
+        # Grafo de adyacencia
+        adj: Dict[str, List[str]] = {fn: [] for fn in cg.defined_functions}
+        for caller, callee in cg.calls:
+            if caller in adj:
+                adj[caller].append(callee)
+
+        # BFS desde entrypoints
+        visited: Set[str] = set()
+        queue = list(entries)
+        for e in queue:
+            visited.add(e)
+
+        while queue:
+            curr = queue.pop(0)
+            for neighbor in adj.get(curr, []):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+
+        # Inalcanzables
+        unreachable = [fn for fn in cg.defined_functions if fn not in visited]
+        return sorted(unreachable)
+
