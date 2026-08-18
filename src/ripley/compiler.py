@@ -34,15 +34,15 @@ class ExecutionResult:
 def set_process_limits(memory_limit_mb: int, cpu_timeout_sec: int) -> None:
     """Configura los límites de recursos de Unix en el proceso hijo antes de ejecutar."""
     try:
-        # Límite de memoria virtual (RLIMIT_AS) en bytes
-        mem_bytes = memory_limit_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_AS, (mem_bytes * 2, mem_bytes * 2))
+        # Límite de CPU
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu_timeout_sec, cpu_timeout_sec + 2))
     except (ValueError, OSError):
         pass
 
     try:
-        # Límite de CPU
-        resource.setrlimit(resource.RLIMIT_CPU, (cpu_timeout_sec, cpu_timeout_sec + 2))
+        # Límite de segmento de datos (heap)
+        mem_bytes = memory_limit_mb * 1024 * 1024
+        resource.setrlimit(resource.RLIMIT_DATA, (mem_bytes, mem_bytes))
     except (ValueError, OSError):
         pass
 
@@ -52,6 +52,7 @@ def set_process_limits(memory_limit_mb: int, cpu_timeout_sec: int) -> None:
         resource.setrlimit(resource.RLIMIT_FSIZE, (fsize_bytes, fsize_bytes))
     except (ValueError, OSError):
         pass
+
 
 
 class Compiler:
@@ -111,7 +112,20 @@ class Compiler:
                 text=True,
                 timeout=self.limits_cfg.timeout_segundos * 2,
             )
+
+            # Si falla por falta de libasan/libubsan en el sistema, reintentar sin flags de sanitización
+            if proc.returncode != 0 and ("cannot find" in proc.stderr and ("libasan" in proc.stderr or "libubsan" in proc.stderr)):
+                clean_flags = [f for f in self.compiler_cfg.flags if not f.startswith("-fsanitize=")]
+                fallback_cmd = [compiler_bin] + clean_flags + [str(s) for s in sources] + ["-o", str(out_bin)]
+                proc = subprocess.run(
+                    fallback_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.limits_cfg.timeout_segundos * 2,
+                )
+
             success = proc.returncode == 0 and out_bin.exists()
+
 
             # Validar tamaño máximo de ejecutable
             if success:

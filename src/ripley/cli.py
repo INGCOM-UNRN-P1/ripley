@@ -1,14 +1,13 @@
 """Ripley CLI interface."""
 
-from pathlib import Path
-from typing import Optional
-import typer
-from rich.console import Console
-from rich.table import Table
-
 from ripley.config import load_config
 from ripley.ingest import MoodleIngestor
 from ripley.templates import check_templates, init_templates, list_templates
+from ripley.testcases import (
+    check_testcases_integrity,
+    create_testcase_skeleton,
+    discover_testcases,
+)
 
 app = typer.Typer(
     name="ripley",
@@ -30,6 +29,7 @@ app.add_typer(template_app, name="template")
 app.add_typer(testcase_app, name="testcase")
 
 console = Console()
+
 
 
 @app.command("ingest")
@@ -170,5 +170,80 @@ def cmd_template_check(
         raise typer.Exit(code=1)
 
 
+@testcase_app.command("skeleton")
+def cmd_testcase_skeleton(
+    activity: str = typer.Option(..., "--activity", "-a", help="Nombre o slug de la actividad (ej. entrega-1_1228009)."),
+    exercise: str = typer.Option(..., "--exercise", "-e", help="Nombre del ejercicio (ej. ejercicio1)."),
+    cases: int = typer.Option(2, "--cases", "-c", help="Cantidad de casos de prueba a generar."),
+    with_argv: bool = typer.Option(False, "--with-argv", help="Generar archivos .argv de argumentos CLI."),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Genera esqueletos de casos de prueba (.in, .out, .argv) para una actividad y ejercicio."""
+    created = create_testcase_skeleton(
+        workspace_dir=workspace,
+        activity_slug=activity,
+        exercise=exercise,
+        cases_count=cases,
+        with_argv=with_argv,
+    )
+    if created:
+        console.print(
+            f"[bold green]Se generaron {len(created)} archivos de prueba en 'tests/{activity}/{exercise}/':[/bold green]"
+        )
+        for p in created:
+            console.print(f" - [cyan]{p.name}[/cyan]")
+    else:
+        console.print("[yellow]Los archivos de prueba ya existían o no se crearon nuevos.[/yellow]")
+
+
+@testcase_app.command("list")
+def cmd_testcase_list(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad."),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Lista los casos de prueba asociados a cada ejercicio."""
+    exercises = discover_testcases(workspace_dir=workspace, activity_slug=activity)
+    if not exercises:
+        console.print(f"[yellow]No se encontraron casos de prueba en 'tests/{activity}/'.[/yellow]")
+        return
+
+    table = Table(title=f"Casos de Prueba para '{activity}'")
+    table.add_column("Ejercicio", style="bold")
+    table.add_column("Caso", justify="center")
+    table.add_column("Entrada (.in)", justify="center")
+    table.add_column("Salida (.out)", justify="center")
+    table.add_column("CLI Args (.argv)", justify="center")
+
+    for ex_name, cases in exercises.items():
+        for tc in cases:
+            in_str = "[green]✓[/green]" if tc.in_file else "[red]✗[/red]"
+            out_str = "[green]✓[/green]" if tc.out_file else "[red]✗[/red]"
+            argv_str = "[cyan]✓[/cyan]" if tc.argv_file else "[dim]-[/dim]"
+            table.add_row(ex_name, tc.case_name, in_str, out_str, argv_str)
+
+    console.print(table)
+
+
+@testcase_app.command("check")
+def cmd_testcase_check(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad."),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Valida la integridad de parejas .in / .out en los casos de prueba."""
+    is_valid, errors = check_testcases_integrity(workspace_dir=workspace, activity_slug=activity)
+    if is_valid:
+        console.print(
+            f"[bold green]✓ Todos los casos de prueba para '{activity}' son íntegros y válidos.[/bold green]"
+        )
+    else:
+        console.print(
+            f"[bold red]✗ Se encontraron {len(errors)} error(es) en los casos de prueba de '{activity}':[/bold red]"
+        )
+        for err in errors:
+            console.print(f" [red]- {err}[/red]")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
+
