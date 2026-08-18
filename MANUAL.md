@@ -245,9 +245,32 @@ Audita el cumplimiento de buenas prácticas en C:
 - `--naming / --no-naming`: Convenciones de nombres (`snake_case`, constantes en `UPPER_CASE`, prefijo `t_`).
 - `--dead-code / --no-dead-code`: Funciones inalcanzables desde `main()` y código posterior a `return`/`exit()`.
 - `--doxygen / --no-doxygen`: Verificación de comentarios `@brief`, `@param` y `@return`.
-- `--advanced / --no-advanced`: Habilita los 9 linters avanzados de AST:
-  1. *Comparación de Punto Flotante:* `a == b` en `float`/`double`.
-  2. *Inclusiones Innecesarias (IWYU):* `#include <math.h>` sin usar sus funciones.
+- `--p1-rules / --no-p1-rules`: (Por defecto activo) Audita el catálogo oficial de reglas de estilo de Programación I bajo la nomenclatura hexadecimal `0xXXXXh`:
+  - `0x0001h`: Identificadores descriptivos.
+  - `0x0002h`: Una declaración de variable por línea.
+  - `0x0003h`: Inicialización obligatoria de variables locales.
+  - `0x0004h`: Un espacio antes y después de operadores binarios.
+  - `0x0005h`: Indentación estricta de 4 espacios.
+  - `0x0006h`: Asterisco de punteros junto al identificador (`int *ptr`).
+  - `0x0007h`: Variables y argumentos en `snake_case` minúsculas.
+  - `0x0008h`: Constantes en `MAYUSCULAS_SNAKE_CASE`.
+  - `0x0009h`: Límite máximo de 79 caracteres por línea.
+  - `0x1001h`: Llaves obligatorias `{}` en estructuras de control.
+  - `0x1002h`: Prohibición de `continue` y control de `break`.
+  - `0x1003h`: `for` para conteo y `while` para condiciones lógicas.
+  - `0x1005h`: Evitar condiciones ambiguas por truthiness (comparar contra `NULL` o `0`).
+  - `0x1006h`: Prohibición estricta de `goto`.
+  - `0x1007h`: Prohibición del operador ternario `?:`.
+  - `0x1008h`: Cláusula `default:` obligatoria en `switch`.
+  - `0x2004h`: Prohibición de variables globales mutables.
+  - `0x3001h`: Verificación obligatoria de `malloc` / `calloc` contra `NULL`.
+  - `0x3002h`: Asignación de `NULL` al puntero tras `free()`.
+  - `0x3003h`: No mezclar asignación y comparación en la misma línea `if`.
+  - `0x3004h`: Definición de `struct` con `typedef` y sufijo `_t` / `t_`.
+  - `0x5001h`: Prohibición de Arreglos de Longitud Variable (VLAs).
+  - `0x5006h`: Prohibición de `gets()` y `scanf("%s")` desprotegido.
+- `--advanced / --no-advanced`: Habilita linters profundos de AST (comparaciones de floats, *const-correctness*, *IWYU*, *deep free*, punteros salvajes del stack, sobre-ingeniería XOR).
+
   3. *Const-Correctness:* Punteros de solo lectura no calificados con `const`.
   4. *Efectos Colaterales en Cortocircuito:* `if (a && b++)`.
   5. *Deep Free Verifier:* `free(nodo)` sin liberar campos puntero anidados.
