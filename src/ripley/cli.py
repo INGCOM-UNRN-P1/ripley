@@ -2,8 +2,10 @@
 
 from ripley.config import load_config
 from ripley.evaluate import Evaluator
+from ripley.exporter import MoodleExporter
 from ripley.ingest import MoodleIngestor
 from ripley.templates import check_templates, init_templates, list_templates
+
 from ripley.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
@@ -292,7 +294,29 @@ def cmd_evaluate(
     console.print(f"\n[bold green]✓ Evaluación finalizada exitosamente para {len(results)} estudiantes.[/bold green]\n")
 
 
+@app.command("export")
+def cmd_export(
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a exportar (ej. entrega-1_1228009)."),
+    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
+) -> None:
+    """Exporta las calificaciones para Moodle (CSV), el ZIP masivo de retroalimentación y el dashboard."""
+    exporter = MoodleExporter(workspace_dir=workspace)
+    try:
+        csv_path = exporter.export_grades_csv(activity)
+        zip_path = exporter.export_feedback_zip(activity)
+        dash_path = exporter.generate_dashboard(activity)
+
+        console.print(f"\n[bold green]Exportación completada exitosamente para '{activity}':[/bold green]\n")
+        console.print(f" - [cyan]Libro de Calificaciones CSV:[/cyan] {csv_path.name}")
+        console.print(f" - [cyan]ZIP de Retroalimentación:[/cyan] {zip_path.name}")
+        console.print(f" - [cyan]Dashboard Consolidado Docente:[/cyan] {dash_path.name}\n")
+    except Exception as e:
+        console.print(f"[bold red]Error durante la exportación:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
+
 
 
