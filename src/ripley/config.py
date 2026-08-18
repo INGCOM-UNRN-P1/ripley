@@ -40,9 +40,11 @@ class CppcheckConfig:
             "--enable=all",
             "--inline-suppr",
             "--suppress=missingIncludeSystem",
+            "--suppress=staticFunction",
         ]
     )
     reglas_python: List[str] = field(default_factory=list)
+
 
 
 @dataclass
@@ -198,10 +200,17 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
         cppcheck=CppcheckConfig(
             ejecutable=cppcheck_data.get("ejecutable", "cppcheck"),
             parametros=cppcheck_data.get(
-                "parametros", ["--enable=all", "--inline-suppr", "--suppress=missingIncludeSystem"]
+                "parametros",
+                [
+                    "--enable=all",
+                    "--inline-suppr",
+                    "--suppress=missingIncludeSystem",
+                    "--suppress=staticFunction",
+                ],
             ),
             reglas_python=cppcheck_data.get("reglas_python", []),
         ),
+
         style=StyleConfig(
             brace_style=style_data.get("brace_style", "allman"),
             require_braces=style_data.get("require_braces", True),

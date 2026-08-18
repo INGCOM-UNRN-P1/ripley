@@ -22,8 +22,10 @@ parametros = [
     "--enable=all",
     "--inline-suppr",
     "--suppress=missingIncludeSystem",
+    "--suppress=staticFunction",
 ]
 reglas_python = []
+
 
 [style]
 brace_style = "allman"

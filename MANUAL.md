@@ -490,6 +490,16 @@ indent_size = 4
 no_trailing_whitespace = true
 max_blank_lines = 2
 
+[cppcheck]
+ejecutable = "cppcheck"
+parametros = [
+    "--enable=all",
+    "--inline-suppr",
+    "--suppress=missingIncludeSystem",
+    "--suppress=staticFunction"
+]
+
+
 [valgrind]
 enabled = true
 flags = ["--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes"]

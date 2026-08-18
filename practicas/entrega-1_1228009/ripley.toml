@@ -44,8 +44,10 @@ parametros = [
     "--enable=all",
     "--inline-suppr",
     "--suppress=missingIncludeSystem",
+    "--suppress=staticFunction",
 ]
 reglas_python = []
+
 
 [security]
 forbidden_calls = [

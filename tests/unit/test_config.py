@@ -13,6 +13,8 @@ def test_load_default_config(tmp_path):
     assert cfg.style.brace_style == "allman"
     assert cfg.style.require_braces is True
     assert cfg.rubric.peso_compilacion == 0.25
+    assert "--suppress=staticFunction" in cfg.cppcheck.parametros
+
 
 
 def test_load_custom_toml(tmp_path):
