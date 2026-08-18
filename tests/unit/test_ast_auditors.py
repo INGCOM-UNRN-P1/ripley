@@ -1,16 +1,20 @@
 """Unit tests for AST auditors and C linters."""
 
 from ripley.ast_auditors import (
+    BackwardGotoLinter,
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
     DeepFreeLinter,
+    EvaluationOrderLinter,
     FloatComparisonLinter,
     IWYULinter,
     OverengineeringLinter,
     ShortCircuitLinter,
+    StringLiteralWriteLinter,
     StringNullPointerLinter,
     VariableShadowingLinter,
 )
+
 
 
 def test_float_comparison_linter():
@@ -137,3 +141,51 @@ def test_overengineering_linter():
     obs = OverengineeringLinter().analyze(code, "test.c")
     assert len(obs) == 1
     assert "overengineering" in obs[0].linter_name
+
+
+def test_evaluation_order_linter():
+    code = """
+    int sumar(int a, int b) { return a + b; }
+    int main() {
+        int i = 0;
+        int res = sumar(i++, i++);
+        return res;
+    }
+    """
+    obs = EvaluationOrderLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "evaluation_order_dependency" in obs[0].linter_name
+    assert "i" in obs[0].message
+
+
+def test_string_literal_write_linter():
+    code = """
+    int main() {
+        char *mensaje = "hola mundo";
+        mensaje[0] = 'H';
+        return 0;
+    }
+    """
+    obs = StringLiteralWriteLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert obs[0].severity == "ERROR"
+    assert "rodata_string_write" in obs[0].linter_name
+
+
+def test_backward_goto_linter():
+    code = """
+    int main() {
+        int i = 0;
+    bucle_inicio:
+        i++;
+        if (i < 10) {
+            goto bucle_inicio;
+        }
+        return i;
+    }
+    """
+    obs = BackwardGotoLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "backward_goto" in obs[0].linter_name
+    assert "bucle_inicio" in obs[0].message
+

@@ -405,3 +405,151 @@ class OverengineeringLinter:
                 )
 
         return observations
+
+
+# ============================================================================
+# 10. Detector de Dependencia de Orden de Evaluación de Argumentos
+# ============================================================================
+class EvaluationOrderLinter:
+    """Detecta llamadas a funciones con argumentos cuyo orden de evaluación es indefinido (unspecified behavior)."""
+
+    def analyze(self, code: str, filename: str = "archivo.c") -> List[LinterObservation]:
+        observations: List[LinterObservation] = []
+        clean = strip_c_comments_and_strings(code)
+        lines = clean.splitlines()
+
+        # Regex para capturar llamadas a función con múltiples argumentos separados por coma
+        call_regex = re.compile(r"\b(?P<fn>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?P<args>[^()]+,[^()]+)\)")
+
+        for line_idx, line in enumerate(lines):
+            for match in call_regex.finditer(line):
+                fn = match.group("fn")
+                if fn in ("if", "while", "for", "switch", "sizeof"):
+                    continue
+                args_str = match.group("args")
+                args = [a.strip() for a in args_str.split(",")]
+
+                # Extraer variables con mutación (++, --, =)
+                mutated_vars = set()
+                all_vars_per_arg = []
+
+                for a in args:
+                    m_mut = re.findall(r"(?:\+\+|--)\s*([a-zA-Z_][a-zA-Z0-9_]*)|([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\+\+|--)", a)
+                    for m in m_mut:
+                        var = m[0] or m[1]
+                        mutated_vars.add(var)
+                    vars_in_a = set(re.findall(r"\b([a-zA-Z_][a-zA-Z0-9_]*)\b", a))
+                    all_vars_per_arg.append(vars_in_a)
+
+                # Si alguna variable mutada aparece en más de un argumento
+                for mvar in mutated_vars:
+                    count_args = sum(1 for vset in all_vars_per_arg if mvar in vset)
+                    if count_args >= 2:
+                        observations.append(
+                            LinterObservation(
+                                linter_name="evaluation_order_dependency",
+                                filename=filename,
+                                line=line_idx + 1,
+                                severity="ADVERTENCIA",
+                                message=f"Dependencia del orden de evaluación de argumentos en `{fn}(...)`: La variable `{mvar}` se modifica y se lee en múltiples argumentos.",
+                                suggestion="En C, el orden de evaluación de los parámetros de una función no está definido en el estándar. Extraé las operaciones previas a la llamada en sentencias separadas.",
+                            )
+                        )
+                        break
+
+        return observations
+
+
+# ============================================================================
+# 11. Auditoría de Modificación de Cadenas Literales en .rodata
+# ============================================================================
+class StringLiteralWriteLinter:
+    """Detecta intentos de escritura en literales de cadena almacenados en memoria de solo lectura (.rodata)."""
+
+    def analyze(self, code: str, filename: str = "archivo.c") -> List[LinterObservation]:
+        observations: List[LinterObservation] = []
+        clean = strip_c_comments_and_strings(code)
+        lines = clean.splitlines()
+
+        # 1. Identificar punteros asignados directamente a literales de cadena: char *p = "texto";
+        literal_ptrs: Dict[str, int] = {}
+        ptr_literal_regex = re.compile(
+            r"\bchar\s*\*\s*(?P<var>[a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*\"[^\"]*\"\s*;",
+            re.MULTILINE,
+        )
+
+        for m in ptr_literal_regex.finditer(code):
+            var_name = m.group("var")
+            line = code[: m.start()].count("\n") + 1
+            literal_ptrs[var_name] = line
+
+        # 2. Buscar escrituras sobre esos punteros: p[0] = 'a' o *p = 'a' o strcpy(p, ...)
+        for var_name, decl_line in literal_ptrs.items():
+            for line_idx, line in enumerate(lines):
+                line_num = line_idx + 1
+                if line_num == decl_line or line.strip().startswith("char "):
+                    continue
+                is_write = (
+                    re.search(rf"\b{var_name}\s*\[[^\]]+\]\s*=[^=]", line)
+                    or re.search(rf"\*\s*{var_name}\s*=[^=]", line)
+                    or re.search(rf"\b(strcpy|strncpy|strcat|sprintf)\s*\(\s*{var_name}\b", line)
+                )
+                if is_write:
+                    observations.append(
+                        LinterObservation(
+                            linter_name="rodata_string_write",
+                            filename=filename,
+                            line=line_num,
+                            severity="ERROR",
+                            message=f"Intento de modificación de cadena literal en `.rodata` a través del puntero `{var_name}` (declarado en línea {decl_line}).",
+                            suggestion=f"Las cadenas literales `\"...\"` residen en páginas de solo lectura. Para cadenas mutables, usá un arreglo `char {var_name}[] = \"...\";` o asigná memoria con `malloc`.",
+                        )
+                    )
+
+
+        return observations
+
+
+# ============================================================================
+# 12. Control de Saltos Hacia Atrás con goto
+# ============================================================================
+class BackwardGotoLinter:
+    """Detecta saltos hacia atrás con goto que emulan bucles desestructurados (spaghetti code)."""
+
+    def analyze(self, code: str, filename: str = "archivo.c") -> List[LinterObservation]:
+        observations: List[LinterObservation] = []
+        clean = strip_c_comments_and_strings(code)
+        lines = clean.splitlines()
+
+        # 1. Registrar etiquetas y sus líneas
+        labels: Dict[str, int] = {}
+        label_regex = re.compile(r"^[ \t]*(?P<label>[a-zA-Z_][a-zA-Z0-9_]*)\s*:", re.MULTILINE)
+
+        for m in label_regex.finditer(clean):
+            lbl = m.group("label")
+            if lbl not in ("case", "default"):
+                line = clean[: m.start()].count("\n") + 1
+                labels[lbl] = line
+
+        # 2. Registrar instrucciones goto y comprobar si la etiqueta está antes en el código
+        goto_regex = re.compile(r"\bgoto\s+(?P<label>[a-zA-Z_][a-zA-Z0-9_]*)\s*;", re.MULTILINE)
+
+        for m in goto_regex.finditer(clean):
+            lbl = m.group("label")
+            goto_line = clean[: m.start()].count("\n") + 1
+            if lbl in labels:
+                target_line = labels[lbl]
+                if target_line < goto_line:
+                    observations.append(
+                        LinterObservation(
+                            linter_name="backward_goto",
+                            filename=filename,
+                            line=goto_line,
+                            severity="ADVERTENCIA",
+                            message=f"Salto hacia atrás con `goto {lbl};` hacia la línea {target_line} (bucle desestructurado).",
+                            suggestion="Los saltos hacia atrás generan código espagueti. Reemplazá el `goto` por estructuras de control estructuradas estándar (`while`, `for`, `do-while`).",
+                        )
+                    )
+
+        return observations
+
