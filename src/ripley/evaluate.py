@@ -18,11 +18,14 @@ from ripley.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
 from ripley.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
 
 from ripley.runner import (
+    CppcheckResult,
     CppcheckRunner,
     DynamicTestRunner,
     RubricCalculator,
+    ValgrindResult,
     ValgrindRunner,
 )
+
 from ripley.security import SecurityScanner
 from ripley.style import StyleAnalyzer
 from ripley.testcases import discover_testcases
@@ -105,34 +108,19 @@ class Evaluator:
                 # 2. Escaneo de seguridad preventivo
                 security_violations = self.security_scanner.scan_files(all_sources)
 
-                # 3. Mapeo y Compilación por Ejercicio
+                # 3. Compilación, Estilo, Cppcheck y Valgrind Estrictamente Archivo por Archivo
                 mapping_store = MappingStore(self.workspace_dir, activity_slug)
                 available_ex_names = list(testcases_by_exercise.keys())
-
-                exercise_groups: Dict[str, List[Path]] = {}
-                aux_sources: List[Path] = []
-                ignored_sources: List[Path] = []
-
-                for src in c_sources:
-                    target = mapping_store.get_effective_mapping(student_slug, src.name, available_ex_names)
-                    if target == SPECIAL_IGNORE:
-                        ignored_sources.append(src)
-                    elif target == SPECIAL_AUXILIARY:
-                        aux_sources.append(src)
-                    elif target:
-                        if target not in exercise_groups:
-                            exercise_groups[target] = []
-                        exercise_groups[target].append(src)
-                    else:
-                        # Cada archivo C no mapeado es un ejercicio independiente
-                        unmapped_key = f"unmapped_{src.stem}"
-                        exercise_groups[unmapped_key] = [src]
 
                 compiled_binaries: Dict[str, Optional[Path]] = {}
                 compilation_results_table: List[Dict[str, str]] = []
                 all_style_obs: List[Dict[str, Any]] = []
                 compilation_logs: List[str] = []
                 file_compilation_status: Dict[str, bool] = {}
+
+
+                total_style_sum = 0.0
+                total_cppcheck_violations = 0
                 all_compiled = True
 
                 if security_violations:
@@ -141,79 +129,87 @@ class Evaluator:
                         f"- [{v.filename}:{v.line}] {v.message}" for v in security_violations
                     )
                     compilation_logs.append(comp_log)
-                else:
-                    for ex_name, ex_srcs in exercise_groups.items():
-                        bin_out = temp_path / f"bin_v{v_num}_{ex_name}"
-                        comp_res = self.compiler.compile(ex_srcs + aux_sources, bin_out)
-
-                        for src_f in ex_srcs:
-                            file_compilation_status[src_f.name] = comp_res.success
-
-                        if comp_res.success:
-                            compiled_binaries[ex_name] = bin_out
-                        else:
-                            all_compiled = False
-
-                        # Registrar salida completa del compilador (stdout + stderr)
-                        compiler_raw = (comp_res.stdout + "\n" + comp_res.stderr).strip()
-                        display_name = ex_name.replace("unmapped_", "")
-                        src_names = ", ".join(f.name for f in ex_srcs)
-
-                        if compiler_raw:
-                            compilation_logs.append(
-                                f"=== Salida del Compilador ({src_names} -> {display_name}) ===\n{compiler_raw}\n"
-                            )
-                        else:
-                            compilation_logs.append(
-                                f"=== Salida del Compilador ({src_names} -> {display_name}) ===\nCompilación limpia sin errores ni advertencias.\n"
-                            )
-
-                compiled = len(compiled_binaries) > 0 and (all_compiled or any(file_compilation_status.values()))
-
-                # 4. Análisis de Estilo
-                total_style_score = 0.0
-                if c_sources:
-                    for src in c_sources:
-                        s_res = self.style_analyzer.analyze_file(src)
-                        total_style_score += s_res.score
-                        for obs in s_res.observaciones:
-                            all_style_obs.append(
-                                {
-                                    "archivo": obs.archivo,
-                                    "linea": obs.linea,
-                                    "mensaje": obs.mensaje,
-                                }
-                            )
-                    avg_style_score = round(total_style_score / len(c_sources), 2)
-                else:
-                    avg_style_score = 10.0
-
-                # 5. Análisis Estático (Cppcheck)
-                cppcheck_res = self.cppcheck_runner.analyze(all_sources)
-                if cppcheck_res.full_output:
-                    compilation_logs.append(f"\n--- Logs Cppcheck ---\n{cppcheck_res.full_output}")
-
-                # 6. Auditoría de Memoria (Valgrind)
-                valgrind_sample_bin = next(iter(compiled_binaries.values()), None) if compiled else None
-                valgrind_res = self.valgrind_runner.audit(
-                    valgrind_sample_bin if valgrind_sample_bin else "none"
-                )
-                if valgrind_res.full_output:
-                    compilation_logs.append(f"\n--- Logs Valgrind ---\n{valgrind_res.full_output}")
 
                 for src in c_sources:
-                    src_ok = file_compilation_status.get(src.name, False)
+                    target = mapping_store.get_effective_mapping(student_slug, src.name, available_ex_names)
+                    if target == SPECIAL_IGNORE:
+                        continue
+
+                    # 3.1 Compilación individual (un archivo por vez)
+                    bin_out = temp_path / f"bin_v{v_num}_{src.stem}"
+                    comp_res = self.compiler.compile([src], bin_out)
+                    file_compilation_status[src.name] = comp_res.success
+
+                    if comp_res.success:
+                        compiled_binaries[src.name] = bin_out
+                        compiled_binaries[src.stem] = bin_out
+                        if target and target != SPECIAL_AUXILIARY:
+                            compiled_binaries[target] = bin_out
+                    else:
+                        all_compiled = False
+
+                    # Salida de compilación individual
+                    compiler_raw = (comp_res.stdout + "\n" + comp_res.stderr).strip()
+                    display_target = f" -> {target}" if target else ""
+                    if compiler_raw:
+                        compilation_logs.append(
+                            f"=== Salida del Compilador ({src.name}{display_target}) ===\n{compiler_raw}\n"
+                        )
+                    else:
+                        compilation_logs.append(
+                            f"=== Salida del Compilador ({src.name}{display_target}) ===\nCompilación limpia sin errores ni advertencias.\n"
+                        )
+
+                    # 3.2 Análisis de Estilo individual (un archivo por vez)
+                    s_res = self.style_analyzer.analyze_file(src)
+                    total_style_sum += s_res.score
+                    for obs in s_res.observaciones:
+                        all_style_obs.append(
+                            {
+                                "archivo": obs.archivo,
+                                "linea": obs.linea,
+                                "mensaje": obs.mensaje,
+                            }
+                        )
+
+                    # 3.3 Análisis Estático Cppcheck individual (un archivo por vez)
+                    cpp_res = self.cppcheck_runner.analyze([src])
+                    total_cppcheck_violations += cpp_res.violations_count
+                    if cpp_res.full_output:
+                        compilation_logs.append(
+                            f"--- Logs Cppcheck ({src.name}) ---\n{cpp_res.full_output}\n"
+                        )
+
+                    # 3.4 Auditoría de Memoria Valgrind individual
+                    if comp_res.success:
+                        valg_res = self.valgrind_runner.audit(bin_out)
+                    else:
+                        valg_res = ValgrindResult(
+                            enabled=self.valgrind_runner.valgrind_cfg.enabled,
+                            passed=False,
+                            summary="-",
+                            full_output="",
+                        )
+                    if valg_res.full_output:
+                        compilation_logs.append(
+                            f"--- Logs Valgrind ({src.name}) ---\n{valg_res.full_output}\n"
+                        )
+
+                    # 3.5 Fila de resultados por archivo
                     compilation_results_table.append(
                         {
                             "nombre_archivo": src.name,
-                            "estado": "✓ Compilación OK" if src_ok else "✗ Falló Compilación",
-                            "estado_estilo": f"{avg_style_score}/10" if src_ok else "-",
-                            "estado_valgrind": valgrind_res.summary if src_ok else "-",
-                            "estado_cppcheck": cppcheck_res.summary,
+                            "estado": "✓ Compilación OK" if comp_res.success else "✗ Falló Compilación",
+                            "estado_estilo": f"{s_res.score}/10",
+                            "estado_valgrind": valg_res.summary if comp_res.success else "-",
+                            "estado_cppcheck": cpp_res.summary,
                         }
                     )
 
-                # 7. Ejecución Dinámica de Casos de Prueba
+                avg_style_score = round(total_style_sum / len(c_sources), 2) if c_sources else 10.0
+                compiled = len(compiled_binaries) > 0 and (all_compiled or any(file_compilation_status.values()))
+
+                # 4. Ejecución Dinámica de Casos de Prueba
                 test_results: List[Dict[str, Any]] = []
                 tests_passed_count = 0
                 total_tests_count = 0
@@ -223,7 +219,7 @@ class Evaluator:
                         # Obtener el binario correspondiente al ejercicio
                         bin_for_ex = compiled_binaries.get(ex_name)
                         if not bin_for_ex:
-                            # Fallback si un binario no mapeado coincide en dígitos
+                            # Fallback si un binario coincide en dígitos
                             for k, b in compiled_binaries.items():
                                 if re.findall(r"\d+", k) == re.findall(r"\d+", ex_name):
                                     bin_for_ex = b
@@ -258,17 +254,16 @@ class Evaluator:
                                 }
                             )
 
-
-
-                # 8. Cálculo de Rúbrica
+                # 5. Cálculo de Rúbrica
                 breakdown = self.rubric_calc.calculate(
                     compiled=compiled,
                     style_score=avg_style_score,
-                    linter_passed=cppcheck_res.passed,
-                    linter_violations=cppcheck_res.violations_count,
+                    linter_passed=total_cppcheck_violations == 0,
+                    linter_violations=total_cppcheck_violations,
                     tests_passed_count=tests_passed_count,
                     total_tests_count=total_tests_count,
                 )
+
 
                 # 9. Guardar evaluación en BD
                 db.save_evaluation(
