@@ -1,3 +1,8 @@
+/entrega*
+*.zip
+!/practicas/
+
+
 # Python
 __pycache__/
 *.py[cod]
