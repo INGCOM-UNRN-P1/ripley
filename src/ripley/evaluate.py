@@ -10,10 +10,26 @@ import tempfile
 from typing import Any, Callable, Dict, List, Optional
 
 
+from ripley.ast_auditors import (
+    BackwardGotoLinter,
+    ConstCorrectnessLinter,
+    DanglingStackPointerLinter,
+    DeepFreeLinter,
+    EvaluationOrderLinter,
+    OverengineeringLinter,
+    ShortCircuitLinter,
+    StringLiteralWriteLinter,
+    StringNullPointerLinter,
+    VariableShadowingLinter,
+)
+
+from ripley.callgraph import CallGraphGenerator
 from ripley.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.db import DatabaseManager
 from ripley.diffing import generate_unified_diff
+from ripley.doxygen import DoxygenAuditor
+from ripley.flowchart import FlowchartGenerator
 from ripley.linters import (
     DeadCodeLinter,
     InternalCloneLinter,
@@ -21,8 +37,12 @@ from ripley.linters import (
     NamingConventionLinter,
 )
 from ripley.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
+from ripley.memory_visualizer import DynamicMemoryVisualizer
 from ripley.p1_rules import P1RuleChecker
+from ripley.property_testing import PropertyTestRunner
+from ripley.pure_functions import PureFunctionAnalyzer
 from ripley.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
+from ripley.restrictions import CodeRestrictionsValidator
 from ripley.runner import (
     CppcheckResult,
     CppcheckRunner,
@@ -34,7 +54,7 @@ from ripley.runner import (
     ValgrindRunner,
 )
 from ripley.security import SecurityScanner
-
+from ripley.semantic_diff import extract_c_functions
 from ripley.style import StyleCheckResult, StyleAnalyzer
 from ripley.testcases import discover_testcases
 
@@ -233,6 +253,133 @@ class Evaluator:
                         if act_cfg.linters.naming:
                             for obs in NamingConventionLinter().analyze(src_content, src.name):
                                 all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Naming] {obs.message}"})
+
+                    # 3.2.3 Auditores AST Profundos (si están habilitados)
+                    if act_cfg.ast_auditors.enabled:
+                        src_content = src.read_text(encoding="utf-8", errors="replace")
+                        if act_cfg.ast_auditors.dangling_stack_pointer:
+                            for obs in DanglingStackPointerLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:DanglingPtr] {obs.message}"})
+                        if act_cfg.ast_auditors.const_correctness:
+                            for obs in ConstCorrectnessLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:ConstCorrectness] {obs.message}"})
+                        if act_cfg.ast_auditors.short_circuit:
+                            for obs in ShortCircuitLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:ShortCircuit] {obs.message}"})
+
+                        if act_cfg.ast_auditors.deep_free:
+                            for obs in DeepFreeLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:DeepFree] {obs.message}"})
+                        if act_cfg.ast_auditors.string_null:
+                            for obs in StringNullPointerLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:StringNull] {obs.message}"})
+                        if act_cfg.ast_auditors.variable_shadowing:
+                            for obs in VariableShadowingLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:Shadowing] {obs.message}"})
+                        if act_cfg.ast_auditors.overengineering:
+                            for obs in OverengineeringLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:Overengineering] {obs.message}"})
+                        if act_cfg.ast_auditors.evaluation_order:
+                            for obs in EvaluationOrderLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:EvaluationOrder] {obs.message}"})
+                        if act_cfg.ast_auditors.string_literal_write:
+                            for obs in StringLiteralWriteLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:StringLiteralWrite] {obs.message}"})
+                        if act_cfg.ast_auditors.backward_goto:
+                            for obs in BackwardGotoLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:BackwardGoto] {obs.message}"})
+
+                    # 3.2.4 Validación de Restricciones (si está habilitada)
+                    if act_cfg.restrictions.enabled:
+                        rest_val = CodeRestrictionsValidator(
+                            forbidden_constructs=act_cfg.restrictions.forbidden_constructs,
+                            required_constructs=act_cfg.restrictions.required_constructs,
+                        )
+                        r_res = rest_val.validate_file(src)
+                        if not r_res.valid:
+                            for err in r_res.violations:
+                                all_style_obs.append({"archivo": src.name, "linea": 1, "mensaje": f"[Restricción] {err}"})
+
+                    # 3.2.5 Auditoría de Documentación Doxygen (si está habilitada)
+                    if act_cfg.doxygen.enabled:
+                        dox_auditor = DoxygenAuditor(
+                            require_brief=act_cfg.doxygen.require_brief,
+                            require_params=act_cfg.doxygen.require_params,
+                            require_return=act_cfg.doxygen.require_return,
+                        )
+                        d_obs = dox_auditor.audit_file(src)
+                        for obs in d_obs:
+                            all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Doxygen] {obs.message}"})
+
+                    # 3.2.6 Análisis de Funciones Puras (si está habilitado)
+                    if act_cfg.pure_functions.enabled:
+                        pure_analyzer = PureFunctionAnalyzer(target_functions=act_cfg.pure_functions.functions)
+                        p_res = pure_analyzer.analyze_file(src)
+                        for fname, stat in p_res.functions.items():
+                            if not stat.is_pure:
+                                all_style_obs.append({"archivo": src.name, "linea": 1, "mensaje": f"[FunciónPura] '{fname}' no es pura: {', '.join(stat.side_effects)}"})
+
+                    # 3.2.7 Generación de Diagramas de Flujo (si está habilitado)
+                    if act_cfg.flowchart.enabled:
+                        fc_gen = FlowchartGenerator()
+                        try:
+                            fc_diagrams = fc_gen.generate_for_file(src, output_format=act_cfg.flowchart.format)
+                            for fn_name, d_code in fc_diagrams.items():
+                                compilation_logs.append(
+                                    f"=== Diagrama de Flujo: `{fn_name}()` ({src.name}) ===\n```{act_cfg.flowchart.format}\n{d_code}\n```\n"
+                                )
+                        except Exception as e:
+                            compilation_logs.append(f"[Flowchart] Error generando diagrama para {src.name}: {e}\n")
+
+                    # 3.2.8 Visualizador de Memoria y Estructuras (si está habilitado)
+                    if act_cfg.memory_visualizer.enabled:
+                        mem_vis = DynamicMemoryVisualizer()
+                        try:
+                            mem_diag = mem_vis.generate_diagram(src, output_format=act_cfg.memory_visualizer.format)
+                            compilation_logs.append(
+                                f"=== Diagrama de Topología de Memoria ({src.name}) ===\n```{act_cfg.memory_visualizer.format}\n{mem_diag}\n```\n"
+                            )
+                        except Exception as e:
+                            compilation_logs.append(f"[MemoryVisualizer] Error generando diagrama para {src.name}: {e}\n")
+
+
+                    # 3.2.9 Grafo de Llamadas y Recursión (si está habilitado)
+                    if act_cfg.callgraph.enabled:
+                        cg_gen = CallGraphGenerator()
+                        try:
+                            cg_diag = cg_gen.generate_for_file(
+                                src,
+                                output_format=act_cfg.callgraph.format,
+                                include_stdlib=act_cfg.callgraph.include_stdlib,
+                            )
+                            compilation_logs.append(
+                                f"=== Grafo de Invocación / Call Graph ({src.name}) ===\n```{act_cfg.callgraph.format}\n{cg_diag}\n```\n"
+                            )
+                        except Exception as e:
+                            compilation_logs.append(f"[CallGraph] Error generando grafo para {src.name}: {e}\n")
+
+                    # 3.2.10 Property-Based Testing (si está habilitado y el archivo compila)
+                    if act_cfg.property_testing.enabled:
+                        prop_runner = PropertyTestRunner()
+                        try:
+                            fns = extract_c_functions(src.read_text(encoding="utf-8", errors="replace"))
+                            for fn_name in fns.keys():
+                                if fn_name in ("main", "setUp", "tearDown"):
+                                    continue
+                                for prop in act_cfg.property_testing.properties:
+                                    p_res = prop_runner.run_property_test(
+                                        student_source=src,
+                                        property_type=prop,
+                                        target_function=fn_name,
+                                        iterations=50,
+                                    )
+                                    status_str = "PASSED" if p_res.passed else "FAILED"
+                                    compilation_logs.append(
+                                        f"=== Property Test [{prop.upper()}] (`{fn_name}()` en {src.name}) ===\nResultado: {status_str} ({p_res.iterations_run} iters)\n{p_res.message}\n"
+                                    )
+                        except Exception as e:
+                            compilation_logs.append(f"[PropertyTesting] Error evaluando {src.name}: {e}\n")
+
 
                     # 3.3 Análisis Estático Cppcheck individual (si está habilitado)
                     if act_cfg.cppcheck.enabled:

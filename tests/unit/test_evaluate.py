@@ -206,3 +206,86 @@ def test_evaluator_runs_custom_cli_tools(tmp_path):
     assert "Auditoria_OK_para_ejercicio1.c" in report_text
 
 
+def test_evaluator_runs_diagrams_and_advanced_verifications(tmp_path):
+    ws = tmp_path
+    act_slug = "tp-diagrams_222"
+    student_slug = "diaz-carlos_222"
+
+    student_dir = ws / act_slug / student_slug
+    r1_dir = student_dir / "r1"
+    r1_dir.mkdir(parents=True, exist_ok=True)
+    (r1_dir / "ejercicio1.c").write_text(
+        """
+        #include <stdio.h>
+        struct Nodo {
+            int dato;
+            struct Nodo *sig;
+        };
+
+        void procesar(int x) {
+            if (x > 0) {
+                printf("Positivo\\n");
+            }
+        }
+
+        int main(void) {
+            procesar(10);
+            return 0;
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    db = DatabaseManager(student_dir / ".metadata.db")
+    db.upsert_student(
+        StudentRecord(
+            student_id="222",
+            full_name="Diaz Carlos",
+            slug=student_slug,
+            submission_id="222",
+        )
+    )
+    db.add_revision(
+        student_slug=student_slug,
+        version_num=1,
+        sources_hash="sha222",
+        folder_path=str(r1_dir),
+        sources=[{"filename": "ejercicio1.c", "file_hash": "sha222", "size_bytes": 120}],
+        ignored=[],
+    )
+
+    practice_dir = ws / "practicas" / act_slug
+    practice_dir.mkdir(parents=True, exist_ok=True)
+    (practice_dir / "ripley.toml").write_text(
+        """
+        [compiler]
+        enabled = true
+
+        [flowchart]
+        enabled = true
+        format = "mermaid"
+
+        [memory_visualizer]
+        enabled = true
+
+        [callgraph]
+        enabled = true
+        format = "mermaid"
+
+        [ast_auditors]
+        enabled = true
+        """,
+        encoding="utf-8",
+    )
+
+    evaluator = Evaluator(config=RipleyConfig(), workspace_dir=ws)
+    res = evaluator.evaluate_student(act_slug, student_dir)
+
+    assert res is not None
+    report_text = res.report_file.read_text(encoding="utf-8")
+    assert "Diagrama de Flujo" in report_text
+    assert "Diagrama de Topología de Memoria" in report_text
+    assert "Grafo de Invocación / Call Graph" in report_text
+
+
+

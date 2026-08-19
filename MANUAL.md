@@ -502,7 +502,51 @@ dead_code = true
 magic_numbers = true
 internal_clones = true
 naming = true
-doxygen = false
+
+[ast_auditors]
+enabled = false                 # Auditores de AST y sintaxis profunda
+const_correctness = true
+short_circuit = true
+deep_free = true
+string_null = true
+variable_shadowing = true
+dangling_stack_pointer = true
+overengineering = true
+evaluation_order = true
+string_literal_write = true
+backward_goto = true
+
+[flowchart]
+enabled = false                 # Generador de diagramas de flujo
+format = "mermaid"              # "mermaid" o "dot"
+
+[memory_visualizer]
+enabled = false                 # Diagramas de topología y estructuras en memoria
+format = "mermaid"              # "mermaid" o "dot"
+
+[callgraph]
+enabled = false                 # Grafo de llamadas y detección de recursión
+format = "mermaid"              # "mermaid" o "dot"
+include_stdlib = false
+
+[property_testing]
+enabled = false                 # Property-Based Testing
+properties = ["idempotence", "commutativity", "sort_invariant"]
+
+[pure_functions]
+enabled = false                 # Análisis de pureza y efectos de lado
+functions = []                  # Funciones a verificar (vacío = todas)
+
+[restrictions]
+enabled = false                 # Restricciones de código prohibido / requerido
+forbidden_constructs = []       # ej. ["goto", "global_vars", "float"]
+required_constructs = []        # ej. ["while", "struct", "pointers"]
+
+[doxygen]
+enabled = false                 # Auditoría de documentación técnica Doxygen
+require_brief = true
+require_params = true
+require_return = true
 
 [cppcheck]
 enabled = true
@@ -548,4 +592,5 @@ enabled = false
 stage = "source"
 fail_on_error = false
 ```
+
 

@@ -148,6 +148,69 @@ class SandboxConfig:
 
 
 @dataclass
+class FlowchartConfig:
+    enabled: bool = False
+    format: str = "mermaid"  # "mermaid" | "dot"
+
+
+@dataclass
+class MemoryVisualizerConfig:
+    enabled: bool = False
+    format: str = "mermaid"  # "mermaid" | "dot"
+
+
+@dataclass
+class CallgraphConfig:
+    enabled: bool = False
+    format: str = "mermaid"  # "mermaid" | "dot"
+    include_stdlib: bool = False
+
+
+@dataclass
+class PropertyTestingConfig:
+    enabled: bool = False
+    properties: List[str] = field(
+        default_factory=lambda: ["idempotence", "commutativity", "sort_invariant"]
+    )
+
+
+@dataclass
+class AstAuditorsConfig:
+    enabled: bool = False
+    const_correctness: bool = True
+    short_circuit: bool = True
+    deep_free: bool = True
+    string_null: bool = True
+    variable_shadowing: bool = True
+    dangling_stack_pointer: bool = True
+    overengineering: bool = True
+    evaluation_order: bool = True
+    string_literal_write: bool = True
+    backward_goto: bool = True
+
+
+@dataclass
+class PureFunctionsConfig:
+    enabled: bool = False
+    functions: List[str] = field(default_factory=list)
+
+
+@dataclass
+class RestrictionsConfig:
+    enabled: bool = False
+    forbidden_constructs: List[str] = field(default_factory=list)
+    required_constructs: List[str] = field(default_factory=list)
+
+
+@dataclass
+class DoxygenConfig:
+    enabled: bool = False
+    require_brief: bool = True
+    require_params: bool = True
+    require_return: bool = True
+
+
+@dataclass
 class CustomToolConfig:
     name: str
     command: str
@@ -166,13 +229,20 @@ class RipleyConfig:
     style: StyleConfig = field(default_factory=StyleConfig)
     p1_rules: P1RulesConfig = field(default_factory=P1RulesConfig)
     linters: LintersConfig = field(default_factory=LintersConfig)
+    ast_auditors: AstAuditorsConfig = field(default_factory=AstAuditorsConfig)
+    flowchart: FlowchartConfig = field(default_factory=FlowchartConfig)
+    memory_visualizer: MemoryVisualizerConfig = field(default_factory=MemoryVisualizerConfig)
+    callgraph: CallgraphConfig = field(default_factory=CallgraphConfig)
+    property_testing: PropertyTestingConfig = field(default_factory=PropertyTestingConfig)
+    pure_functions: PureFunctionsConfig = field(default_factory=PureFunctionsConfig)
+    restrictions: RestrictionsConfig = field(default_factory=RestrictionsConfig)
+    doxygen: DoxygenConfig = field(default_factory=DoxygenConfig)
     valgrind: ValgrindConfig = field(default_factory=ValgrindConfig)
     rubric: RubricConfig = field(default_factory=RubricConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
     sandbox: SandboxConfig = field(default_factory=SandboxConfig)
     custom_tools: List[CustomToolConfig] = field(default_factory=list)
     origen_configuracion: str = "Valores por defecto del sistema (ripley.toml no encontrado)"
-
 
 
     def validate(self) -> None:
@@ -202,7 +272,6 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     with open(path, "rb") as f:
         data: dict[str, Any] = tomllib.load(f)
 
-
     compiler_data = data.get("compiler", {})
     limits_data = data.get("limits", {})
     templates_data = data.get("templates", {})
@@ -210,6 +279,14 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     style_data = data.get("style", {})
     p1_rules_data = data.get("p1_rules", {})
     linters_data = data.get("linters", {})
+    ast_auditors_data = data.get("ast_auditors", {})
+    flowchart_data = data.get("flowchart", {})
+    memory_vis_data = data.get("memory_visualizer", {})
+    callgraph_data = data.get("callgraph", {})
+    prop_testing_data = data.get("property_testing", {})
+    pure_funcs_data = data.get("pure_functions", {})
+    restrictions_data = data.get("restrictions", {})
+    doxygen_data = data.get("doxygen", {})
     valgrind_data = data.get("valgrind", {})
     rubric_data = data.get("rubric", {})
     security_data = data.get("security", {})
@@ -267,6 +344,53 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             internal_clones=linters_data.get("internal_clones", True),
             naming=linters_data.get("naming", True),
             doxygen=linters_data.get("doxygen", False),
+        ),
+        ast_auditors=AstAuditorsConfig(
+            enabled=ast_auditors_data.get("enabled", False),
+            const_correctness=ast_auditors_data.get("const_correctness", True),
+            short_circuit=ast_auditors_data.get("short_circuit", True),
+            deep_free=ast_auditors_data.get("deep_free", True),
+            string_null=ast_auditors_data.get("string_null", True),
+            variable_shadowing=ast_auditors_data.get("variable_shadowing", True),
+            dangling_stack_pointer=ast_auditors_data.get("dangling_stack_pointer", True),
+            overengineering=ast_auditors_data.get("overengineering", True),
+            evaluation_order=ast_auditors_data.get("evaluation_order", True),
+            string_literal_write=ast_auditors_data.get("string_literal_write", True),
+            backward_goto=ast_auditors_data.get("backward_goto", True),
+        ),
+        flowchart=FlowchartConfig(
+            enabled=flowchart_data.get("enabled", False),
+            format=flowchart_data.get("format", "mermaid"),
+        ),
+        memory_visualizer=MemoryVisualizerConfig(
+            enabled=memory_vis_data.get("enabled", False),
+            format=memory_vis_data.get("format", "mermaid"),
+        ),
+        callgraph=CallgraphConfig(
+            enabled=callgraph_data.get("enabled", False),
+            format=callgraph_data.get("format", "mermaid"),
+            include_stdlib=callgraph_data.get("include_stdlib", False),
+        ),
+        property_testing=PropertyTestingConfig(
+            enabled=prop_testing_data.get("enabled", False),
+            properties=prop_testing_data.get(
+                "properties", ["idempotence", "commutativity", "sort_invariant"]
+            ),
+        ),
+        pure_functions=PureFunctionsConfig(
+            enabled=pure_funcs_data.get("enabled", False),
+            functions=pure_funcs_data.get("functions", []),
+        ),
+        restrictions=RestrictionsConfig(
+            enabled=restrictions_data.get("enabled", False),
+            forbidden_constructs=restrictions_data.get("forbidden_constructs", []),
+            required_constructs=restrictions_data.get("required_constructs", []),
+        ),
+        doxygen=DoxygenConfig(
+            enabled=doxygen_data.get("enabled", False),
+            require_brief=doxygen_data.get("require_brief", True),
+            require_params=doxygen_data.get("require_params", True),
+            require_return=doxygen_data.get("require_return", True),
         ),
         valgrind=ValgrindConfig(
             enabled=valgrind_data.get("enabled", True),
@@ -343,7 +467,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
         origen_configuracion=f"Archivo de configuración: '{path}'",
     )
 
-
     cfg.validate()
     return cfg
+
 
