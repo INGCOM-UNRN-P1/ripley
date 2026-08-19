@@ -337,6 +337,7 @@ def cmd_testcase_check(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Valida la integridad de parejas .in / .out en los casos de prueba."""
+    activity = Path(activity).name or activity.strip("/\\")
     is_valid, errors = check_testcases_integrity(workspace_dir=workspace, activity_slug=activity)
     if is_valid:
         console.print(
@@ -374,6 +375,7 @@ def cmd_testcase_map(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Herramienta interactiva para revisar el mapeo de archivos fuente (.c) a testcases."""
+    activity = Path(activity).name or activity.strip("/\\")
     # Descubrir ejercicios existentes
     exercises = discover_testcases(workspace_dir=workspace, activity_slug=activity)
     available_exercises = list(exercises.keys())
@@ -412,7 +414,9 @@ def cmd_testcase_fuzz(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Genera automáticamente casos de prueba de borde y entradas fuzzed."""
-    target_dir = Path(workspace) / "tests" / activity / exercise
+    activity = Path(activity).name or activity.strip("/\\")
+    practice_tests = Path(workspace) / "practicas" / activity / "ejercicios" / exercise / "tests"
+    target_dir = practice_tests if practice_tests.parent.exists() else Path(workspace) / "tests" / activity / exercise
     fuzzer = Fuzzer()
 
     # Si no se pasó solución pero existe en practicas/<activity>/ejercicios/<exercise>/solucion_modelo.c
@@ -431,7 +435,7 @@ def cmd_testcase_fuzz(
             start_index=start_idx,
         )
         console.print(
-            f"\n[bold green]✓ Se generaron {len(pairs)} casos de prueba por fuzzing en 'tests/{activity}/{exercise}/':[/bold green]\n"
+            f"\n[bold green]✓ Se generaron {len(pairs)} casos de prueba por fuzzing en '{target_dir}':[/bold green]\n"
         )
         for in_f, out_f in pairs:
             console.print(f" - [cyan]{in_f.name}[/cyan] / [cyan]{out_f.name}[/cyan]")
@@ -460,7 +464,9 @@ def cmd_plagiarism(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Analiza la similitud estructural de código y sospechas de plagio entre entregas de la cohorte."""
+    activity = Path(activity).name or activity.strip("/\\")
     act_dir = Path(workspace) / activity
+
     if not act_dir.exists():
         console.print(f"[bold red]Directorio de actividad no encontrado: '{act_dir}'[/bold red]")
         raise typer.Exit(code=1)
@@ -508,6 +514,7 @@ def cmd_evaluate(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Ejecuta la compilación, linters, estilo, pruebas y calificación de los estudiantes."""
+    activity = Path(activity).name or activity.strip("/\\")
     cfg = load_config()
     evaluator = Evaluator(config=cfg, workspace_dir=workspace)
 
@@ -560,7 +567,9 @@ def cmd_export(
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
     """Exporta las calificaciones para Moodle (CSV), el ZIP masivo de retroalimentación y el dashboard."""
+    activity = Path(activity).name or activity.strip("/\\")
     exporter = MoodleExporter(workspace_dir=workspace)
+
     try:
         csv_path = exporter.export_grades_csv(activity)
         zip_path = exporter.export_feedback_zip(activity)

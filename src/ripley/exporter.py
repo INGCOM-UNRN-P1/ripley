@@ -58,6 +58,17 @@ class MoodleExporter:
                 )
                 eval_row = cursor.fetchone()
 
+                clean_slug = Path(activity_slug).name or activity_slug.strip("/\\")
+                rep_candidate = s_dir / f"{s_dir.name}_{clean_slug}.md"
+                if not rep_candidate.exists():
+                    # Fallback si existe con nombre simple <student_slug>.md o cualquier .md
+                    if (s_dir / f"{s_dir.name}.md").exists():
+                        rep_candidate = s_dir / f"{s_dir.name}.md"
+                    else:
+                        mds = [f for f in s_dir.glob("*.md") if f.is_file()]
+                        if mds:
+                            rep_candidate = mds[0]
+
                 s_dict = {
                     "slug": s_dir.name,
                     "student_name": student_row["full_name"] if student_row else s_dir.name,
@@ -71,9 +82,10 @@ class MoodleExporter:
                     "grade_style": eval_row["grade_style"] if eval_row else 0.0,
                     "grade_linter": eval_row["grade_linter"] if eval_row else 0.0,
                     "grade_tests": eval_row["grade_tests"] if eval_row else 0.0,
-                    "report_file": s_dir / f"{s_dir.name}_{activity_slug}.md",
+                    "report_file": rep_candidate,
                 }
                 students_data.append(s_dict)
+
 
         return students_data
 

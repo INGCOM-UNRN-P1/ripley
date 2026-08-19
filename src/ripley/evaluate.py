@@ -85,7 +85,8 @@ class Evaluator:
 
     def get_activity_config(self, activity_slug: str) -> RipleyConfig:
         """Obtiene la configuración específica de la práctica si existe en practicas/<slug>/ripley.toml, o fallback a la global."""
-        practice_toml = self.workspace_dir / "practicas" / activity_slug / "ripley.toml"
+        clean_slug = Path(activity_slug).name or activity_slug.strip("/\\")
+        practice_toml = self.workspace_dir / "practicas" / clean_slug / "ripley.toml"
         if practice_toml.exists():
             return load_config(practice_toml)
         root_toml = self.workspace_dir / "ripley.toml"
@@ -98,6 +99,7 @@ class Evaluator:
         activity_slug: str,
         student_dir: Path,
     ) -> Optional[StudentEvaluationSummary]:
+        clean_act_slug = Path(activity_slug).name or activity_slug.strip("/\\")
         db_path = student_dir / ".metadata.db"
         if not db_path.exists():
             return None
@@ -109,7 +111,8 @@ class Evaluator:
             return None
 
         # Cargar configuración específica de la actividad y sus herramientas activas
-        act_cfg = self.get_activity_config(activity_slug)
+        act_cfg = self.get_activity_config(clean_act_slug)
+
         compiler = Compiler(act_cfg.compiler, act_cfg.limits, act_cfg.sandbox)
         security_scanner = SecurityScanner(act_cfg.security)
         style_analyzer = StyleAnalyzer(act_cfg.style)
@@ -552,7 +555,7 @@ class Evaluator:
                     tests_passed=tests_passed_count,
                     total_tests=total_tests_count,
                     preliminary_grade=breakdown.nota_preliminar,
-                    report_file=student_dir / f"{student_slug}_{activity_slug}.md",
+                    report_file=student_dir / f"{student_slug}_{clean_act_slug}.md",
                 )
 
         if not version_contexts or not latest_summary:
@@ -562,14 +565,15 @@ class Evaluator:
         student_report_ctx = StudentReportContext(
             estudiante_nombre=student_slug,
             estudiante_id=student_slug.split("_")[-1] if "_" in student_slug else "0",
-            actividad_nombre=activity_slug,
-            actividad_id=activity_slug.split("_")[-1] if "_" in activity_slug else "0",
+            actividad_nombre=clean_act_slug,
+            actividad_id=clean_act_slug.split("_")[-1] if "_" in clean_act_slug else "0",
             revision_actual=f"r{len(version_contexts)}",
             fecha_generacion=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             origen_configuracion=act_cfg.origen_configuracion,
             versiones=version_contexts,
             nota_final_preliminar=latest_summary.preliminary_grade,
         )
+
 
         reporter.write_student_report(
             output_file=latest_summary.report_file,
