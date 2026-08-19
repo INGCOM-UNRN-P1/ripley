@@ -8,6 +8,7 @@ import tomllib
 
 @dataclass
 class CompilerConfig:
+    enabled: bool = True
     executable: str = "gcc"
     flags: List[str] = field(
         default_factory=lambda: [
@@ -34,6 +35,7 @@ class TemplatesConfig:
 
 @dataclass
 class CppcheckConfig:
+    enabled: bool = True
     ejecutable: str = "cppcheck"
     parametros: List[str] = field(
         default_factory=lambda: [
@@ -46,9 +48,9 @@ class CppcheckConfig:
     reglas_python: List[str] = field(default_factory=list)
 
 
-
 @dataclass
 class StyleConfig:
+    enabled: bool = True
     brace_style: str = "allman"  # "allman" | "bsd" | "break" | "k&r" | "attach"
     require_braces: bool = True
     indent_style: str = "spaces"  # "spaces" | "tabs"
@@ -57,6 +59,21 @@ class StyleConfig:
     spacing_keywords: bool = True
     no_trailing_whitespace: bool = True
     max_blank_lines: int = 2
+
+
+@dataclass
+class P1RulesConfig:
+    enabled: bool = True
+
+
+@dataclass
+class LintersConfig:
+    enabled: bool = False
+    dead_code: bool = True
+    magic_numbers: bool = True
+    internal_clones: bool = True
+    naming: bool = True
+    doxygen: bool = False
 
 
 @dataclass
@@ -71,7 +88,6 @@ class ValgrindConfig:
             "--error-exitcode=1",
         ]
     )
-
 
 
 @dataclass
@@ -89,6 +105,7 @@ class RubricConfig:
 
 @dataclass
 class SecurityConfig:
+    enabled: bool = True
     forbidden_calls: List[str] = field(
         default_factory=lambda: [
             "system",
@@ -137,11 +154,14 @@ class RipleyConfig:
     templates: TemplatesConfig = field(default_factory=TemplatesConfig)
     cppcheck: CppcheckConfig = field(default_factory=CppcheckConfig)
     style: StyleConfig = field(default_factory=StyleConfig)
+    p1_rules: P1RulesConfig = field(default_factory=P1RulesConfig)
+    linters: LintersConfig = field(default_factory=LintersConfig)
     valgrind: ValgrindConfig = field(default_factory=ValgrindConfig)
     rubric: RubricConfig = field(default_factory=RubricConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
     sandbox: SandboxConfig = field(default_factory=SandboxConfig)
     origen_configuracion: str = "Valores por defecto del sistema (ripley.toml no encontrado)"
+
 
     def validate(self) -> None:
         self.rubric.validate()
@@ -176,6 +196,8 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     templates_data = data.get("templates", {})
     cppcheck_data = data.get("cppcheck", {})
     style_data = data.get("style", {})
+    p1_rules_data = data.get("p1_rules", {})
+    linters_data = data.get("linters", {})
     valgrind_data = data.get("valgrind", {})
     rubric_data = data.get("rubric", {})
     security_data = data.get("security", {})
@@ -183,6 +205,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
 
     cfg = RipleyConfig(
         compiler=CompilerConfig(
+            enabled=compiler_data.get("enabled", True),
             executable=compiler_data.get("executable", "gcc"),
             flags=compiler_data.get(
                 "flags",
@@ -198,6 +221,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             ruta_plantillas=templates_data.get("ruta_plantillas", "templates/"),
         ),
         cppcheck=CppcheckConfig(
+            enabled=cppcheck_data.get("enabled", True),
             ejecutable=cppcheck_data.get("ejecutable", "cppcheck"),
             parametros=cppcheck_data.get(
                 "parametros",
@@ -210,8 +234,8 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             ),
             reglas_python=cppcheck_data.get("reglas_python", []),
         ),
-
         style=StyleConfig(
+            enabled=style_data.get("enabled", True),
             brace_style=style_data.get("brace_style", "allman"),
             require_braces=style_data.get("require_braces", True),
             indent_style=style_data.get("indent_style", "spaces"),
@@ -220,6 +244,17 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             spacing_keywords=style_data.get("spacing_keywords", True),
             no_trailing_whitespace=style_data.get("no_trailing_whitespace", True),
             max_blank_lines=style_data.get("max_blank_lines", 2),
+        ),
+        p1_rules=P1RulesConfig(
+            enabled=p1_rules_data.get("enabled", True),
+        ),
+        linters=LintersConfig(
+            enabled=linters_data.get("enabled", False),
+            dead_code=linters_data.get("dead_code", True),
+            magic_numbers=linters_data.get("magic_numbers", True),
+            internal_clones=linters_data.get("internal_clones", True),
+            naming=linters_data.get("naming", True),
+            doxygen=linters_data.get("doxygen", False),
         ),
         valgrind=ValgrindConfig(
             enabled=valgrind_data.get("enabled", True),
@@ -240,6 +275,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             peso_pruebas=rubric_data.get("peso_pruebas", 0.35),
         ),
         security=SecurityConfig(
+            enabled=security_data.get("enabled", True),
             forbidden_calls=security_data.get(
                 "forbidden_calls",
                 [
@@ -282,6 +318,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
         ),
         origen_configuracion=f"Archivo de configuración: '{path}'",
     )
+
     cfg.validate()
     return cfg
 

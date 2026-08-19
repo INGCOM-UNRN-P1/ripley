@@ -10,13 +10,19 @@ import tempfile
 from typing import Any, Callable, Dict, List, Optional
 
 
-from ripley.compiler import Compiler
-from ripley.config import RipleyConfig
+from ripley.compiler import CompilationResult, Compiler
+from ripley.config import RipleyConfig, load_config
 from ripley.db import DatabaseManager
 from ripley.diffing import generate_unified_diff
+from ripley.linters import (
+    DeadCodeLinter,
+    InternalCloneLinter,
+    MagicNumberLinter,
+    NamingConventionLinter,
+)
 from ripley.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
+from ripley.p1_rules import P1RuleChecker
 from ripley.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
-
 from ripley.runner import (
     CppcheckResult,
     CppcheckRunner,
@@ -25,9 +31,8 @@ from ripley.runner import (
     ValgrindResult,
     ValgrindRunner,
 )
-
 from ripley.security import SecurityScanner
-from ripley.style import StyleAnalyzer
+from ripley.style import StyleCheckResult, StyleAnalyzer
 from ripley.testcases import discover_testcases
 
 
@@ -54,14 +59,16 @@ class Evaluator:
     ) -> None:
         self.config = config
         self.workspace_dir = Path(workspace_dir)
-        self.compiler = Compiler(config.compiler, config.limits, config.sandbox)
-        self.security_scanner = SecurityScanner(config.security)
-        self.style_analyzer = StyleAnalyzer(config.style)
-        self.valgrind_runner = ValgrindRunner(config.valgrind, config.limits)
-        self.cppcheck_runner = CppcheckRunner(config.cppcheck)
-        self.test_runner = DynamicTestRunner(config.limits)
-        self.rubric_calc = RubricCalculator(config.rubric)
-        self.reporter = MarkdownReporter(config.templates.ruta_plantillas)
+
+    def get_activity_config(self, activity_slug: str) -> RipleyConfig:
+        """Obtiene la configuración específica de la práctica si existe en practicas/<slug>/ripley.toml, o fallback a la global."""
+        practice_toml = self.workspace_dir / "practicas" / activity_slug / "ripley.toml"
+        if practice_toml.exists():
+            return load_config(practice_toml)
+        root_toml = self.workspace_dir / "ripley.toml"
+        if root_toml.exists():
+            return load_config(root_toml)
+        return self.config
 
     def evaluate_student(
         self,
@@ -77,6 +84,18 @@ class Evaluator:
         revisions = db.get_all_revisions(student_slug)
         if not revisions:
             return None
+
+        # Cargar configuración específica de la actividad y sus herramientas activas
+        act_cfg = self.get_activity_config(activity_slug)
+        compiler = Compiler(act_cfg.compiler, act_cfg.limits, act_cfg.sandbox)
+        security_scanner = SecurityScanner(act_cfg.security)
+        style_analyzer = StyleAnalyzer(act_cfg.style)
+        p1_checker = P1RuleChecker() if act_cfg.p1_rules.enabled else None
+        valgrind_runner = ValgrindRunner(act_cfg.valgrind, act_cfg.limits)
+        cppcheck_runner = CppcheckRunner(act_cfg.cppcheck)
+        test_runner = DynamicTestRunner(act_cfg.limits)
+        rubric_calc = RubricCalculator(act_cfg.rubric)
+        reporter = MarkdownReporter(act_cfg.templates.ruta_plantillas)
 
         # Descubrir casos de prueba para la actividad
         testcases_by_exercise = discover_testcases(self.workspace_dir, activity_slug)
@@ -105,8 +124,11 @@ class Evaluator:
                     new_folder=rev_folder,
                 )
 
-                # 2. Escaneo de seguridad preventivo
-                security_violations = self.security_scanner.scan_files(all_sources)
+                # 2. Escaneo de seguridad preventivo (si está habilitado)
+                if act_cfg.security.enabled:
+                    security_violations = security_scanner.scan_files(all_sources)
+                else:
+                    security_violations = []
 
                 # 3. Compilación, Estilo, Cppcheck y Valgrind Estrictamente Archivo por Archivo
                 mapping_store = MappingStore(self.workspace_dir, activity_slug)
@@ -117,7 +139,6 @@ class Evaluator:
                 all_style_obs: List[Dict[str, Any]] = []
                 compilation_logs: List[str] = []
                 file_compilation_status: Dict[str, bool] = {}
-
 
                 total_style_sum = 0.0
                 total_cppcheck_violations = 0
@@ -135,59 +156,98 @@ class Evaluator:
                     if target == SPECIAL_IGNORE:
                         continue
 
-                    # 3.1 Compilación individual (un archivo por vez)
+                    # 3.1 Compilación individual (si está habilitada)
                     bin_out = temp_path / f"bin_v{v_num}_{src.stem}"
-                    comp_res = self.compiler.compile([src], bin_out)
-                    file_compilation_status[src.name] = comp_res.success
+                    if act_cfg.compiler.enabled:
+                        comp_res = compiler.compile([src], bin_out)
+                        file_compilation_status[src.name] = comp_res.success
 
-                    if comp_res.success:
-                        compiled_binaries[src.name] = bin_out
-                        compiled_binaries[src.stem] = bin_out
-                        if target and target != SPECIAL_AUXILIARY:
-                            compiled_binaries[target] = bin_out
+                        if comp_res.success:
+                            compiled_binaries[src.name] = bin_out
+                            compiled_binaries[src.stem] = bin_out
+                            if target and target != SPECIAL_AUXILIARY:
+                                compiled_binaries[target] = bin_out
+                        else:
+                            all_compiled = False
+
+                        # Salida de compilación individual
+                        compiler_raw = (comp_res.stdout + "\n" + comp_res.stderr).strip()
+                        display_target = f" -> {target}" if target else ""
+                        if compiler_raw:
+                            compilation_logs.append(
+                                f"=== Salida del Compilador ({src.name}{display_target}) ===\n{compiler_raw}\n"
+                            )
+                        else:
+                            compilation_logs.append(
+                                f"=== Salida del Compilador ({src.name}{display_target}) ===\nCompilación limpia sin errores ni advertencias.\n"
+                            )
                     else:
-                        all_compiled = False
+                        comp_res = CompilationResult(success=True, binary_path=None, stdout="", stderr="", returncode=0)
+                        file_compilation_status[src.name] = True
+                        compilation_logs.append(f"=== Compilador ({src.name}) ===\nCompilación desactivada en configuración.\n")
 
-                    # Salida de compilación individual
-                    compiler_raw = (comp_res.stdout + "\n" + comp_res.stderr).strip()
-                    display_target = f" -> {target}" if target else ""
-                    if compiler_raw:
-                        compilation_logs.append(
-                            f"=== Salida del Compilador ({src.name}{display_target}) ===\n{compiler_raw}\n"
-                        )
+                    # 3.2 Análisis de Estilo individual (si está habilitado)
+                    s_score = 10.0
+                    if act_cfg.style.enabled:
+                        s_res = style_analyzer.analyze_file(src)
+                        s_score = s_res.score
+                        total_style_sum += s_res.score
+                        for obs in s_res.observaciones:
+                            all_style_obs.append(
+                                {
+                                    "archivo": obs.archivo,
+                                    "linea": obs.linea,
+                                    "mensaje": obs.mensaje,
+                                }
+                            )
                     else:
-                        compilation_logs.append(
-                            f"=== Salida del Compilador ({src.name}{display_target}) ===\nCompilación limpia sin errores ni advertencias.\n"
-                        )
+                        total_style_sum += 10.0
 
-                    # 3.2 Análisis de Estilo individual (un archivo por vez)
-                    s_res = self.style_analyzer.analyze_file(src)
-                    total_style_sum += s_res.score
-                    for obs in s_res.observaciones:
-                        all_style_obs.append(
-                            {
-                                "archivo": obs.archivo,
-                                "linea": obs.linea,
-                                "mensaje": obs.mensaje,
-                            }
-                        )
+                    # 3.2.1 Reglas oficiales de Programación I (P1 Rules)
+                    if p1_checker is not None:
+                        src_content = src.read_text(encoding="utf-8", errors="replace")
+                        p1_obs = p1_checker.analyze(src_content, src.name)
+                        for obs in p1_obs:
+                            all_style_obs.append(
+                                {
+                                    "archivo": obs.filename,
+                                    "linea": obs.line,
+                                    "mensaje": f"[{obs.rule_code}] {obs.title}: {obs.message}",
+                                }
+                            )
 
-                    # 3.3 Análisis Estático Cppcheck individual (un archivo por vez)
-                    cpp_res = self.cppcheck_runner.analyze([src])
-                    total_cppcheck_violations += cpp_res.violations_count
-                    if cpp_res.full_output:
-                        compilation_logs.append(
-                            f"--- Logs Cppcheck ({src.name}) ---\n{cpp_res.full_output}\n"
-                        )
+                    # 3.2.2 Linters especializados (si están habilitados)
+                    if act_cfg.linters.enabled:
+                        src_content = src.read_text(encoding="utf-8", errors="replace")
+                        if act_cfg.linters.dead_code:
+                            for obs in DeadCodeLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[DeadCode] {obs.message}"})
+                        if act_cfg.linters.magic_numbers:
+                            for obs in MagicNumberLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[MagicNumber] {obs.message}"})
+                        if act_cfg.linters.naming:
+                            for obs in NamingConventionLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Naming] {obs.message}"})
 
-                    # 3.4 Auditoría de Memoria Valgrind individual
-                    if comp_res.success:
-                        valg_res = self.valgrind_runner.audit(bin_out)
+                    # 3.3 Análisis Estático Cppcheck individual (si está habilitado)
+                    if act_cfg.cppcheck.enabled:
+                        cpp_res = cppcheck_runner.analyze([src])
+                        total_cppcheck_violations += cpp_res.violations_count
+                        if cpp_res.full_output:
+                            compilation_logs.append(
+                                f"--- Logs Cppcheck ({src.name}) ---\n{cpp_res.full_output}\n"
+                            )
+                    else:
+                        cpp_res = CppcheckResult(passed=True, violations_count=0, summary="Desactivado", full_output="")
+
+                    # 3.4 Auditoría de Memoria Valgrind individual (si está habilitado)
+                    if act_cfg.valgrind.enabled and act_cfg.compiler.enabled and comp_res.success:
+                        valg_res = valgrind_runner.audit(bin_out)
                     else:
                         valg_res = ValgrindResult(
-                            enabled=self.valgrind_runner.valgrind_cfg.enabled,
-                            passed=False,
-                            summary="-",
+                            enabled=act_cfg.valgrind.enabled,
+                            passed=True,
+                            summary="Desactivado" if not act_cfg.valgrind.enabled else "-",
                             full_output="",
                         )
                     if valg_res.full_output:
@@ -199,10 +259,10 @@ class Evaluator:
                     compilation_results_table.append(
                         {
                             "nombre_archivo": src.name,
-                            "estado": "✓ Compilación OK" if comp_res.success else "✗ Falló Compilación",
-                            "estado_estilo": f"{s_res.score}/10",
-                            "estado_valgrind": valg_res.summary if comp_res.success else "-",
-                            "estado_cppcheck": cpp_res.summary,
+                            "estado": "✓ Compilación OK" if comp_res.success else ("Desactivada" if not act_cfg.compiler.enabled else "✗ Falló Compilación"),
+                            "estado_estilo": f"{s_score}/10" if act_cfg.style.enabled else "Desactivado",
+                            "estado_valgrind": valg_res.summary if (comp_res.success and act_cfg.valgrind.enabled) else ("Desactivado" if not act_cfg.valgrind.enabled else "-"),
+                            "estado_cppcheck": cpp_res.summary if act_cfg.cppcheck.enabled else "Desactivado",
                         }
                     )
 
@@ -241,7 +301,7 @@ class Evaluator:
 
                         for tc in cases:
                             total_tests_count += 1
-                            r_detail = self.test_runner.run_case(bin_for_ex, tc)
+                            r_detail = test_runner.run_case(bin_for_ex, tc)
                             if r_detail.resultado == "PASSED":
                                 tests_passed_count += 1
                             test_results.append(
@@ -255,7 +315,7 @@ class Evaluator:
                             )
 
                 # 5. Cálculo de Rúbrica
-                breakdown = self.rubric_calc.calculate(
+                breakdown = rubric_calc.calculate(
                     compiled=compiled,
                     style_score=avg_style_score,
                     linter_passed=total_cppcheck_violations == 0,
@@ -263,7 +323,6 @@ class Evaluator:
                     tests_passed_count=tests_passed_count,
                     total_tests_count=total_tests_count,
                 )
-
 
                 # 9. Guardar evaluación en BD
                 db.save_evaluation(
@@ -323,16 +382,16 @@ class Evaluator:
             actividad_id=activity_slug.split("_")[-1] if "_" in activity_slug else "0",
             revision_actual=f"r{len(version_contexts)}",
             fecha_generacion=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            origen_configuracion=self.config.origen_configuracion,
+            origen_configuracion=act_cfg.origen_configuracion,
             versiones=version_contexts,
             nota_final_preliminar=latest_summary.preliminary_grade,
         )
 
-
-        self.reporter.write_student_report(
+        reporter.write_student_report(
             output_file=latest_summary.report_file,
             ctx=student_report_ctx,
         )
+
 
         return latest_summary
 

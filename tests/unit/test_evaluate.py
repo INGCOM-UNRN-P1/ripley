@@ -79,3 +79,71 @@ def test_evaluator_evaluates_student_successfully(tmp_path):
     assert "Versión 1" in report_text
     assert "ejercicio1" in report_text
     assert "PASSED" in report_text
+
+
+def test_evaluator_activity_custom_verification_tools(tmp_path):
+    ws = tmp_path
+    act_slug = "tp-custom_999"
+    student_slug = "gomez-ana_999"
+
+    student_dir = ws / act_slug / student_slug
+    r1_dir = student_dir / "r1"
+    r1_dir.mkdir(parents=True, exist_ok=True)
+    (r1_dir / "ejercicio1.c").write_text(
+        "int main(void) { return 0; }\n",
+        encoding="utf-8",
+    )
+
+    db = DatabaseManager(student_dir / ".metadata.db")
+    db.upsert_student(
+        StudentRecord(
+            student_id="999",
+            full_name="Gomez Ana",
+            slug=student_slug,
+            submission_id="999",
+        )
+    )
+    db.add_revision(
+        student_slug=student_slug,
+        version_num=1,
+        sources_hash="sha999",
+        folder_path=str(r1_dir),
+        sources=[{"filename": "ejercicio1.c", "file_hash": "sha999", "size_bytes": 30}],
+        ignored=[],
+    )
+
+    # Crear ripley.toml en practicas/<act_slug> con cppcheck y valgrind desactivados
+    practice_dir = ws / "practicas" / act_slug
+    practice_dir.mkdir(parents=True, exist_ok=True)
+    (practice_dir / "ripley.toml").write_text(
+        """
+        [compiler]
+        enabled = true
+
+        [cppcheck]
+        enabled = false
+
+        [valgrind]
+        enabled = false
+
+        [style]
+        enabled = false
+
+        [rubric]
+        peso_compilacion = 0.5
+        peso_linter = 0.0
+        peso_estilo = 0.0
+        peso_pruebas = 0.5
+        """,
+        encoding="utf-8",
+    )
+
+    evaluator = Evaluator(config=RipleyConfig(), workspace_dir=ws)
+    res = evaluator.evaluate_student(act_slug, student_dir)
+
+    assert res is not None
+    assert res.compiled is True
+    report_text = res.report_file.read_text(encoding="utf-8")
+    assert "Desactivado" in report_text
+    assert f"practicas/{act_slug}/ripley.toml" in report_text
+
