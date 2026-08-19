@@ -20,6 +20,23 @@ class DoxygenObservation:
 class DoxygenAuditor:
     """Audita la presencia y completitud de comentarios Doxygen en funciones C."""
 
+    def __init__(
+        self,
+        require_brief: bool = True,
+        require_params: bool = True,
+        require_return: bool = True,
+    ) -> None:
+        self.require_brief = require_brief
+        self.require_params = require_params
+        self.require_return = require_return
+
+    def audit_file(self, file_path: Path | str) -> List[DoxygenObservation]:
+        path = Path(file_path)
+        if not path.exists():
+            return []
+        code = path.read_text(encoding="utf-8", errors="replace")
+        return self.audit_code(code, filename=path.name)
+
     def audit_code(self, code: str, filename: str = "archivo.c") -> List[DoxygenObservation]:
         observations: List[DoxygenObservation] = []
         functions = extract_c_functions(code)
@@ -50,21 +67,23 @@ class DoxygenAuditor:
             missing: List[str] = []
 
             # 1. Verificar descripción / @brief
-            has_brief = bool(re.search(r"(@brief|\\brief|[a-zA-Z]{3,})", doc_text))
-            if not has_brief or not doc_text:
-                missing.append("@brief (descripción de la función)")
+            if self.require_brief:
+                has_brief = bool(re.search(r"(@brief|\\brief|[a-zA-Z]{3,})", doc_text))
+                if not has_brief or not doc_text:
+                    missing.append("@brief (descripción de la función)")
 
             # 2. Verificar parámetros (@param)
-            if fobj.params and fobj.params.strip() != "void":
+            if self.require_params and fobj.params and fobj.params.strip() != "void":
                 param_names = self._extract_param_names(fobj.params)
                 for p in param_names:
                     if not re.search(rf"(@param|\\param)\s+({re.escape(p)}\b|\[[^\]]+\]\s+{re.escape(p)}\b)", doc_text):
                         missing.append(f"@param {p}")
 
             # 3. Verificar retorno (@return) para funciones no void
-            if fobj.return_type and fobj.return_type.strip() != "void":
+            if self.require_return and fobj.return_type and fobj.return_type.strip() != "void":
                 if not re.search(r"(@return|\\return|@returns|\\returns)", doc_text):
                     missing.append("@return")
+
 
             if missing:
                 observations.append(

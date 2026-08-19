@@ -298,10 +298,10 @@ class Evaluator:
                             forbidden_constructs=act_cfg.restrictions.forbidden_constructs,
                             required_constructs=act_cfg.restrictions.required_constructs,
                         )
-                        r_res = rest_val.validate_file(src)
-                        if not r_res.valid:
-                            for err in r_res.violations:
-                                all_style_obs.append({"archivo": src.name, "linea": 1, "mensaje": f"[Restricción] {err}"})
+                        violations = rest_val.validate_file(src)
+                        for viol in violations:
+                            all_style_obs.append({"archivo": src.name, "linea": viol.line_number, "mensaje": f"[Restricción:{viol.violation_type}] {viol.message}"})
+
 
                     # 3.2.5 Auditoría de Documentación Doxygen (si está habilitada)
                     if act_cfg.doxygen.enabled:
@@ -317,10 +317,11 @@ class Evaluator:
                     # 3.2.6 Análisis de Funciones Puras (si está habilitado)
                     if act_cfg.pure_functions.enabled:
                         pure_analyzer = PureFunctionAnalyzer(target_functions=act_cfg.pure_functions.functions)
-                        p_res = pure_analyzer.analyze_file(src)
-                        for fname, stat in p_res.functions.items():
-                            if not stat.is_pure:
-                                all_style_obs.append({"archivo": src.name, "linea": 1, "mensaje": f"[FunciónPura] '{fname}' no es pura: {', '.join(stat.side_effects)}"})
+                        p_obs = pure_analyzer.analyze_file(src)
+                        for obs in p_obs:
+                            if not obs.is_pure:
+                                all_style_obs.append({"archivo": src.name, "linea": obs.line, "mensaje": f"[FunciónPura] `{obs.function_name}()` no es pura: {', '.join(obs.violations)}"})
+
 
                     # 3.2.7 Generación de Diagramas de Flujo (si está habilitado)
                     if act_cfg.flowchart.enabled:

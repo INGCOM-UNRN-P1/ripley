@@ -33,7 +33,15 @@ class CodeRestrictionsValidator:
         self.forbidden_headers = [h.lower() for h in (forbidden_headers or [])]
         self.forbidden_functions = [f.lower() for f in (forbidden_functions or [])]
 
+    def validate_file(self, file_path: Path | str) -> List[RestrictionViolation]:
+        path = Path(file_path)
+        if not path.exists():
+            return []
+        code = path.read_text(encoding="utf-8", errors="replace")
+        return self.validate_code(code, filename=path.name)
+
     def validate_code(self, code: str, filename: str = "entrega.c") -> List[RestrictionViolation]:
+
         violations: List[RestrictionViolation] = []
         clean = strip_c_comments_and_strings(code)
         tokens = tokenize_c_code(code)

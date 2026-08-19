@@ -29,7 +29,21 @@ class PureFunctionAnalyzer:
         "fread", "fwrite", "fprintf", "fscanf", "gets", "fgets", "system",
     }
 
+    def __init__(self, target_functions: Optional[List[str]] = None) -> None:
+        self.target_functions = set(target_functions or [])
+
+    def analyze_file(self, file_path: Path | str) -> List[PureFunctionObservation]:
+        path = Path(file_path)
+        if not path.exists():
+            return []
+        code = path.read_text(encoding="utf-8", errors="replace")
+        observations = self.analyze_static(code)
+        if self.target_functions:
+            return [obs for obs in observations if obs.function_name in self.target_functions]
+        return observations
+
     def analyze_static(self, code: str) -> List[PureFunctionObservation]:
+
         """Análisis estático de pureza basado en inspección de llamadas y mutaciones."""
         observations: List[PureFunctionObservation] = []
         functions = extract_c_functions(code)
