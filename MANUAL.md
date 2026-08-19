@@ -593,4 +593,12 @@ stage = "source"
 fail_on_error = false
 ```
 
+---
+
+## 7. Referencias Adicionales
+
+- 🛠️ [Guía Completa de Configuración de Herramientas Externas para C (`HERRAMIENTAS_EXTERNAS.md`)](file:///home/mrtin/dev/p1/ripley/HERRAMIENTAS_EXTERNAS.md)
+- 📌 [Pautas Oficiales de Programación I (Reglas P1: 0x0001h - 0x5006h)](file:///home/mrtin/dev/p1/ripley/practicas/entrega-2_1236012/pautas_evaluacion.md)
+
+
 

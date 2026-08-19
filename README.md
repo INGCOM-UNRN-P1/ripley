@@ -150,7 +150,15 @@ uv run pytest -v
 
 ---
 
+## Documentación Adicional
+
+- 📖 [Manual de Referencia Técnica Completa (`MANUAL.md`)](file:///home/mrtin/dev/p1/ripley/MANUAL.md)
+- 🛠️ [Guía de Configuración de Herramientas Externas para C (`HERRAMIENTAS_EXTERNAS.md`)](file:///home/mrtin/dev/p1/ripley/HERRAMIENTAS_EXTERNAS.md)
+
+---
+
 ## Licencia
 
 Desarrollado para la cátedra de **Programación I** - **Universidad Nacional de Río Negro (UNRN)**.
 Uso interno académico y docente.
+
