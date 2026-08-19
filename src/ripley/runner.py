@@ -11,9 +11,26 @@ import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ripley.compiler import set_process_limits
-from ripley.config import CppcheckConfig, LimitsConfig, RubricConfig, ValgrindConfig
+from ripley.config import CustomToolConfig, CppcheckConfig, LimitsConfig, RubricConfig, ValgrindConfig
 from ripley.diagnostics import DiagnosisType, diagnose_runtime_crash
 from ripley.testcases import TestCaseInfo
+
+
+@dataclass
+class CustomToolResult:
+    name: str
+    command: str
+    success: bool
+    returncode: int
+    stdout: str
+    stderr: str
+    timed_out: bool = False
+
+    @property
+    def output(self) -> str:
+        out = (self.stdout + "\n" + self.stderr).strip()
+        return out or "Ejecución finalizada sin mensajes."
+
 
 
 @dataclass
@@ -420,3 +437,93 @@ class RubricCalculator:
             nota_pruebas=round(nota_pruebas, 2),
             nota_preliminar=round(preliminar, 2),
         )
+
+
+class CustomToolRunner:
+    """Ejecutor de herramientas CLI externas arbitrarias configuradas en ripley.toml."""
+
+    def __init__(self, limits: Optional[LimitsConfig] = None) -> None:
+        self.limits = limits or LimitsConfig()
+
+    def run(
+        self,
+        tool: CustomToolConfig,
+        source: Optional[Path] = None,
+        binary: Optional[Path] = None,
+        folder: Optional[Path] = None,
+    ) -> CustomToolResult:
+        timeout = tool.timeout_segundos or self.limits.timeout_segundos
+        cmd_str = tool.command
+
+        # Interpolación de variables contextuales
+        replacements = {
+            "{source}": str(source.resolve()) if source else "",
+            "{binary}": str(binary.resolve()) if binary else "",
+            "{folder}": str(folder.resolve()) if folder else "",
+            "{filename}": source.name if source else "",
+            "{stem}": source.stem if source else (binary.stem if binary else ""),
+        }
+        for placeholder, val in replacements.items():
+            cmd_str = cmd_str.replace(placeholder, val)
+
+        try:
+            args = shlex.split(cmd_str)
+            if not args:
+                return CustomToolResult(
+                    name=tool.name,
+                    command=tool.command,
+                    success=False,
+                    returncode=1,
+                    stdout="",
+                    stderr="Comando vacío o no interpretable.",
+                )
+
+            if not shutil.which(args[0]):
+                return CustomToolResult(
+                    name=tool.name,
+                    command=cmd_str,
+                    success=False,
+                    returncode=127,
+                    stdout="",
+                    stderr=f"Herramienta no encontrada en el PATH del sistema: '{args[0]}'",
+                )
+
+            res = subprocess.run(
+                args,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                preexec_fn=lambda: set_process_limits(self.limits.limite_memoria_mb, timeout),
+            )
+
+            success = (res.returncode == 0)
+            return CustomToolResult(
+                name=tool.name,
+                command=cmd_str,
+                success=success,
+                returncode=res.returncode,
+                stdout=res.stdout,
+                stderr=res.stderr,
+                timed_out=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            stdout_str = exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
+            return CustomToolResult(
+                name=tool.name,
+                command=cmd_str,
+                success=False,
+                returncode=-1,
+                stdout=stdout_str,
+                stderr=f"Tiempo de ejecución agotado ({timeout}s)",
+                timed_out=True,
+            )
+        except Exception as exc:
+            return CustomToolResult(
+                name=tool.name,
+                command=cmd_str,
+                success=False,
+                returncode=1,
+                stdout="",
+                stderr=f"Error al ejecutar herramienta: {exc}",
+            )
+

@@ -147,3 +147,62 @@ def test_evaluator_activity_custom_verification_tools(tmp_path):
     assert "Desactivado" in report_text
     assert f"practicas/{act_slug}/ripley.toml" in report_text
 
+
+def test_evaluator_runs_custom_cli_tools(tmp_path):
+    ws = tmp_path
+    act_slug = "tp-custom-tools_111"
+    student_slug = "lopez-maria_111"
+
+    student_dir = ws / act_slug / student_slug
+    r1_dir = student_dir / "r1"
+    r1_dir.mkdir(parents=True, exist_ok=True)
+    (r1_dir / "ejercicio1.c").write_text(
+        "int main(void) { return 0; }\n",
+        encoding="utf-8",
+    )
+
+    db = DatabaseManager(student_dir / ".metadata.db")
+    db.upsert_student(
+        StudentRecord(
+            student_id="111",
+            full_name="Lopez Maria",
+            slug=student_slug,
+            submission_id="111",
+        )
+    )
+    db.add_revision(
+        student_slug=student_slug,
+        version_num=1,
+        sources_hash="sha111",
+        folder_path=str(r1_dir),
+        sources=[{"filename": "ejercicio1.c", "file_hash": "sha111", "size_bytes": 30}],
+        ignored=[],
+    )
+
+    # Crear ripley.toml con una custom_tool
+    practice_dir = ws / "practicas" / act_slug
+    practice_dir.mkdir(parents=True, exist_ok=True)
+    (practice_dir / "ripley.toml").write_text(
+        """
+        [compiler]
+        enabled = true
+
+        [[custom_tools]]
+        name = "auditor_personalizado"
+        command = "echo Auditoria_OK_para_{filename}"
+        enabled = true
+        stage = "source"
+        fail_on_error = false
+        """,
+        encoding="utf-8",
+    )
+
+    evaluator = Evaluator(config=RipleyConfig(), workspace_dir=ws)
+    res = evaluator.evaluate_student(act_slug, student_dir)
+
+    assert res is not None
+    report_text = res.report_file.read_text(encoding="utf-8")
+    assert "auditor_personalizado" in report_text
+    assert "Auditoria_OK_para_ejercicio1.c" in report_text
+
+

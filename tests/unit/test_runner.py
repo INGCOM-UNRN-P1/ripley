@@ -7,6 +7,7 @@ from ripley.compiler import Compiler
 from ripley.config import (
     CompilerConfig,
     CppcheckConfig,
+    CustomToolConfig,
     LimitsConfig,
     RubricConfig,
     SandboxConfig,
@@ -14,6 +15,7 @@ from ripley.config import (
 )
 from ripley.runner import (
     CppcheckRunner,
+    CustomToolRunner,
     DynamicTestRunner,
     RubricCalculator,
     ValgrindRunner,
@@ -21,6 +23,7 @@ from ripley.runner import (
     normalize_output_text,
 )
 from ripley.testcases import TestCaseInfo
+
 
 
 def test_normalize_output_text():
@@ -174,3 +177,31 @@ def test_rubric_calculator():
         total_tests_count=2,
     )
     assert breakdown_fail.nota_preliminar == 0.0
+
+
+def test_custom_tool_runner(tmp_path):
+    runner = CustomToolRunner(LimitsConfig(timeout_segundos=3))
+    dummy_c = tmp_path / "dummy.c"
+    dummy_c.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+
+    # 1. Herramienta estándar que devuelve éxito (ej. 'echo')
+    tool_echo = CustomToolConfig(
+        name="echo_test",
+        command="echo Analizando archivo {filename}",
+        enabled=True,
+        stage="source",
+    )
+    res_echo = runner.run(tool_echo, source=dummy_c)
+    assert res_echo.success is True
+    assert "Analizando archivo dummy.c" in res_echo.output
+
+    # 2. Herramienta inexistente en PATH
+    tool_nonexistent = CustomToolConfig(
+        name="fake_tool",
+        command="non_existent_tool_12345 {source}",
+        enabled=True,
+    )
+    res_nonexistent = runner.run(tool_nonexistent, source=dummy_c)
+    assert res_nonexistent.success is False
+    assert res_nonexistent.returncode == 127
+

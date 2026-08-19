@@ -26,12 +26,15 @@ from ripley.reporter import MarkdownReporter, StudentReportContext, VersionRepor
 from ripley.runner import (
     CppcheckResult,
     CppcheckRunner,
+    CustomToolResult,
+    CustomToolRunner,
     DynamicTestRunner,
     RubricCalculator,
     ValgrindResult,
     ValgrindRunner,
 )
 from ripley.security import SecurityScanner
+
 from ripley.style import StyleCheckResult, StyleAnalyzer
 from ripley.testcases import discover_testcases
 
@@ -94,8 +97,10 @@ class Evaluator:
         valgrind_runner = ValgrindRunner(act_cfg.valgrind, act_cfg.limits)
         cppcheck_runner = CppcheckRunner(act_cfg.cppcheck)
         test_runner = DynamicTestRunner(act_cfg.limits)
+        custom_tool_runner = CustomToolRunner(act_cfg.limits)
         rubric_calc = RubricCalculator(act_cfg.rubric)
         reporter = MarkdownReporter(act_cfg.templates.ruta_plantillas)
+
 
         # Descubrir casos de prueba para la actividad
         testcases_by_exercise = discover_testcases(self.workspace_dir, activity_slug)
@@ -255,6 +260,27 @@ class Evaluator:
                             f"--- Logs Valgrind ({src.name}) ---\n{valg_res.full_output}\n"
                         )
 
+                    # 3.4.1 Herramientas CLI personalizadas por archivo fuente (stage = "source")
+                    for tool in act_cfg.custom_tools:
+                        if tool.enabled and tool.stage in ("source", "file"):
+                            t_res = custom_tool_runner.run(tool, source=src, folder=rev_folder)
+                            compilation_logs.append(
+                                f"--- Herramienta Personalizada [{tool.name}] ({src.name}) ---\n{t_res.output}\n"
+                            )
+                            if tool.fail_on_error and not t_res.success:
+                                all_compiled = False
+
+                    # 3.4.2 Herramientas CLI personalizadas por binario (stage = "binary")
+                    if comp_res.success and bin_out.exists():
+                        for tool in act_cfg.custom_tools:
+                            if tool.enabled and tool.stage == "binary":
+                                t_res = custom_tool_runner.run(tool, source=src, binary=bin_out, folder=rev_folder)
+                                compilation_logs.append(
+                                    f"--- Herramienta Personalizada [{tool.name}] ({src.name}) ---\n{t_res.output}\n"
+                                )
+                                if tool.fail_on_error and not t_res.success:
+                                    all_compiled = False
+
                     # 3.5 Fila de resultados por archivo
                     compilation_results_table.append(
                         {
@@ -265,6 +291,17 @@ class Evaluator:
                             "estado_cppcheck": cpp_res.summary if act_cfg.cppcheck.enabled else "Desactivado",
                         }
                     )
+
+                # 3.6 Herramientas CLI personalizadas por carpeta de revisión (stage = "folder")
+                for tool in act_cfg.custom_tools:
+                    if tool.enabled and tool.stage in ("folder", "revision"):
+                        t_res = custom_tool_runner.run(tool, folder=rev_folder)
+                        compilation_logs.append(
+                            f"--- Herramienta Personalizada [{tool.name}] (Revisión r{v_num}) ---\n{t_res.output}\n"
+                        )
+                        if tool.fail_on_error and not t_res.success:
+                            all_compiled = False
+
 
                 avg_style_score = round(total_style_sum / len(c_sources), 2) if c_sources else 10.0
                 compiled = len(compiled_binaries) > 0 and (all_compiled or any(file_compilation_status.values()))

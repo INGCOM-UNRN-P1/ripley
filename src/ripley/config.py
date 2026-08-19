@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 import tomllib
 
 
@@ -148,6 +148,16 @@ class SandboxConfig:
 
 
 @dataclass
+class CustomToolConfig:
+    name: str
+    command: str
+    enabled: bool = True
+    stage: str = "source"  # "source" | "binary" | "folder"
+    fail_on_error: bool = False
+    timeout_segundos: Optional[int] = None
+
+
+@dataclass
 class RipleyConfig:
     compiler: CompilerConfig = field(default_factory=CompilerConfig)
     limits: LimitsConfig = field(default_factory=LimitsConfig)
@@ -160,7 +170,9 @@ class RipleyConfig:
     rubric: RubricConfig = field(default_factory=RubricConfig)
     security: SecurityConfig = field(default_factory=SecurityConfig)
     sandbox: SandboxConfig = field(default_factory=SandboxConfig)
+    custom_tools: List[CustomToolConfig] = field(default_factory=list)
     origen_configuracion: str = "Valores por defecto del sistema (ripley.toml no encontrado)"
+
 
 
     def validate(self) -> None:
@@ -316,8 +328,21 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             enabled=sandbox_data.get("enabled", False),
             provider=sandbox_data.get("provider", "bubblewrap"),
         ),
+        custom_tools=[
+            CustomToolConfig(
+                name=item.get("name", "custom_tool"),
+                command=item.get("command", ""),
+                enabled=item.get("enabled", True),
+                stage=item.get("stage", "source"),
+                fail_on_error=item.get("fail_on_error", False),
+                timeout_segundos=item.get("timeout_segundos", None),
+            )
+            for item in data.get("custom_tools", [])
+            if isinstance(item, dict) and "command" in item
+        ],
         origen_configuracion=f"Archivo de configuración: '{path}'",
     )
+
 
     cfg.validate()
     return cfg

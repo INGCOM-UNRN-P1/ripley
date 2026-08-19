@@ -467,6 +467,7 @@ Ripley incluye interceptores pedagógicos para los errores más complejos en C:
 
 ```toml
 [compiler]
+enabled = true
 executable = "gcc"
 flags = [
     "-Wall",
@@ -484,6 +485,7 @@ limite_memoria_mb = 128
 max_tamano_ejecutable_mb = 10
 
 [style]
+enabled = true
 brace_style = "allman"          # "allman" (llaves en nueva línea) o "k&r"
 require_braces = true           # Exigir llaves en if/while de una sola línea
 indent_style = "spaces"         # "spaces" o "tabs"
@@ -491,7 +493,19 @@ indent_size = 4
 no_trailing_whitespace = true
 max_blank_lines = 2
 
+[p1_rules]
+enabled = true                  # Catálogo oficial de Programación I (0x0001h a 0x3004h)
+
+[linters]
+enabled = false                 # Linters especializados adicionales
+dead_code = true
+magic_numbers = true
+internal_clones = true
+naming = true
+doxygen = false
+
 [cppcheck]
+enabled = true
 ejecutable = "cppcheck"
 parametros = [
     "--enable=all",
@@ -500,15 +514,38 @@ parametros = [
     "--suppress=staticFunction"
 ]
 
-
 [valgrind]
 enabled = true
 flags = ["--leak-check=full", "--show-leak-kinds=all", "--track-origins=yes"]
 tolerar_fugas_en_error = true   # No penaliza fugas si el programa abortó por error
+
+[security]
+enabled = true
+forbidden_calls = ["system", "fork", "execv", "popen"]
+forbidden_headers = ["unistd.h", "sys/socket.h"]
 
 [rubric]
 peso_compilacion = 0.30
 peso_linter = 0.20
 peso_estilo = 0.10
 peso_pruebas = 0.40
+
+# Herramientas de Línea de Comandos Arbitrarias (Custom Tools)
+# Variables disponibles: {source}, {binary}, {folder}, {filename}, {stem}
+# Etapas soportadas: "source" (por archivo C), "binary" (por ejecutable), "folder" (por revisión)
+
+[[custom_tools]]
+name = "clang-tidy"
+command = "clang-tidy {source} -- -std=c11"
+enabled = false
+stage = "source"
+fail_on_error = false
+
+[[custom_tools]]
+name = "flawfinder"
+command = "flawfinder --quiet {source}"
+enabled = false
+stage = "source"
+fail_on_error = false
 ```
+
