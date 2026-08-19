@@ -155,10 +155,10 @@ int main(int argc, char *argv[])
 def init_practice(
     spec: PracticeSpec,
     base_dir: str | Path = "practicas",
-    workspace_tests_dir: Optional[str | Path] = None,
     force: bool = False,
 ) -> Path:
     """Inicializa la estructura completa de una práctica en el directorio ./practicas/<slug_practica>/."""
+
     practicas_root = Path(base_dir)
     practice_dir = practicas_root / spec.slug
 
@@ -254,9 +254,10 @@ def init_practice(
     return practice_dir
 
 
-def sync_practice_testcases(practice_dir: Path | str, workspace_dir: Path | str = ".") -> int:
+def sync_practice_testcases(practice_dir: Path | str) -> int:
     """Verifica y contabiliza los casos de prueba existentes dentro de practicas/<slug>/ejercicios/*/tests/."""
     p_dir = Path(practice_dir)
+
     ejercicios_dir = p_dir / "ejercicios"
     if not ejercicios_dir.exists():
         return 0

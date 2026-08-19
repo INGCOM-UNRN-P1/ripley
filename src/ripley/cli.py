@@ -185,12 +185,12 @@ def cmd_ingest(
                 init_practice(
                     spec=spec,
                     base_dir=Path(workspace) / "practicas",
-                    workspace_tests_dir=workspace,
                     force=False,
                 )
                 console.print(
-                    f"[bold green]✓ Enunciado en blanco y configuración por defecto inicializados en '{practice_dir}' y sincronizados con tests/{moodle_info.activity_slug}/[/bold green]\n"
+                    f"[bold green]✓ Enunciado en blanco, configuración por defecto y casos de prueba inicializados en '{practice_dir}'.[/bold green]\n"
                 )
+
 
 
 
@@ -602,11 +602,6 @@ def cmd_practice_init(
         "--with-argv",
         help="Generar archivos .argv en los esqueletos de prueba.",
     ),
-    sync_tests: bool = typer.Option(
-        True,
-        "--sync-tests/--no-sync-tests",
-        help="Sincronizar automáticamente los casos de prueba hacia tests/<slug_practica>/.",
-    ),
     force: bool = typer.Option(
         False,
         "--force",
@@ -682,7 +677,6 @@ def cmd_practice_init(
         p_dir = init_practice(
             spec=spec,
             base_dir=base_dir,
-            workspace_tests_dir="." if sync_tests else None,
             force=force,
         )
         console.print(f"\n[bold green]✓ Práctica inicializada exitosamente en:[/bold green] [cyan]{p_dir}[/cyan]\n")
@@ -691,10 +685,7 @@ def cmd_practice_init(
         console.print(f" - [bold]Configuración de corrección:[/bold] {p_dir}/ripley.toml")
         console.print(f" - [bold]Ejercicios generados ({len(ex_list)}):[/bold]")
         for ex in ex_list:
-            console.print(f"   * [cyan]{ex.slug}[/cyan] (enunciado, solucion_modelo.c, {cases} testcases)")
-
-        if sync_tests:
-            console.print(f"\n[green]✓ Casos de prueba sincronizados en 'tests/{spec.slug}/'.[/green]\n")
+            console.print(f"   * [cyan]{ex.slug}[/cyan] (enunciado, solucion_modelo.c, {cases} testcases en {p_dir}/ejercicios/{ex.slug}/tests/)")
     except Exception as e:
         console.print(f"[bold red]Error al inicializar la práctica:[/bold red] {e}")
         raise typer.Exit(code=1)
@@ -709,7 +700,6 @@ def cmd_practice_list(
     if not practices:
         console.print(f"[yellow]No se encontraron prácticas en '{base_dir}/'. Usá './ripley practica init' para crear una.[/yellow]")
         return
-
 
     table = Table(title=f"Prácticas en '{base_dir}/'")
     table.add_column("Slug / Directorio", style="bold cyan")
@@ -736,19 +726,19 @@ def cmd_practice_list(
 @practica_app.command("sync")
 def cmd_practice_sync(
     activity: str = typer.Option(..., "--activity", "-a", help="Slug de la práctica en ./practicas/."),
-    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
     base_dir: str = typer.Option("practicas", "--path", "-p", help="Directorio de prácticas."),
 ) -> None:
-    """Sincroniza los casos de prueba desde ./practicas/<activity>/ a tests/<activity>/."""
+    """Verifica y valida los casos de prueba dentro de ./practicas/<activity>/ejercicios/*/tests/."""
     p_dir = Path(base_dir) / activity
     if not p_dir.exists():
         console.print(f"[bold red]La práctica '{activity}' no existe en '{base_dir}'.[/bold red]")
         raise typer.Exit(code=1)
 
-    count = sync_practice_testcases(p_dir, workspace)
+    count = sync_practice_testcases(p_dir)
     console.print(
-        f"\n[bold green]✓ Se sincronizaron {count} archivos de casos de prueba hacia tests/{activity}/[/bold green]\n"
+        f"\n[bold green]✓ Se verificaron {count} archivos de casos de prueba en '{p_dir}/ejercicios/'[/bold green]\n"
     )
+
 
 
 @app.command("flowchart")

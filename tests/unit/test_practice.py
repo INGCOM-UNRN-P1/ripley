@@ -41,7 +41,6 @@ def test_init_practice_creates_full_structure(tmp_path):
     p_dir = init_practice(
         spec=spec,
         base_dir=base_practicas,
-        workspace_tests_dir=ws,
         force=False,
     )
 
@@ -64,8 +63,9 @@ def test_init_practice_creates_full_structure(tmp_path):
     assert not (ej2_dir / "tests" / "caso3.argv").exists()
 
     # Verificar sincronización y conteo dentro de practicas/
-    count = sync_practice_testcases(p_dir, ws)
+    count = sync_practice_testcases(p_dir)
     assert count >= 5
+
 
     # Re-init sin force debe fallar
     with pytest.raises(FileExistsError):

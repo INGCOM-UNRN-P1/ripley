@@ -162,10 +162,12 @@ def test_cmd_ingest_creates_blank_practice_if_missing(tmp_path):
     assert res.exit_code == 0
     assert "Actividad procesada" in res.output
 
-    # Verificar que se creo la practica en blanco
+    # Verificar que se creo la practica en blanco dentro de practicas/ y NO en tests/
     practice_dir = ws / "practicas" / "entrega-2_999999"
     assert practice_dir.exists()
     assert (practice_dir / "enunciado.md").exists()
     assert (practice_dir / "pautas_evaluacion.md").exists()
     assert (practice_dir / "ripley.toml").exists()
+    assert not (ws / "tests" / "entrega-2_999999").exists()
+
 
