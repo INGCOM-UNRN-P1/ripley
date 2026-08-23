@@ -58,7 +58,10 @@ app = typer.Typer(
 )
 mock_app = typer.Typer(name="mock", help="Generador de arneses y mocks en C.", no_args_is_help=True)
 
+checks_app = typer.Typer(name="checks", help="Catálogo unificado de verificaciones.", no_args_is_help=True)
+
 app.add_typer(mock_app, name="mock")
+app.add_typer(checks_app, name="checks")
 
 
 @app.command("flowchart")
@@ -770,4 +773,58 @@ def cmd_padding_audit(
     else:
         raise typer.Exit(code=1)
 
+
+
+
+# ============================================================================
+# Registro de checks y diagnóstico del entorno
+# ============================================================================
+
+
+@checks_app.command("list")
+def checks_list(
+    scope: str = typer.Option("student", "--scope", "-s", help="Filtrar por scope: student | teacher | both | all."),
+) -> None:
+    """Lista el catálogo unificado de verificaciones disponibles."""
+    from ripley.pipeline.availability import available_map
+    from ripley.pipeline.registry import all_checks
+
+    tools = available_map()
+    table = Table(title="Catálogo de Verificaciones de Ripley")
+    table.add_column("Check ID", style="cyan")
+    table.add_column("Capa")
+    table.add_column("Scope")
+    table.add_column("Herramientas", style="dim")
+    table.add_column("Estado")
+    for spec in all_checks():
+        if scope != "all" and spec.scope != scope:
+            continue
+        missing = [t for t in spec.requires_tools if not tools.get(t)]
+        estado = "[green]lista[/green]" if not missing else f"[yellow]omite: falta {', '.join(missing)}[/yellow]"
+        table.add_row(spec.check_id, spec.layer, spec.scope, ", ".join(spec.requires_tools) or "-", estado)
+    console.print(table)
+
+
+@app.command("doctor")
+def doctor() -> None:
+    """Diagnóstico del entorno: herramientas externas presentes y checks afectados."""
+    from ripley.pipeline.availability import probe_all
+    from ripley.pipeline.registry import all_checks, is_runnable, iter_student
+
+    statuses = probe_all()
+    tools = {s.name: s.available for s in statuses}
+    table = Table(title="Disponibilidad de Herramientas Externas")
+    table.add_column("Herramienta", style="cyan")
+    table.add_column("Estado")
+    table.add_column("Impacto si falta", style="dim")
+    for s in statuses:
+        estado = "[green]disponible[/green]" if s.available else "[red]falta[/red]"
+        table.add_row(s.name, estado, s.description)
+    console.print(table)
+
+    omitidos = [s.check_id for s in iter_student() if not is_runnable(s, tools)]
+    if omitidos:
+        console.print(f"\n[yellow]Checks estudiantiles que se omitirán: {', '.join(omitidos)}[/yellow]")
+    else:
+        console.print("\n[green]Todos los checks estudiantiles son ejecutables en este entorno.[/green]")
 
