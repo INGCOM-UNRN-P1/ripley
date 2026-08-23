@@ -2,8 +2,8 @@
 
 from pathlib import Path
 from ripley.config import RipleyConfig
-from ripley.db import DatabaseManager, StudentRecord
-from ripley.evaluate import Evaluator
+from ripley.teacher.db import DatabaseManager, StudentRecord
+from ripley.teacher.evaluate import Evaluator
 from ripley.tools.testcases import create_testcase_skeleton
 
 

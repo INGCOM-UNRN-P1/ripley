@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from ripley.mapping import (
+from ripley.teacher.mapping import (
     InteractiveMapper,
     MappingStore,
     SPECIAL_AUXILIARY,

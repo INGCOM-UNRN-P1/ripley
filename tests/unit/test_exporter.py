@@ -4,8 +4,8 @@ import csv
 from pathlib import Path
 import zipfile
 
-from ripley.db import DatabaseManager, StudentRecord
-from ripley.exporter import MoodleExporter
+from ripley.teacher.db import DatabaseManager, StudentRecord
+from ripley.teacher.exporter import MoodleExporter
 
 
 def test_exporter_grades_csv_feedback_zip_and_dashboard(tmp_path):

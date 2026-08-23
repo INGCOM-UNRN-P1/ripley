@@ -6,7 +6,7 @@ import re
 from typing import Dict, List, Optional, Set, Tuple
 
 from ripley.models import LinterObservation  # noqa: F401  (re-exportado por compatibilidad)
-from ripley.plagiarism import tokenize_c_code
+from ripley.core.c_tokens import tokenize_c_code
 from ripley.core.security import strip_c_comments_and_strings
 from ripley.core.semantic_diff import extract_c_functions
 

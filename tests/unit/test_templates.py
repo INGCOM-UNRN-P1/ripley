@@ -1,6 +1,6 @@
 """Unit tests for Ripley templates manager."""
 
-from ripley.templates import (
+from ripley.teacher.templates import (
     check_templates,
     init_templates,
     list_templates,

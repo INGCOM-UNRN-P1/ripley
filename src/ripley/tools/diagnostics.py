@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 from typing import List, Optional, Tuple
 
-from ripley.plagiarism import tokenize_c_code
+from ripley.core.c_tokens import tokenize_c_code
 from ripley.core.security import strip_c_comments_and_strings
 
 

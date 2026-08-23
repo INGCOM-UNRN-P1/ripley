@@ -1,7 +1,7 @@
 """Unit tests for plagiarism and code similarity detection."""
 
 from pathlib import Path
-from ripley.plagiarism import (
+from ripley.teacher.plagiarism import (
     PlagiarismDetector,
     compute_winnowing_fingerprints,
     tokenize_c_code,

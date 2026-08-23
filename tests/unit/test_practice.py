@@ -3,7 +3,7 @@
 from pathlib import Path
 import pytest
 
-from ripley.practice import (
+from ripley.teacher.practice import (
     ExerciseTemplateSpec,
     PracticeSpec,
     init_practice,

@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 from typing import Dict, List, Optional, Set
 
-from ripley.plagiarism import tokenize_c_code
+from ripley.core.c_tokens import tokenize_c_code
 from ripley.core.security import strip_c_comments_and_strings
 from ripley.core.semantic_diff import extract_c_functions
 

@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 import zipfile
 
-from ripley.ingest import (
+from ripley.teacher.ingest import (
     MoodleIngestor,
     normalize_encoding,
     parse_moodle_zip_filename,

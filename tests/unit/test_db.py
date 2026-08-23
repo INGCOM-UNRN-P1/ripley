@@ -1,6 +1,6 @@
 """Unit tests for SQLite database manager."""
 
-from ripley.db import DatabaseManager, StudentRecord
+from ripley.teacher.db import DatabaseManager, StudentRecord
 
 
 def test_db_init_and_student_upsert(tmp_path):

@@ -30,20 +30,20 @@ from ripley.tools.coverage_fuzzing import CoverageGuidedFuzzer
 from ripley.tools.cross_arch import CrossArchitectureTester
 from ripley.core.doxygen import DoxygenAuditor
 from ripley.tools.embedded import EmbeddedMemoryRunner
-from ripley.evaluate import Evaluator
-from ripley.exporter import MoodleExporter
+from ripley.teacher.evaluate import Evaluator
+from ripley.teacher.exporter import MoodleExporter
 from ripley.core.flowchart import FlowchartGenerator
 from ripley.formal_contracts import FormalContractAnalyzer
 from ripley.tools.fuzzing import Fuzzer
 from ripley.core.heap_simulator import HeapMemorySimulator
-from ripley.ingest import MoodleIngestor
+from ripley.teacher.ingest import MoodleIngestor
 from ripley.core.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
-from ripley.mapping import InteractiveMapper
+from ripley.teacher.mapping import InteractiveMapper
 from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 from ripley.core.mocks import MockGenerator
 from ripley.core.p1_rules import P1RuleChecker
 from ripley.core.padding_audit import StructPaddingAuditor
-from ripley.plagiarism import PlagiarismDetector
+from ripley.teacher.plagiarism import PlagiarismDetector
 from ripley.tools.pure_functions import PureFunctionAnalyzer
 from ripley.tools.sandbox import NamespaceSandbox
 from ripley.tools.socket_faults import SocketFaultInjector
@@ -52,7 +52,7 @@ from ripley.tools.toolchain import capture_snapshot, compare_snapshots, load_sna
 
 
 
-from ripley.practice import (
+from ripley.teacher.practice import (
     ExerciseTemplateSpec,
     PracticeSpec,
     init_practice,
@@ -62,7 +62,7 @@ from ripley.practice import (
 from ripley.tools.property_testing import PropertyTestRunner
 from ripley.tools.sanitizers import SanitizerAnalyzer
 from ripley.core.semantic_diff import SemanticDiffer
-from ripley.templates import check_templates, init_templates, list_templates
+from ripley.teacher.templates import check_templates, init_templates, list_templates
 from ripley.tools.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
