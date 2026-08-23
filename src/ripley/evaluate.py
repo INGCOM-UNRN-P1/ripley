@@ -15,7 +15,10 @@ from ripley.ast_auditors import (
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
     DeepFreeLinter,
+    DeprecatedAPILinter,
+    EnumBitmaskLinter,
     EvaluationOrderLinter,
+    LoopTerminationLinter,
     OverengineeringLinter,
     ShortCircuitLinter,
     StringLiteralWriteLinter,
@@ -28,6 +31,7 @@ from ripley.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.db import DatabaseManager
 from ripley.diffing import generate_unified_diff
+from ripley.padding_audit import StructPaddingAuditor
 from ripley.doxygen import DoxygenAuditor
 from ripley.flowchart import FlowchartGenerator
 from ripley.linters import (
@@ -291,6 +295,21 @@ class Evaluator:
                         if act_cfg.ast_auditors.backward_goto:
                             for obs in BackwardGotoLinter().analyze(src_content, src.name):
                                 all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:BackwardGoto] {obs.message}"})
+                        if act_cfg.ast_auditors.deprecated_api:
+                            for obs in DeprecatedAPILinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:DeprecatedAPI] {obs.message}"})
+                        if act_cfg.ast_auditors.enum_bitmask:
+                            for obs in EnumBitmaskLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:EnumBitmask] {obs.message}"})
+                        if act_cfg.ast_auditors.loop_termination:
+                            for obs in LoopTerminationLinter().analyze(src_content, src.name):
+                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:LoopTermination] {obs.message}"})
+
+                    # 3.2.3b Auditoría de padding de structs (si está habilitada)
+                    if act_cfg.padding.enabled:
+                        pad_content = src.read_text(encoding="utf-8", errors="replace")
+                        for obs in StructPaddingAuditor().analyze(pad_content, src.name):
+                            all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Padding] {obs.message}"})
 
                     # 3.2.4 Validación de Restricciones (si está habilitada)
                     if act_cfg.restrictions.enabled:

@@ -5,9 +5,12 @@ from ripley.ast_auditors import (
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
     DeepFreeLinter,
+    DeprecatedAPILinter,
+    EnumBitmaskLinter,
     EvaluationOrderLinter,
     FloatComparisonLinter,
     IWYULinter,
+    LoopTerminationLinter,
     OverengineeringLinter,
     ShortCircuitLinter,
     StringLiteralWriteLinter,
@@ -188,4 +191,133 @@ def test_backward_goto_linter():
     assert len(obs) == 1
     assert "backward_goto" in obs[0].linter_name
     assert "bucle_inicio" in obs[0].message
+
+
+def test_deprecated_api_linter():
+    code = """
+    #include <stdio.h>
+    int main() {
+        char nombre[64];
+        char copia[128];
+        gets(nombre);
+        strcpy(copia, nombre);
+        sprintf(copia, "valor: %s", nombre);
+        return 0;
+    }
+    """
+    obs = DeprecatedAPILinter().analyze(code, "test.c")
+    assert len(obs) == 3
+    assert all("deprecated_api" in o.linter_name for o in obs)
+    funciones = [o.message for o in obs]
+    assert any("gets" in m for m in funciones)
+    assert any("strcpy" in m for m in funciones)
+    assert any("sprintf" in m for m in funciones)
+
+
+def test_deprecated_api_linter_clean_code():
+    code = """
+    #include <stdio.h>
+    int main() {
+        char nombre[64];
+        fgets(nombre, sizeof(nombre), stdin);
+        snprintf(nombre, sizeof(nombre), "ok");
+        return 0;
+    }
+    """
+    obs = DeprecatedAPILinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+def test_enum_bitmask_valid_flags():
+    code = """
+    enum permisos {
+        LECTURA = 1,
+        ESCRITURA = 2,
+        EJECUCION = 4
+    };
+    int main() {
+        int p = LECTURA | ESCRITURA;
+        if (p & LECTURA) { return 1; }
+        return 0;
+    }
+    """
+    obs = EnumBitmaskLinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+def test_enum_bitmask_invalid_flags():
+    code = """
+    enum estado {
+        INACTIVO = 0,
+        ACTIVO = 1,
+        PAUSADO = 2,
+        ERROR = 3
+    };
+    int main() {
+        int s = ACTIVO | PAUSADO;
+        return s & ERROR;
+    }
+    """
+    obs = EnumBitmaskLinter().analyze(code, "test.c")
+    assert len(obs) >= 1
+    assert "enum_bitmask" in obs[0].linter_name
+
+
+def test_loop_termination_detects_infinite_while():
+    code = """
+    int main() {
+        int i = 0;
+        while (i < 10) {
+            printf("%d\\n", i);
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "loop_termination" in obs[0].linter_name
+
+
+def test_loop_termination_accepts_mutated_counter():
+    code = """
+    int main() {
+        int i = 0;
+        while (i < 10) {
+            printf("%d\\n", i);
+            i++;
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+def test_loop_termination_accepts_sentinela_con_lectura():
+    code = """
+    int main() {
+        int valor = 0;
+        while (valor != -1) {
+            scanf("%d", &valor);
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+def test_loop_termination_detects_do_while_infinito():
+    code = """
+    int main() {
+        int x = 5;
+        do {
+            printf("%d\\n", x);
+        } while (x > 0);
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "do-while" in obs[0].message
 

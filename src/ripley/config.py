@@ -187,12 +187,21 @@ class AstAuditorsConfig:
     evaluation_order: bool = True
     string_literal_write: bool = True
     backward_goto: bool = True
+    deprecated_api: bool = True
+    enum_bitmask: bool = True
+    loop_termination: bool = True
 
 
 @dataclass
 class PureFunctionsConfig:
     enabled: bool = False
     functions: List[str] = field(default_factory=list)
+
+
+@dataclass
+class PaddingAuditConfig:
+    """Auditoría de bytes de relleno de structs enviados a I/O sin inicializar."""
+    enabled: bool = False
 
 
 @dataclass
@@ -235,6 +244,7 @@ class RipleyConfig:
     callgraph: CallgraphConfig = field(default_factory=CallgraphConfig)
     property_testing: PropertyTestingConfig = field(default_factory=PropertyTestingConfig)
     pure_functions: PureFunctionsConfig = field(default_factory=PureFunctionsConfig)
+    padding: PaddingAuditConfig = field(default_factory=PaddingAuditConfig)
     restrictions: RestrictionsConfig = field(default_factory=RestrictionsConfig)
     doxygen: DoxygenConfig = field(default_factory=DoxygenConfig)
     valgrind: ValgrindConfig = field(default_factory=ValgrindConfig)
@@ -357,6 +367,9 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             evaluation_order=ast_auditors_data.get("evaluation_order", True),
             string_literal_write=ast_auditors_data.get("string_literal_write", True),
             backward_goto=ast_auditors_data.get("backward_goto", True),
+            deprecated_api=ast_auditors_data.get("deprecated_api", True),
+            enum_bitmask=ast_auditors_data.get("enum_bitmask", True),
+            loop_termination=ast_auditors_data.get("loop_termination", True),
         ),
         flowchart=FlowchartConfig(
             enabled=flowchart_data.get("enabled", False),
@@ -380,6 +393,11 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
         pure_functions=PureFunctionsConfig(
             enabled=pure_funcs_data.get("enabled", False),
             functions=pure_funcs_data.get("functions", []),
+        ),
+        padding=PaddingAuditConfig(
+            enabled=data.get("padding", data.get("padding_audit", {})).get("enabled", False)
+            if isinstance(data.get("padding", data.get("padding_audit")), dict)
+            else False,
         ),
         restrictions=RestrictionsConfig(
             enabled=restrictions_data.get("enabled", False),
