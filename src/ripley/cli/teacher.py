@@ -699,3 +699,30 @@ def cmd_practice_sync(
 
 
 
+
+
+@practica_app.command("pack")
+def cmd_practica_pack(
+    practica_slug: str = typer.Argument(..., help="Slug de la práctica en ./practicas."),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Ruta del .ripkg (default: junto a la práctica)."),
+    sign_key: Optional[str] = typer.Option(None, "--sign-key", help="Huella GPG para firmar el manifiesto."),
+) -> None:
+    """Empaqueta una práctica (.ripkg) con checks y testcases públicos para el estudiante."""
+    from ripley.teacher.pack import pack_practice
+
+    pdir = Path("practicas") / practica_slug
+    try:
+        result = pack_practice(pdir, sign_key=sign_key)
+    except FileNotFoundError as e:
+        console.print(f"[bold red]{e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    out = Path(output) if output else result.output_path
+    if output and out != result.output_path:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        Path(result.output_path).replace(out)
+
+    console.print(f"\n[bold green]Paquete creado:[/bold green] {out}")
+    console.print(f"  Checks habilitados : {result.checks_enabled}")
+    console.print(f"  Archivos payload   : {result.payload_files}")
+    console.print(f"  Firmado            : {'sí' if result.signed else 'no (unsigned=true)'}")

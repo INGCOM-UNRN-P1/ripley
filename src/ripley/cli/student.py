@@ -828,3 +828,64 @@ def doctor() -> None:
     else:
         console.print("\n[green]Todos los checks estudiantiles son ejecutables en este entorno.[/green]")
 
+
+
+# ============================================================================
+# Verificación temprana contra paquetes de práctica
+# ============================================================================
+
+
+@app.command("run")
+def cmd_run(
+    sources: List[Path] = typer.Argument(..., help="Archivos .c del estudiante a verificar."),
+    practica: str = typer.Option(..., "--practica", "-p", help="Ruta al paquete .ripkg de la práctica."),
+    strict: bool = typer.Option(False, "--strict", help="Salir con código 1 si hay hallazgos, no solo errores."),
+    verify_signature: bool = typer.Option(False, "--verify-signature", help="Exigir firma GPG válida del paquete."),
+) -> None:
+    """Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto."""
+    from ripley.pipeline.bundle import BundleError
+    from ripley.pipeline.student_runner import run_bundle
+
+    for s in sources:
+        if not Path(s).exists():
+            console.print(f"[bold red]Fuente no encontrada: {s}[/bold red]")
+            raise typer.Exit(code=1)
+
+    try:
+        report = run_bundle(Path(practica), [Path(s) for s in sources], verify_signature=verify_signature)
+    except BundleError as e:
+        console.print(f"[bold red]Paquete inválido: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold]Verificación temprana — {report.practica}[/bold]")
+    estado = "[green]OK[/green]" if report.compiled_ok else "[red]FALLÓ[/red]"
+    console.print(f"  Compilación      : {estado}")
+    if not report.compiled_ok:
+        console.print(f"  [dim]{report.compile_errors[:600]}[/dim]")
+    if report.tests_total:
+        color = "green" if report.tests_passed == report.tests_total else "red"
+        console.print(f"  Testcases públicos: [{color}]{report.tests_passed}/{report.tests_total}[/{color}]")
+    else:
+        console.print("  Testcases públicos: ninguno incluido en el paquete")
+
+    for check_id, obs in report.findings.items():
+        if not obs:
+            console.print(f"  {check_id}: [green]sin hallazgos[/green]")
+            continue
+        errores = sum(1 for o in obs if o["severidad"] == "ERROR")
+        color = "red" if errores else "yellow"
+        console.print(f"  {check_id}: [{color}]{len(obs)} hallazgos ({errores} ERROR)[/{color}]")
+        for o in obs[:5]:
+            console.print(f"    · {o['archivo']}:{o['linea']} {o['mensaje'][:100]}")
+
+    if report.omitted:
+        console.print(f"  [dim]Omitidos por falta de herramientas: {', '.join(report.omitted)}[/dim]")
+    if report.signature_verified:
+        console.print("  Firma GPG verificada.")
+
+    exito = report.success and (not strict or report.total_findings == 0)
+    if exito:
+        console.print("\n[bold green]✓ Listo para entregar.[/bold green]\n")
+    else:
+        console.print("\n[bold yellow]⚠ Revisá los puntos anteriores antes de entregar.[/bold yellow]\n")
+        raise typer.Exit(code=1)
