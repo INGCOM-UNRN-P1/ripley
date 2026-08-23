@@ -396,3 +396,66 @@ def test_for_loop_nested_call_condition_not_confused():
     """
     obs = LoopTerminationLinter().analyze(code, "test.c")
     assert len(obs) == 0
+
+
+# ---------------------------------------------------------------------------
+# Refuerzo #3: llamadas con posibles efectos en múltiples argumentos
+# ---------------------------------------------------------------------------
+
+def test_evaluation_order_multiple_side_effecting_calls():
+    code = """
+    int g(void);
+    int h(void);
+    int main() {
+        int r = suma(g(), h());
+        return r;
+    }
+    """
+    obs = EvaluationOrderLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "g()" in obs[0].message and "h()" in obs[0].message
+
+
+def test_evaluation_order_pure_calls_not_flagged():
+    code = """
+    #include <math.h>
+    int main() {
+        double r = combina(sqrt(2.0), fabs(-3.0));
+        return r;
+    }
+    """
+    obs = EvaluationOrderLinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+# ---------------------------------------------------------------------------
+# Refuerzo #4: aliases del puntero literal y familia extendida de escritura
+# ---------------------------------------------------------------------------
+
+def test_rodata_write_via_alias_detected():
+    code = """
+    int main() {
+        char *s = "hola";
+        char *a = s;
+        a[0] = 'H';
+        return 0;
+    }
+    """
+    obs = StringLiteralWriteLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "alias `a`" in obs[0].message
+    assert "`s`" in obs[0].message
+
+
+def test_rodata_write_via_memcpy_and_memset_detected():
+    code = """
+    #include <string.h>
+    int main() {
+        char *s = "config";
+        memcpy(s, "otra", 5);
+        memset(s, 0, 2);
+        return 0;
+    }
+    """
+    obs = StringLiteralWriteLinter().analyze(code, "test.c")
+    assert len(obs) == 2
