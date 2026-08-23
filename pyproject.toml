@@ -20,6 +20,7 @@ dev = [
 
 [project.scripts]
 ripley = "ripley.cli:app"
+ripley-check = "ripley.cli.student:app"
 
 [build-system]
 requires = ["hatchling"]
