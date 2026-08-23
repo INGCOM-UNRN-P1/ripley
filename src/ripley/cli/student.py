@@ -1074,3 +1074,65 @@ def cmd_watch(
             primera = False
     except KeyboardInterrupt:
         console.print("\n[bold]Watch finalizado.[/bold]")
+
+
+# ============================================================================
+# Animaciones de memoria paso a paso
+# ============================================================================
+
+
+@app.command("memory-animate")
+def cmd_memory_animate(
+    events_file: Optional[str] = typer.Option(None, "--events", "-e", help="JSON con la lista de eventos de memoria."),
+    ops: Optional[str] = typer.Option(None, "--ops", help="Atajo de heap: 'malloc:32:n1,malloc:64:n2,free:n1'."),
+    output: Path = typer.Option("memoria_animada.svg", "--output", "-o", help="SVG interactivo de salida."),
+    gif: Optional[Path] = typer.Option(None, "--gif", help="Exportar además un GIF (requiere ImageMagick)."),
+    frames_dir: Optional[Path] = typer.Option(None, "--frames-dir", help="Directorio para los SVG individuales al exportar GIF."),
+) -> None:
+    """Genera una animación interactiva del estado Stack/Heap/Punteros paso a paso."""
+    import json as _json
+
+    from ripley.core.memory_animation import (
+        AnimationError,
+        MemoryAnimator,
+        export_gif,
+        render_animation_svg,
+        render_frame_svg,
+    )
+
+    animator = MemoryAnimator()
+    try:
+        if ops:
+            frames = animator.from_heap_ops(ops)
+        elif events_file:
+            raw = Path(events_file).read_text(encoding="utf-8")
+            frames = animator.apply(_json.loads(raw))
+        else:
+            console.print("[bold red]Indicá --ops o --events.[/bold red]")
+            raise typer.Exit(code=1)
+    except (AnimationError, ValueError, _json.JSONDecodeError) as e:
+        console.print(f"[bold red]Traza inválida: {e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    if not frames:
+        console.print("[yellow]La traza no produjo frames.[/yellow]")
+        raise typer.Exit(code=1)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(render_animation_svg(frames), encoding="utf-8")
+    console.print(f"\n[bold green]Animación:[/bold green] {output} ({len(frames)} frames)")
+    for i, fr in enumerate(frames[:6]):
+        console.print(f"  {i+1}. {fr.caption}")
+    if len(frames) > 6:
+        console.print(f"  … y {len(frames)-6} más")
+
+    if gif:
+        fdir = frames_dir or Path(".ripley_frames")
+        fdir.mkdir(parents=True, exist_ok=True)
+        paths = []
+        for i, fr in enumerate(frames):
+            fp = fdir / f"frame_{i:03d}.svg"
+            fp.write_text(render_frame_svg(fr), encoding="utf-8")
+            paths.append(fp)
+        ok, msg = export_gif(paths, gif)
+        console.print(f"  {'[green]' + msg + '[/green]' if ok else '[yellow]' + msg + '[/yellow]'}")

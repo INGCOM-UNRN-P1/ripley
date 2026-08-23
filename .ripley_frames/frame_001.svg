@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420" viewBox="0 0 640 420" font-family="monospace">
+<rect width="640" height="420" fill="#10141c"/>
+<rect x="10" y="10" width="620" height="34" rx="6" fill="#1b2230" stroke="#3b4a63"/>
+<text x="20" y="32" fill="#e8edf5" font-size="15">nodo2 = malloc(64)</text>
+<rect x="20" y="60" width="290" height="340" rx="8" fill="#1b2230" stroke="#3b4a63"/>
+<text x="32" y="82" fill="#4fc3f7" font-size="13">STACK</text>
+<rect x="330" y="60" width="290" height="340" rx="8" fill="#1b2230" stroke="#3b4a63"/>
+<text x="342" y="82" fill="#4fc3f7" font-size="13">HEAP</text>
+<rect x="342" y="104" width="266" height="18" rx="4" fill="#7e57c2" fill-opacity="0.25" stroke="#7e57c2"/>
+<text x="348" y="117" fill="#e8edf5" font-size="11">nodo1 [32B @ 0x1000]</text>
+<rect x="342" y="128" width="266" height="18" rx="4" fill="#7e57c2" fill-opacity="0.25" stroke="#7e57c2"/>
+<text x="348" y="141" fill="#e8edf5" font-size="11">nodo2 [64B @ 0x1020]</text>
+<text x="20" y="310" fill="#4fc3f7" font-size="13">PUNTEROS</text>
+</svg>
