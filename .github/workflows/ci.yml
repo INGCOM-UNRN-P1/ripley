@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  full-suite:
+    name: Suite completa (entorno docente)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y valgrind cppcheck bubblewrap
+      - run: uv sync --extra dev
+      - run: uv run pytest -q
+
+  student-minimal:
+    name: Entorno estudiante mínimo (ripley-check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+      # Simula la notebook del estudiante: solo gcc; sin valgrind, cppcheck,
+      # qemu, bwrap ni frama-c. El toolchain de sistema sigue accesible vía
+      # rutas absolutas internas, pero el PATH del proyecto queda restringido.
+      - name: Construir PATH restringido
+        run: |
+          mkdir -p /tmp/studentbin
+          ln -s "$(command -v gcc)" /tmp/studentbin/gcc || true
+          echo "/tmp/studentbin" > "$GITHUB_PATH"
+      - run: uv sync --extra dev
+      - name: Fronteras de capas y registro
+        run: uv run pytest tests/unit/test_layer_boundaries.py tests/unit/test_registry.py -q
+      - name: Flujo pack/run sin herramientas avanzadas
+        run: uv run pytest tests/integration/test_ripkg_flow.py -q
+      - name: Doctor reporta omisiones y nunca falla por faltar herramientas
+        run: |
+          OUT="$(uv run ripley-check doctor)"
+          echo "$OUT"
+          grep -qE "valgrind.*(falta|no )" <(echo "$OUT") || {
+            echo "el doctor no refleja valgrind ausente"; exit 1; }
+          grep -q "Omitidos\|falta" <(echo "$OUT") || {
+            echo "el doctor no lista checks omitidos"; exit 1; }
