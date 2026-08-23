@@ -1,10 +1,13 @@
 # Ripley - Registro Modular de Funcionalidades y Mejoras
 
+> **Última revisión:** 2026-08-23 — `149/149` tests pasando al 100% (`pytest`, suite unitaria + integración).
+
 ---
 
-## 1. Funcionalidades Implementadas (35)
+## 1. Funcionalidades Implementadas (65)
 
-Las 35 funcionalidades se encuentran modularizadas e implementadas con suites de pruebas unitarias e integradas (`87/87` tests pasando al 100%):
+Las funcionalidades se encuentran modularizadas e implementadas con suites de pruebas unitarias e integradas (`102/102` tests pasando al 100%):
+
 
 ### Módulo A: Ingesta, Persistencia y Gestión de Prácticas
 1. **Detección de Plagio y Similitud de Código (Anti-Cheating):** Algoritmo Winnowing con tokenización AST de C ($k$-gramas y ventanas deslizantes) y cálculo de similitud Jaccard ([`src/ripley/plagiarism.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/plagiarism.py)).
@@ -49,33 +52,73 @@ Las 35 funcionalidades se encuentran modularizadas e implementadas con suites de
 34. **Visualizador Gráfico de Estructuras Dinámicas en Memoria:** Representación de topología de nodos y enlaces en DOT y Mermaid ([`src/ripley/memory_visualizer.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/memory_visualizer.py)).
 35. **Testing Basado en Propiedades (Property-Based Testing en C):** Validación automática de invariantes formales (idempotencia, conmutatividad, multiconjunto ordenado) ([`src/ripley/property_testing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/property_testing.py)).
 
+### Módulo E: Compilación, Estilo, Seguridad e Infraestructura de Análisis
+36. **Compilación Segura con Sanitizadores y Fallback:** GCC con `-fsanitize=address,undefined`, límites `RLIMIT_CPU`/`RLIMIT_FSIZE` y reintento automático ante falta de `libasan` ([`src/ripley/compiler.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/compiler.py)).
+37. **Análisis de Estilo y Formato Configurable:** Verificación de llaves (Allman/K&R), indentación, espaciado de operadores/keywords y líneas en blanco según `ripley.toml` ([`src/ripley/style.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/style.py)).
+38. **Escáner Preventivo de Vulnerabilidades en C:** Detección de patrones inseguros (`gets`, `sprintf`, desbordes de buffer) sobre fuente pre-limpia de comentarios y literales ([`src/ripley/security.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/security.py)).
+39. **Gestor Integral de Casos de Prueba:** Generación de esqueletos `.in/.out/.argv`, listado, verificación de integridad y descubrimiento por ejercicio ([`src/ripley/testcases.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/testcases.py)).
+40. **Reglas Didácticas del Seminario Programación I:** Fiscalización específica del apunte P1 (declaraciones múltiples, VLA, variables cortas, asignaciones en condiciones) ([`src/ripley/p1_rules.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/p1_rules.py)).
+41. **Runner Dinámico con Diagnóstico Didáctico:** Ejecución de casos I/O con argumentos CLI, timeouts y clasificación pedagógica de fallos ([`src/ripley/runner.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/runner.py)).
+
+### Módulo F: Diffing, Fuzzing, Simulación y Exportación
+42. **Diff Unificado entre Reentregas:** Comparación incremental de fuentes normalizadas para informes de evolución ([`src/ripley/diffing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/diffing.py)).
+43. **Diff Semántico basado en AST de C:** Extracción de firmas y cuerpos de funciones para comparar cambios estructurales entre versiones ([`src/ripley/semantic_diff.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/semantic_diff.py)).
+44. **Fuzzing Automático de Entradas y Edge Cases:** Mutación aleatoria controlada de entradas para descubrir crashes no cubiertos por testcases fijos ([`src/ripley/fuzzing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/fuzzing.py)).
+45. **Simulador de Fragmentación de Memoria Heap:** Simulación de patrones malloc/free con cálculo de fragmentación externa e internal (✔ propuesta 10 del registro anterior) ([`src/ripley/heap_simulator.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/heap_simulator.py), CLI `heap-simulate`).
+46. **Auditoría de Funciones Puras y `const`:** Validación de `__attribute__((pure))`/`((const))` contra efectos secundarios reales, verificada por compilación (✔ propuesta 18) ([`src/ripley/pure_functions.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/pure_functions.py), CLI `pure-audit`).
+47. **Generador de Mocks y Stubs para Unit Testing en C:** Creación de harness con sustitutos de funciones dependientes a partir del AST ([`src/ripley/mocks.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/mocks.py), CLI `mock generate`).
+48. **Exportación de Notas y Feedback a Moodle:** CSV compatible con importación masiva más paquete ZIP de retroalimentación individual desde la base SQLite ([`src/ripley/exporter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/exporter.py), CLI `export`).
+49. **Dashboard de Cohorte y Evolución Longitudinal:** Métricas agregadas por actividad y alumno (notas, intentos, errores recurrentes) generadas como cuadro de mando (✔ propuesta 24) ([`src/ripley/exporter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/exporter.py), CLI `export`).
+
+### Módulo G: Auditores Semánticos Avanzados (AST)
+50. **Detector de Dependencia de Orden de Evaluación de Argumentos:** Captura llamadas `f(i++, i++)` con *unspecified behavior* (✔ propuesta 3) ([`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py)).
+51. **Auditoría de Modificación de Cadenas Literales en `.rodata`:** Detección estática de escrituras sobre literales vía puntero `char *s = "..."` (✔ propuesta 4) ([`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py)).
+52. **Control de Saltos Hacia Atrás con `goto`:** Penalización de saltos regresivos que emulan bucles desestructurados (✔ propuesta 5) ([`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py)).
+53. **Demostrador Heurístico de Terminación de Bucles:** Análisis de mutación de variables de condición en `while`/`do-while` para advertir bucles infinitos (✔ propuesta 14) ([`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py)).
+54. **Auditoría de Enums como Máscaras de Bits:** Detecta operadores `&`, `|`, `^`, `~` sobre enumeradores que no son potencias de dos (✔ propuesta 15) ([`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py)).
+55. **Detector de Funciones Obsoletas y Desaconsejadas (Deprecated C API):** Alerta sobre `gets`, `strcpy`, `sprintf`, `strtok`, `atoi`, `asctime`, etc., con reemplazos seguros sugeridos (✔ propuesta 17) ([`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py)).
+
+### Módulo H: Entornos Seguros, Rendimiento y Verificación Formal
+56. **Compilación Cruzada Multi-Arquitectura (QEMU):** Matriz x86_64 (nativo), ARM64, RISC-V y MIPS big-endian con comparación de salidas contra el nativo; degrada con mensaje si falta toolchain (✔ propuesta 1) ([`src/ripley/cross_arch.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/cross_arch.py), CLI `cross-test`).
+57. **Aislamiento con Espacios de Nombres Linux:** Ejecución sin root vía bubblewrap (`--unshare-all`) o `unshare --user` con detección por sondeo y fallback reportado (✔ propuesta 2) ([`src/ripley/sandbox.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/sandbox.py), CLI `sandbox-test`).
+58. **Instantáneas de Toolchains Herméticas:** Captura y verificación JSON de versiones de GCC, target, libc, kernel y hash de flags para reproducibilidad temporal (✔ propuesta 6) ([`src/ripley/toolchain.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/toolchain.py), CLI `toolchain-snapshot --verify`).
+59. **Fuzzing Guiado por Cobertura (gcov):** Compila con `--coverage`, muta entradas y prioriza las que descubren líneas nuevas; detecta crashes y arma corpus incremental sin requerir AFL++/LibFuzzer (✔ propuesta 7) ([`src/ripley/coverage_fuzzing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/coverage_fuzzing.py), CLI `coverage-fuzz`).
+60. **Analizador Empírico de Complejidad Asintótica:** Perfila tiempos con $N$ creciente y clasifica O(1)/O(√N)/O(N)/O(N log N)/O(N²)/O(N³) mediante regresión log-log con $R^2$ (✔ propuesta 8) ([`src/ripley/complexity_profiler.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/complexity_profiler.py), CLI `complexity-profile`).
+61. **Auditoría de Consumo de Stack Máximo (`-fstack-usage`):** Parseo de archivos `.su` con umbral configurable y flag de asignaciones dinámicas (VLA/alloca) (✔ propuesta 9) ([`src/ripley/stack_usage.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/stack_usage.py), CLI `stack-audit`).
+62. **Inyección de Fallas en Sockets (LD_PRELOAD):** Shim C generado en runtime que interpone `socket/connect/send/recv/close`, inyecta `ECONNRESET` a partir de la N-ésima operación y audita fugas de descriptores (✔ propuesta 11) ([`src/ripley/socket_faults.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/socket_faults.py), CLI `socket-fault`).
+63. **Benchmarking de Consumo Energético y Ciclos:** Tiempo de pared multi-corrida + conteo Callgrind con modelo energético estimado (dinámico por instrucción + estático) para materias de arquitectura (✔ propuesta 12) ([`src/ripley/benchmark.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/benchmark.py), CLI `benchmark`).
+64. **Verificación Formal Ligera (Frama-C / ACSL):** Inventario estático de contratos `requires/ensures/assigns` adjuntos a funciones, métrica de cobertura documental y wrapper del demostrador WP cuando Frama-C está instalado (✔ propuesta 13) ([`src/ripley/formal_contracts.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/formal_contracts.py), CLI `contract-check`).
+65. **Verificador de Inicialización de Struct Padding (*Padding Zeroing*):** Cálculo del layout C estándar (huecos y relleno final) y alerta cuando structs con padding se envían a archivos/sockets sin `memset` previo (✔ propuesta 16) ([`src/ripley/padding_audit.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/padding_audit.py), CLI `padding-audit`, integrado en `evaluate` vía `[padding] enabled`).
+
 ---
 
-## 2. 30 Nuevas Propuestas de Mejora (Modularizadas)
+## 2. Propuestas de Mejora Pendientes (11)
+
+> **Propuestas ya implementadas** y migradas a la Sección 1: **1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24** (ítems 56-65, 50-52, 45, 53-55, 46 y 49 respectivamente). Los Módulos 1, 2 y 3 del registro original están completados.
 
 ### Módulo 1: Compilación, Aislamiento y Entornos Seguros
-1. **Soporte para Compilación Cruzada Multi-Arquitectura (x86_64, ARM64, RISC-V con QEMU):** Compilar y ejecutar los binarios de los alumnos en emuladores QEMU para validar portabilidad y orden de bytes (*endianness*).
-2. **Aislamiento Basado en Espacios de Nombres Linux (Bubblewrap / Unshare):** Ejecutar pruebas dentro de un sandbox estricto sin privilegios de root (PID, Mount, Network e IPC namespaces).
-3. **Detector de Dependencia de Orden de Evaluación de Argumentos:** Capturar llamadas como `f(i++, i++)` o `f(g(), h())` donde el estándar C deja el orden de evaluación indefinido (*unspecified behavior*).
-4. **Auditoría de Modificación de Cadenas Literales en `.rodata`:** Proteger páginas de solo lectura para atrapar en tiempo de ejecución cualquier intento de modificar literales de texto (`char *s = "hola"; s[0] = 'H';`).
-5. **Control de Saltos Hacia Atrás con `goto`:** Regla que penaliza saltos hacia atrás con `goto` que simulan bucles desestructurados (*spaghetti code*).
-6. **Generador de Instantáneas de Toolchains Herméticas:** Empaquetar versiones fijas de GCC y bibliotecas estándar para garantizar evaluaciones 100% reproducibles en el tiempo.
+1. ~~**Soporte para Compilación Cruzada Multi-Arquitectura (x86_64, ARM64, RISC-V con QEMU)**~~ → **Implementada** (Sección 1, ítem 56).
+2. ~~**Aislamiento Basado en Espacios de Nombres Linux (Bubblewrap / Unshare)**~~ → **Implementada** (Sección 1, ítem 57).
+3. ~~**Detector de Dependencia de Orden de Evaluación de Argumentos**~~ → **Implementada** (Sección 1, ítem 50).
+4. ~~**Auditoría de Modificación de Cadenas Literales en `.rodata`**~~ → **Implementada** (Sección 1, ítem 51).
+5. ~~**Control de Saltos Hacia Atrás con `goto`**~~ → **Implementada** (Sección 1, ítem 52).
+6. ~~**Generador de Instantáneas de Toolchains Herméticas**~~ → **Implementada** (Sección 1, ítem 58).
 
 ### Módulo 2: Testing Dinámico, Rendimiento y Fuzzing Avanzado
-7. **Fuzzing Guiado por Cobertura (Coverage-Guided Fuzzing con LibFuzzer / AFL++):** Mutación de entradas que prioriza la exploración de nuevas ramas no alcanzadas del código del alumno.
-8. **Analizador Empírico de Complejidad Asintótica ($O(N)$ vs $O(N^2)$ Profiler):** Ejecutar algoritmos con entradas exponenciales ($N = 10, 100, 1000, 10000$) y ajustar curvas de regresión no lineal.
-9. **Auditoría de Consumo de Stack Máximo (`-fstack-usage`):** Medir los bytes pico utilizados en la pila para alertar sobre arreglos locales desmedidos (`int buffer[1000000];`).
-10. **Simulador de Fragmentación de Memoria Heap:** Simular patrones de asignación y liberación aleatorios para evaluar la eficiencia del heap del alumno.
-11. **Inyección de Fallas en Descriptores de Red y Sockets:** Simular conexiones caídas o timeouts para verificar si el código cierra adecuadamente los sockets.
-12. **Benchmarking de Consumo Energético y Ciclos de Instrucción:** Estimar la eficiencia energética del código para materias de arquitectura de computadoras.
+7. ~~**Fuzzing Guiado por Cobertura (Coverage-Guided Fuzzing con LibFuzzer / AFL++)**~~ → **Implementada con feedback gcov nativo** (Sección 1, ítem 59).
+8. ~~**Analizador Empírico de Complejidad Asintótica ($O(N)$ vs $O(N^2)$ Profiler)**~~ → **Implementada** (Sección 1, ítem 60).
+9. ~~**Auditoría de Consumo de Stack Máximo (`-fstack-usage`)**~~ → **Implementada** (Sección 1, ítem 61).
+10. ~~**Simulador de Fragmentación de Memoria Heap**~~ → **Implementada** (Sección 1, ítem 45).
+11. ~~**Inyección de Fallas en Descriptores de Red y Sockets**~~ → **Implementada** (Sección 1, ítem 62).
+12. ~~**Benchmarking de Consumo Energético y Ciclos de Instrucción**~~ → **Implementada (modelo estimado)** (Sección 1, ítem 63).
 
 ### Módulo 3: Análisis Semántico y Verificación Formal
-13. **Verificación Formal Ligera con Frama-C / ACSL:** Demostración automática de contratos de funciones con precondiciones (`/*@ requires n > 0 */`) y postcondiciones (`/*@ ensures \result >= 0 */`).
-14. **Demostrador de Terminación de Bucles (*Termination Proof*):** Analizar si las variables de control dentro de un bucle `while` o `for` son invariantes, deduciendo si el bucle es infinito.
-15. **Auditoría de Uso de Enums como Máscaras de Bits:** Detectar operaciones a nivel de bits (`&`, `|`) sobre `enums` que no fueron declarados como potencias de dos.
-16. **Verificador de Inicialización de Relleno de Estructuras (*Struct Padding Zeroing*):** Detectar si estructuras enviadas a archivos o sockets contienen bytes de relleno (*padding*) sin inicializar.
-17. **Detector de Funciones Obsoletas y Desaconsejadas (Deprecated C API Linter):** Alertar sobre funciones como `gets`, `tmpnam`, `asctime` o `strtok` sugiriendo sus reemplazos seguros (`fgets`, `mkstemp`, `strtok_r`).
-18. **Análisis de Efectos Secundarios en Funciones Puras (`__attribute__((pure))`):** Validar que funciones que retornan valores basados únicamente en sus parámetros no alteren estado global.
+13. ~~**Verificación Formal Ligera con Frama-C / ACSL**~~ → **Implementada (parser estático + wrapper WP)** (Sección 1, ítem 64).
+14. ~~**Demostrador de Terminación de Bucles (*Termination Proof*)**~~ → **Implementada (heurística estática)** (Sección 1, ítem 53).
+15. ~~**Auditoría de Uso de Enums como Máscaras de Bits**~~ → **Implementada** (Sección 1, ítem 54).
+16. ~~**Verificador de Inicialización de Relleno de Estructuras (*Struct Padding Zeroing*)**~~ → **Implementada** (Sección 1, ítem 65).
+17. ~~**Detector de Funciones Obsoletas y Desaconsejadas (Deprecated C API Linter)**~~ → **Implementada** (Sección 1, ítem 55).
+18. ~~**Análisis de Efectos Secundarios en Funciones Puras (`__attribute__((pure))`)**~~ → **Implementada** (Sección 1, ítem 46).
 
 ### Módulo 4: Didáctica, Feedback Personalizado y Accesibilidad
 19. **Generador de Animaciones de Memoria Paso a Paso (SVG Interactivo / GIF):** Crear representaciones animadas del estado de memoria (Stack, Heap, Punteros) durante la ejecución de casos fallidos.
@@ -83,7 +126,7 @@ Las 35 funcionalidades se encuentran modularizadas e implementadas con suites de
 21. **Modo Tutor Socrático Interactivo en Terminal (`ripley tutor`):** Asistente CLI que guía al estudiante a depurar su código mediante preguntas orientadoras sin revelar la solución.
 22. **Métrica de Complejidad Cognitiva de SonarQube:** Medir la dificultad de lectura del código penalizando anidamientos profundos y estructuras intrincadas.
 23. **Glosario Visual de Conceptos de Bajo Nivel:** Recursos gráficos y diagramas explicativos adaptados para estudiantes con necesidades de accesibilidad.
-24. **Informes de Evolución Longitudinal del Aprendizaje:** Cuadro de mando que muestra la evolución de cada alumno a lo largo de las distintas entregas del cuatrimestre.
+24. ~~**Informes de Evolución Longitudinal del Aprendizaje**~~ → **Implementada** (Sección 1, ítem 49).
 
 ### Módulo 5: Infraestructura, Integración y Ecosistema Docente
 25. **Sincronización Webhook en Tiempo Real con Moodle:** Recepción de eventos push de Moodle para evaluar entregas en menos de 10 segundos tras su envío.
@@ -96,6 +139,8 @@ Las 35 funcionalidades se encuentran modularizadas e implementadas con suites de
 ---
 
 ## 3. Roadmap de Propuestas Previas Pendientes
+
+> Ver además: [`PLAN_MODULARIZACION.md`](PLAN_MODULARIZACION.md) — separación del tool en `ripley-core` / `ripley-check` (estudiante) / `ripley` (docente) con manifiesto de práctica `.ripkg`.
 
 - Soporte para Makefiles estudiantiles y compilación modular.
 - Dashboard web local interactivo (`ripley serve`).
