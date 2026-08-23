@@ -920,3 +920,46 @@ def cmd_explain(
         console.print("[yellow]No se encontraron diagnósticos file:linea:col en la entrada.[/yellow]")
         return
     console.print(summarize_for_humans(diags, max_items=max_items))
+
+
+# ============================================================================
+# Makefiles estudiantiles y compilación modular
+# ============================================================================
+
+
+@app.command("make-audit")
+def cmd_make_audit(
+    directory: Path = typer.Argument(".", help="Directorio que contiene el Makefile y las fuentes."),
+    build: bool = typer.Option(False, "--build", help="Ejecutar `make all` tras la auditoría."),
+    target: str = typer.Option("all", "--target", "-t", help="Objetivo a construir con --build."),
+) -> None:
+    """Audita la calidad del Makefile estudiantil y opcionalmente compila de forma modular."""
+    from ripley.tools.makefile import MakefileAnalyzer, make_build
+
+    makefile = directory / "Makefile"
+    if not makefile.exists():
+        makefile = directory / "makefile"
+    if not makefile.exists():
+        console.print(f"[bold red]Sin Makefile en {directory}[/bold red]")
+        raise typer.Exit(code=1)
+
+    obs = MakefileAnalyzer().analyze(makefile.read_text(encoding="utf-8", errors="replace"), makefile.name)
+    if not obs:
+        console.print(f"[green]✓ {makefile}: sin observaciones de calidad.[/green]")
+    for o in obs:
+        color = {"ERROR": "red", "ADVERTENCIA": "yellow"}.get(o.severity, "cyan")
+        console.print(f"[{color}]{o.severity}[/{color}] {o.message}")
+        console.print(f"  [dim]→ {o.suggestion.replace(chr(10), chr(10)+'  ')}[/dim]")
+
+    if build:
+        result = make_build(directory, target=target)
+        estado = "[green]OK[/green]" if result.success else "[red]FALLÓ[/red]"
+        console.print(f"\nmake {target}: {estado} (rc={result.returncode})")
+        if result.binary_path:
+            console.print(f"  Binario: {result.binary_path}")
+        if not result.success:
+            if result.human_errors:
+                console.print(result.human_errors)
+            else:
+                console.print(f"  [dim]{(result.stderr or result.stdout)[:400]}[/dim]")
+            raise typer.Exit(code=1)

@@ -92,3 +92,16 @@ register(CheckSpec(
     scope="both",
     prefix="[Doxygen]",
 ))
+
+# ---------------------------------------------------------------------------
+# Construcción: Makefiles estudiantiles y compilación modular (dinámico)
+# ---------------------------------------------------------------------------
+register(CheckSpec(
+    check_id="build.makefile",
+    title="Makefile estudiantil: auditoría de calidad y build modular vía make",
+    layer="dynamic",
+    scope="both",
+    config_section="makefile",
+    toggle="enabled",
+    requires_tools=("make", "gcc"),
+))

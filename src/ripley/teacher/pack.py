@@ -66,6 +66,10 @@ def pack_practice(
         compiler_executable=cfg.compiler.executable,
         compiler_flags=list(cfg.compiler.flags),
         payload_files=payload,
+        makefile_cfg={
+            "target": cfg.makefile.target,
+            "expected_binary": cfg.makefile.expected_binary,
+        } if cfg.makefile.enabled else None,
     )
     if sign_key:
         manifest.setdefault("integrity", {})["unsigned"] = False

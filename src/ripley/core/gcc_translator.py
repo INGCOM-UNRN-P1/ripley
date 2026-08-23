@@ -212,8 +212,10 @@ def translate_diagnostic_line(line: str) -> Optional[TranslatedDiagnostic]:
         level=m.group("level"),
     )
 
+    # GCC 12+ usa comillas tipográficas ('x'); normalizar para las reglas.
+    body_norm = m.group("body").replace("\u2018", "'").replace("\u2019", "'")
     for regex, title_tpl, expl_tpl, sug_tpl in _COMPILED:
-        rm = regex.search(m.group("body"))
+        rm = regex.search(body_norm)
         if rm:
             diag.title = _format(title_tpl, rm)
             diag.explanation = _format(expl_tpl, rm)

@@ -55,9 +55,10 @@ def build_manifest(
     compiler_executable: str,
     compiler_flags: List[str],
     payload_files: Dict[str, bytes],
+    makefile_cfg: Optional[Dict] = None,
 ) -> Dict:
     """Construye el diccionario de manifiesto con hashes de integridad."""
-    return {
+    manifest = {
         "meta": {
             "format_version": FORMAT_VERSION,
             "practica": practica_slug,
@@ -73,6 +74,9 @@ def build_manifest(
             "sha256": {name: _sha256(payload_files[name]) for name in sorted(payload_files)},
         },
     }
+    if makefile_cfg:
+        manifest["makefile"] = dict(makefile_cfg)
+    return manifest
 
 
 def serialize_manifest(manifest: Dict) -> bytes:

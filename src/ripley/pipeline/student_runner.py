@@ -17,6 +17,7 @@ from ripley.pipeline.bundle import BundleError, RipkgBundle
 from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
 from ripley.pipeline.registry import all_checks, get, is_runnable, iter_uniform_static
 from ripley.tools.compiler import Compiler
+from ripley.tools.makefile import make_build
 from ripley.tools.runner import DynamicTestRunner
 from ripley.tools.testcases import TestCaseInfo
 
@@ -80,8 +81,17 @@ def run_bundle(
         if missing:
             raise FileNotFoundError(f"Fuentes inexistentes: {', '.join(missing)}")
 
-        binary = tmp / "student_bin"
+        # 1bis. Build modular vía Makefile si la práctica lo habilita.
+        make_cfg = manifest.get("makefile", {})
+        src_dir = sources[0].parent
+        use_make = (
+            "build.makefile" in enabled_ids
+            and (src_dir / "Makefile").exists()
+            and tools.get("make")
+        )
+
         from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
+        binary = tmp / "student_bin"
         compiler = Compiler(
             CompilerConfig(
                 executable=compiler_cfg.get("executable", "gcc"),
@@ -90,6 +100,24 @@ def run_bundle(
             LimitsConfig(timeout_segundos=15),
             SandboxConfig(),
         )
+        if use_make:
+            build = make_build(
+                src_dir,
+                target=make_cfg.get("target", "all"),
+                expected_binary=make_cfg.get("expected_binary", ""),
+            )
+            report.compiled_ok = build.success
+            report.compile_errors = (build.stderr or build.stdout).strip()[:4000]
+            report.human_diagnostics = build.human_errors
+            if not build.success or build.binary_path is None:
+                if build.success and build.binary_path is None:
+                    # Sin binario detectable: caer a compilación directa con flags oficiales.
+                    pass
+                else:
+                    return report
+            else:
+                binary = build.binary_path
+
         result = compiler.compile(sources, binary)
         report.compiled_ok = result.success
         if not result.success:

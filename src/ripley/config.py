@@ -199,6 +199,17 @@ class PureFunctionsConfig:
 
 
 @dataclass
+class MakefileConfig:
+    """Soporte para Makefiles estudiantiles y compilación modular."""
+    enabled: bool = False
+    prefer_makefile: bool = True
+    executable: str = "make"
+    target: str = "all"
+    timeout_segundos: int = 30
+    expected_binary: str = ""  # nombre del binario producido; vacío = autodetección
+
+
+@dataclass
 class PaddingAuditConfig:
     """Auditoría de bytes de relleno de structs enviados a I/O sin inicializar."""
     enabled: bool = False
@@ -245,6 +256,7 @@ class RipleyConfig:
     property_testing: PropertyTestingConfig = field(default_factory=PropertyTestingConfig)
     pure_functions: PureFunctionsConfig = field(default_factory=PureFunctionsConfig)
     padding: PaddingAuditConfig = field(default_factory=PaddingAuditConfig)
+    makefile: MakefileConfig = field(default_factory=MakefileConfig)
     restrictions: RestrictionsConfig = field(default_factory=RestrictionsConfig)
     doxygen: DoxygenConfig = field(default_factory=DoxygenConfig)
     valgrind: ValgrindConfig = field(default_factory=ValgrindConfig)
@@ -301,6 +313,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     rubric_data = data.get("rubric", {})
     security_data = data.get("security", {})
     sandbox_data = data.get("sandbox", {})
+    makefile_data = data.get("makefile", {})
 
     cfg = RipleyConfig(
         compiler=CompilerConfig(
@@ -398,6 +411,14 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             enabled=data.get("padding", data.get("padding_audit", {})).get("enabled", False)
             if isinstance(data.get("padding", data.get("padding_audit")), dict)
             else False,
+        ),
+        makefile=MakefileConfig(
+            enabled=makefile_data.get("enabled", False),
+            prefer_makefile=makefile_data.get("prefer_makefile", True),
+            executable=makefile_data.get("executable", "make"),
+            target=makefile_data.get("target", "all"),
+            timeout_segundos=makefile_data.get("timeout_segundos", 30),
+            expected_binary=makefile_data.get("expected_binary", ""),
         ),
         restrictions=RestrictionsConfig(
             enabled=restrictions_data.get("enabled", False),
