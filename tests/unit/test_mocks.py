@@ -1,7 +1,7 @@
 """Unit tests for Mock generator."""
 
 from pathlib import Path
-from ripley.mocks import MockGenerator
+from ripley.core.mocks import MockGenerator
 
 
 def test_mock_generator_creates_headers_and_sources(tmp_path):

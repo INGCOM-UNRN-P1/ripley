@@ -1,6 +1,6 @@
 """Unit tests for code restrictions and requirement validator."""
 
-from ripley.restrictions import CodeRestrictionsValidator
+from ripley.core.restrictions import CodeRestrictionsValidator
 
 
 def test_restrictions_forbidden_constructs():

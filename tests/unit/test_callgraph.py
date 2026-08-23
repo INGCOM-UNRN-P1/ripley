@@ -1,7 +1,7 @@
 """Unit tests for Call Graph generator."""
 
 from pathlib import Path
-from ripley.callgraph import CallGraphGenerator
+from ripley.core.callgraph import CallGraphGenerator
 
 
 def test_callgraph_extracts_calls_and_recursion():

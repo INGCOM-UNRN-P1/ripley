@@ -1,7 +1,7 @@
 """Unit tests for AST semantic diffing module."""
 
 from pathlib import Path
-from ripley.semantic_diff import SemanticDiffer, extract_c_functions
+from ripley.core.semantic_diff import SemanticDiffer, extract_c_functions
 
 
 def test_extract_c_functions():

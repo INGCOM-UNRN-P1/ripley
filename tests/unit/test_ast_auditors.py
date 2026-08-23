@@ -1,6 +1,6 @@
 """Unit tests for AST auditors and C linters."""
 
-from ripley.ast_auditors import (
+from ripley.core.ast_auditors import (
     BackwardGotoLinter,
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,

@@ -8,7 +8,7 @@ from rich.prompt import Confirm, Prompt
 from rich.table import Table
 
 
-from ripley.ast_auditors import (
+from ripley.core.ast_auditors import (
     BackwardGotoLinter,
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
@@ -22,27 +22,27 @@ from ripley.ast_auditors import (
     StringNullPointerLinter,
     VariableShadowingLinter,
 )
-from ripley.callgraph import CallGraphGenerator
+from ripley.core.callgraph import CallGraphGenerator
 from ripley.benchmark import EnergyBenchmark
 from ripley.complexity_profiler import ComplexityProfiler
 from ripley.config import load_config
 from ripley.coverage_fuzzing import CoverageGuidedFuzzer
 from ripley.cross_arch import CrossArchitectureTester
-from ripley.doxygen import DoxygenAuditor
+from ripley.core.doxygen import DoxygenAuditor
 from ripley.embedded import EmbeddedMemoryRunner
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
-from ripley.flowchart import FlowchartGenerator
+from ripley.core.flowchart import FlowchartGenerator
 from ripley.formal_contracts import FormalContractAnalyzer
 from ripley.fuzzing import Fuzzer
-from ripley.heap_simulator import HeapMemorySimulator
+from ripley.core.heap_simulator import HeapMemorySimulator
 from ripley.ingest import MoodleIngestor
-from ripley.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
+from ripley.core.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
 from ripley.mapping import InteractiveMapper
-from ripley.memory_visualizer import DynamicMemoryVisualizer
-from ripley.mocks import MockGenerator
-from ripley.p1_rules import P1RuleChecker
-from ripley.padding_audit import StructPaddingAuditor
+from ripley.core.memory_visualizer import DynamicMemoryVisualizer
+from ripley.core.mocks import MockGenerator
+from ripley.core.p1_rules import P1RuleChecker
+from ripley.core.padding_audit import StructPaddingAuditor
 from ripley.plagiarism import PlagiarismDetector
 from ripley.pure_functions import PureFunctionAnalyzer
 from ripley.sandbox import NamespaceSandbox
@@ -61,7 +61,7 @@ from ripley.practice import (
 )
 from ripley.property_testing import PropertyTestRunner
 from ripley.sanitizers import SanitizerAnalyzer
-from ripley.semantic_diff import SemanticDiffer
+from ripley.core.semantic_diff import SemanticDiffer
 from ripley.templates import check_templates, init_templates, list_templates
 from ripley.testcases import (
     check_testcases_integrity,

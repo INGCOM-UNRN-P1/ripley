@@ -1,7 +1,7 @@
 """Unit tests for C code style and formatting analyzer."""
 
 from ripley.config import StyleConfig
-from ripley.style import StyleAnalyzer
+from ripley.core.style import StyleAnalyzer
 
 
 def test_style_analyzer_allman_vs_kr():

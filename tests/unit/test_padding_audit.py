@@ -1,6 +1,6 @@
 """Unit tests for struct padding zeroing auditor."""
 
-from ripley.padding_audit import StructPaddingAuditor
+from ripley.core.padding_audit import StructPaddingAuditor
 
 
 def test_struct_with_padding_sent_without_memset():

@@ -7,8 +7,8 @@ import subprocess
 import tempfile
 from typing import Dict, List, Optional, Set, Tuple
 
-from ripley.security import strip_c_comments_and_strings
-from ripley.semantic_diff import CFunctionAST, extract_c_functions
+from ripley.core.security import strip_c_comments_and_strings
+from ripley.core.semantic_diff import CFunctionAST, extract_c_functions
 
 
 @dataclass

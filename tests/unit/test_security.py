@@ -1,7 +1,7 @@
 """Unit tests for preventive C security scanner."""
 
 from ripley.config import SecurityConfig
-from ripley.security import SecurityScanner, strip_c_comments_and_strings
+from ripley.core.security import SecurityScanner, strip_c_comments_and_strings
 
 
 def test_strip_c_comments_and_strings():

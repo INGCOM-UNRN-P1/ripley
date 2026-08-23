@@ -10,7 +10,7 @@ import tempfile
 from typing import Any, Callable, Dict, List, Optional
 
 
-from ripley.ast_auditors import (
+from ripley.core.ast_auditors import (
     BackwardGotoLinter,
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
@@ -26,27 +26,27 @@ from ripley.ast_auditors import (
     VariableShadowingLinter,
 )
 
-from ripley.callgraph import CallGraphGenerator
+from ripley.core.callgraph import CallGraphGenerator
 from ripley.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.db import DatabaseManager
-from ripley.diffing import generate_unified_diff
-from ripley.padding_audit import StructPaddingAuditor
-from ripley.doxygen import DoxygenAuditor
-from ripley.flowchart import FlowchartGenerator
-from ripley.linters import (
+from ripley.core.diffing import generate_unified_diff
+from ripley.core.padding_audit import StructPaddingAuditor
+from ripley.core.doxygen import DoxygenAuditor
+from ripley.core.flowchart import FlowchartGenerator
+from ripley.core.linters import (
     DeadCodeLinter,
     InternalCloneLinter,
     MagicNumberLinter,
     NamingConventionLinter,
 )
 from ripley.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
-from ripley.memory_visualizer import DynamicMemoryVisualizer
-from ripley.p1_rules import P1RuleChecker
+from ripley.core.memory_visualizer import DynamicMemoryVisualizer
+from ripley.core.p1_rules import P1RuleChecker
 from ripley.property_testing import PropertyTestRunner
 from ripley.pure_functions import PureFunctionAnalyzer
 from ripley.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
-from ripley.restrictions import CodeRestrictionsValidator
+from ripley.core.restrictions import CodeRestrictionsValidator
 from ripley.runner import (
     CppcheckResult,
     CppcheckRunner,
@@ -57,9 +57,9 @@ from ripley.runner import (
     ValgrindResult,
     ValgrindRunner,
 )
-from ripley.security import SecurityScanner
-from ripley.semantic_diff import extract_c_functions
-from ripley.style import StyleCheckResult, StyleAnalyzer
+from ripley.core.security import SecurityScanner
+from ripley.core.semantic_diff import extract_c_functions
+from ripley.core.style import StyleCheckResult, StyleAnalyzer
 from ripley.testcases import discover_testcases
 
 

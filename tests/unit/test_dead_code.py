@@ -1,7 +1,7 @@
 """Unit tests for dead code and unreachable function detection."""
 
-from ripley.callgraph import CallGraphGenerator
-from ripley.linters import DeadCodeLinter
+from ripley.core.callgraph import CallGraphGenerator
+from ripley.core.linters import DeadCodeLinter
 
 
 def test_dead_code_linter_detects_unreachable_function():

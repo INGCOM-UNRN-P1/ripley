@@ -1,6 +1,6 @@
 """Unit tests for Programación I official rules checker (0xXXXXh)."""
 
-from ripley.p1_rules import P1RuleChecker
+from ripley.core.p1_rules import P1RuleChecker
 
 
 def test_p1_rules_syntax_and_nomenclature():

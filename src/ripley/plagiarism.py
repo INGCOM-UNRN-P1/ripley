@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 from typing import Dict, List, Optional, Set, Tuple
 
-from ripley.security import strip_c_comments_and_strings
+from ripley.core.security import strip_c_comments_and_strings
 
 C_KEYWORDS = {
     "auto", "break", "case", "char", "const", "continue", "default", "do",

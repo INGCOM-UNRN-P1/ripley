@@ -1,6 +1,6 @@
 """Unit tests for specialized linters (magic numbers, clones, and naming conventions)."""
 
-from ripley.linters import (
+from ripley.core.linters import (
     InternalCloneLinter,
     MagicNumberLinter,
     NamingConfig,

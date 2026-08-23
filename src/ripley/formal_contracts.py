@@ -7,7 +7,7 @@ import shutil
 import subprocess
 from typing import Dict, List, Optional
 
-from ripley.security import strip_c_comments_and_strings
+from ripley.core.security import strip_c_comments_and_strings
 
 
 @dataclass

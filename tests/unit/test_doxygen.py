@@ -1,6 +1,6 @@
 """Unit tests for Doxygen documentation auditor."""
 
-from ripley.doxygen import DoxygenAuditor
+from ripley.core.doxygen import DoxygenAuditor
 
 
 def test_doxygen_auditor_detects_missing_docs():

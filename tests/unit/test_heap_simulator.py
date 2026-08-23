@@ -1,6 +1,6 @@
 """Unit tests for HeapMemorySimulator."""
 
-from ripley.heap_simulator import HeapMemorySimulator
+from ripley.core.heap_simulator import HeapMemorySimulator
 
 
 def test_heap_simulator_allocation_and_coalescence():

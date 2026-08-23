@@ -7,7 +7,7 @@ import re
 from typing import List, Optional, Tuple
 
 from ripley.plagiarism import tokenize_c_code
-from ripley.security import strip_c_comments_and_strings
+from ripley.core.security import strip_c_comments_and_strings
 
 
 class DiagnosisType(str, Enum):
