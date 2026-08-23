@@ -1,10 +1,10 @@
 # Ripley - Registro Modular de Funcionalidades y Mejoras
 
-> **Última revisión:** 2026-08-23 — `149/149` tests pasando al 100% (`pytest`, suite unitaria + integración).
+> **Última revisión:** 2026-08-23 — `217/217` tests pasando al 100% (`pytest`, suite unitaria + integración).
 
 ---
 
-## 1. Funcionalidades Implementadas (65)
+## 1. Funcionalidades Implementadas (67)
 
 Las funcionalidades se encuentran modularizadas e implementadas con suites de pruebas unitarias e integradas (`102/102` tests pasando al 100%):
 
@@ -92,9 +92,9 @@ Las funcionalidades se encuentran modularizadas e implementadas con suites de pr
 
 ---
 
-## 2. Propuestas de Mejora Pendientes (11)
+## 2. Propuestas de Mejora Pendientes (9)
 
-> **Propuestas ya implementadas** y migradas a la Sección 1: **1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 24** (ítems 56-65, 50-52, 45, 53-55, 46 y 49 respectivamente). Los Módulos 1, 2 y 3 del registro original están completados.
+> **Propuestas ya implementadas** y migradas a la Sección 1: **1–18, 19, 24, 28** (ítems 56-65, 50-52, 45, 53-55, 46 y 49 respectivamente). Los Módulos 1, 2 y 3 del registro original están completados.
 
 ### Módulo 1: Compilación, Aislamiento y Entornos Seguros
 1. ~~**Soporte para Compilación Cruzada Multi-Arquitectura (x86_64, ARM64, RISC-V con QEMU)**~~ → **Implementada** (Sección 1, ítem 56).
@@ -121,7 +121,7 @@ Las funcionalidades se encuentran modularizadas e implementadas con suites de pr
 18. ~~**Análisis de Efectos Secundarios en Funciones Puras (`__attribute__((pure))`)**~~ → **Implementada** (Sección 1, ítem 46).
 
 ### Módulo 4: Didáctica, Feedback Personalizado y Accesibilidad
-19. **Generador de Animaciones de Memoria Paso a Paso (SVG Interactivo / GIF):** Crear representaciones animadas del estado de memoria (Stack, Heap, Punteros) durante la ejecución de casos fallidos.
+19. ~~**Generador de Animaciones de Memoria Paso a Paso (SVG Interactivo / GIF)**~~ → **Implementada** (Sección 1, ítem 66).
 20. **Recomendador de Lecturas y Ejercicios de Refuerzo:** Vincular cada error detectado con secciones específicas de la bibliografía de la materia.
 21. **Modo Tutor Socrático Interactivo en Terminal (`ripley tutor`):** Asistente CLI que guía al estudiante a depurar su código mediante preguntas orientadoras sin revelar la solución.
 22. **Métrica de Complejidad Cognitiva de SonarQube:** Medir la dificultad de lectura del código penalizando anidamientos profundos y estructuras intrincadas.
@@ -132,7 +132,7 @@ Las funcionalidades se encuentran modularizadas e implementadas con suites de pr
 25. **Sincronización Webhook en Tiempo Real con Moodle:** Recepción de eventos push de Moodle para evaluar entregas en menos de 10 segundos tras su envío.
 26. **Exportación a Formato Estándar SARIF (OASIS SARIF):** Exportar diagnósticos para visualización en GitHub Code Scanning y GitLab SAST.
 27. **Servicio Centralizado de Analítica Académica (Grafana / Prometheus):** Exponer métricas de rendimiento y errores recurrentes de toda la cursada hacia paneles de monitoreo.
-28. **Evaluación de Trabajos Prácticos Gráficos (SDL2 / Raylib en Framebuffer Virtual):** Ejecutar prácticas multimedia con `Xvfb` y comparar capturas de pantalla de la ventana contra salidas esperadas.
+28. ~~**Evaluación de Trabajos Prácticos Gráficos (SDL2 / Raylib en Framebuffer Virtual)**~~ → **Implementada** (Sección 1, ítem 67).
 29. **Auditoría de Co-Autoría y Firmas Criptográficas Git:** Analizar firmas GPG/SSH e historial de commits para fiscalizar la participación equitativa en entregas grupales.
 30. **Modo Evaluación Presencial con Bloqueo de Red (Exam Lockout Mode):** Configuración de entorno de examen presencial que bloquea accesos no autorizados a la red y periféricos.
 
