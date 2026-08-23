@@ -5,19 +5,10 @@ from pathlib import Path
 import re
 from typing import Dict, List, Optional, Set, Tuple
 
+from ripley.models import LinterObservation  # noqa: F401  (re-exportado por compatibilidad)
 from ripley.plagiarism import tokenize_c_code
 from ripley.security import strip_c_comments_and_strings
 from ripley.semantic_diff import extract_c_functions
-
-
-@dataclass
-class LinterObservation:
-    linter_name: str
-    filename: str
-    line: int
-    severity: str  # "ADVERTENCIA" | "ESTILO" | "ERROR"
-    message: str
-    suggestion: str = ""
 
 
 # ============================================================================
