@@ -321,3 +321,78 @@ def test_loop_termination_detects_do_while_infinito():
     assert len(obs) == 1
     assert "do-while" in obs[0].message
 
+
+
+# ---------------------------------------------------------------------------
+# Propuesta #14: terminación de bucles `for`
+# ---------------------------------------------------------------------------
+
+def test_for_loop_without_condition_flagged():
+    code = """
+    int main() {
+        for (;;) {
+            printf("eco\\n");
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "for (;;)" in obs[0].message or "sin condición" in obs[0].message
+
+
+def test_for_loop_with_increment_is_clean():
+    code = """
+    int main() {
+        for (int i = 0; i < 10; i++) {
+            printf("%d\\n", i);
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+def test_for_loop_empty_increment_and_no_body_mutation_flagged():
+    code = """
+    int main() {
+        int i = 0;
+        for (i = 0; i < 10;) {
+            printf("%d\\n", i);
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 1
+    assert "incremento" in obs[0].message
+
+
+def test_for_loop_body_mutation_compensates_missing_increment():
+    code = """
+    int main() {
+        int i = 0;
+        for (i = 0; i < 10;) {
+            printf("%d\\n", i);
+            i++;
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 0
+
+
+def test_for_loop_nested_call_condition_not_confused():
+    code = """
+    int main() {
+        char linea[64];
+        for (int n = 0; n < total(linea); n++) {
+            proceso(n);
+        }
+        return 0;
+    }
+    """
+    obs = LoopTerminationLinter().analyze(code, "test.c")
+    assert len(obs) == 0

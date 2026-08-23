@@ -812,5 +812,85 @@ class LoopTerminationLinter:
                     )
                 )
 
+        # --- for (init; cond; incr) { ... } ---
+        for m in re.finditer(r"\bfor\s*\(", clean):
+            header, close_idx = balanced_paren(m.end() - 1)
+            parts = self._split_header(header)
+            if parts is None:
+                continue  # No es un for canónico: omitir.
+            _init, cond, incr = parts
+
+            # for(;;): infinito por construcción cuando además no hay break analizable.
+            if not cond.strip():
+                line = clean[: m.start()].count("\n") + 1
+                observations.append(
+                    LinterObservation(
+                        linter_name="loop_termination",
+                        filename=filename,
+                        line=line,
+                        severity="ADVERTENCIA",
+                        message="Bucle `for` sin condición de corte (`for (;;)`): infinito salvo `break` interno.",
+                        suggestion="Agregá una condición explícita o documentá el `break` que garantiza la salida.",
+                    )
+                )
+                continue
+
+            rest = clean[close_idx + 1 :].lstrip()
+            body_offset = close_idx + 1 + (len(clean[close_idx + 1 :]) - len(rest))
+            if rest.startswith("{"):
+                body = self._extract_body_block(clean, body_offset)
+            else:
+                body = rest.split(";")[0]
+
+            def _mutated_in_increment(var: str, incr_text: str) -> bool:
+                if not incr_text:
+                    return False
+                return bool(
+                    re.search(rf"\b{var}\s*(?:\+\+|--)", incr_text)
+                    or re.search(rf"(?:\+\+|--)\s*{var}\b", incr_text)
+                    or re.search(rf"\b{var}\b\s*(?:\+=|-=|\*=|/=|%=)", incr_text)
+                    or re.search(rf"(?<![=<>!+\-*/%&|^])\b{var}\s*=(?![=])", incr_text)
+                )
+
+            cond_vars = self._condition_vars(cond)
+
+            def _mutated_anywhere(v: str) -> bool:
+                return self._is_mutated(v, body) or _mutated_in_increment(v, incr)
+
+            non_mutated = [v for v in cond_vars if not _mutated_anywhere(v)]
+            if cond_vars and len(non_mutated) == len(cond_vars):
+                line = clean[: m.start()].count("\n") + 1
+                observations.append(
+                    LinterObservation(
+                        linter_name="loop_termination",
+                        filename=filename,
+                        line=line,
+                        severity="ADVERTENCIA",
+                        message=f"Posible bucle infinito: ninguna variable de la condición `{cond.strip()}` se actualiza en el cuerpo ni en el incremento del `for`.",
+                        suggestion="Mové la actualización de la variable de control al incremento o al cuerpo del bucle.",
+                    )
+                )
+
         return observations
+
+    @staticmethod
+    def _split_header(header: str) -> Optional[Tuple[str, str, str]]:
+        """Divide 'init; cond; incr' respetando paréntesis anidados. None si no hay 2 ';'."""
+        parts: List[str] = []
+        depth = 0
+        current: List[str] = []
+        for ch in header:
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            if ch == ";" and depth == 0:
+                parts.append("".join(current))
+                current = []
+            else:
+                current.append(ch)
+        parts.append("".join(current))
+        if len(parts) != 3:
+            return None
+        return parts[0], parts[1], parts[2]
 
