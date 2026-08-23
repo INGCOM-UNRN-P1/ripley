@@ -10,28 +10,14 @@ import tempfile
 from typing import Any, Callable, Dict, List, Optional
 
 
-from ripley.core.ast_auditors import (
-    BackwardGotoLinter,
-    ConstCorrectnessLinter,
-    DanglingStackPointerLinter,
-    DeepFreeLinter,
-    DeprecatedAPILinter,
-    EnumBitmaskLinter,
-    EvaluationOrderLinter,
-    LoopTerminationLinter,
-    OverengineeringLinter,
-    ShortCircuitLinter,
-    StringLiteralWriteLinter,
-    StringNullPointerLinter,
-    VariableShadowingLinter,
-)
+from ripley.pipeline.checks import *  # noqa: F401,F403  (registra el catálogo)
+from ripley.pipeline.registry import iter_uniform_static
 
 from ripley.core.callgraph import CallGraphGenerator
 from ripley.tools.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.teacher.db import DatabaseManager
 from ripley.core.diffing import generate_unified_diff
-from ripley.core.padding_audit import StructPaddingAuditor
 from ripley.core.doxygen import DoxygenAuditor
 from ripley.core.flowchart import FlowchartGenerator
 from ripley.core.linters import (
@@ -261,55 +247,24 @@ class Evaluator:
                             for obs in NamingConventionLinter().analyze(src_content, src.name):
                                 all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Naming] {obs.message}"})
 
-                    # 3.2.3 Auditores AST Profundos (si están habilitados)
-                    if act_cfg.ast_auditors.enabled:
-                        src_content = src.read_text(encoding="utf-8", errors="replace")
-                        if act_cfg.ast_auditors.dangling_stack_pointer:
-                            for obs in DanglingStackPointerLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:DanglingPtr] {obs.message}"})
-                        if act_cfg.ast_auditors.const_correctness:
-                            for obs in ConstCorrectnessLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:ConstCorrectness] {obs.message}"})
-                        if act_cfg.ast_auditors.short_circuit:
-                            for obs in ShortCircuitLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:ShortCircuit] {obs.message}"})
-
-                        if act_cfg.ast_auditors.deep_free:
-                            for obs in DeepFreeLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:DeepFree] {obs.message}"})
-                        if act_cfg.ast_auditors.string_null:
-                            for obs in StringNullPointerLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:StringNull] {obs.message}"})
-                        if act_cfg.ast_auditors.variable_shadowing:
-                            for obs in VariableShadowingLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:Shadowing] {obs.message}"})
-                        if act_cfg.ast_auditors.overengineering:
-                            for obs in OverengineeringLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:Overengineering] {obs.message}"})
-                        if act_cfg.ast_auditors.evaluation_order:
-                            for obs in EvaluationOrderLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:EvaluationOrder] {obs.message}"})
-                        if act_cfg.ast_auditors.string_literal_write:
-                            for obs in StringLiteralWriteLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:StringLiteralWrite] {obs.message}"})
-                        if act_cfg.ast_auditors.backward_goto:
-                            for obs in BackwardGotoLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:BackwardGoto] {obs.message}"})
-                        if act_cfg.ast_auditors.deprecated_api:
-                            for obs in DeprecatedAPILinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:DeprecatedAPI] {obs.message}"})
-                        if act_cfg.ast_auditors.enum_bitmask:
-                            for obs in EnumBitmaskLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:EnumBitmask] {obs.message}"})
-                        if act_cfg.ast_auditors.loop_termination:
-                            for obs in LoopTerminationLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[AST:LoopTermination] {obs.message}"})
-
-                    # 3.2.3b Auditoría de padding de structs (si está habilitada)
-                    if act_cfg.padding.enabled:
-                        pad_content = src.read_text(encoding="utf-8", errors="replace")
-                        for obs in StructPaddingAuditor().analyze(pad_content, src.name):
-                            all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Padding] {obs.message}"})
+                    # 3.2.3 Auditores AST Profundos + padding, vía registro unificado.
+                    # El catálogo (pipeline.checks) replica 1:1 los toggles de ripley.toml,
+                    # de modo que el estudiante ejecute exactamente las mismas reglas.
+                    src_content = src.read_text(encoding="utf-8", errors="replace")
+                    for spec in iter_uniform_static():
+                        section = getattr(act_cfg, spec.config_section, None)
+                        if section is None or not getattr(section, "enabled", True):
+                            continue  # Sección sin master enabled (p. ej. padding off).
+                        if spec.config_section == "ast_auditors" and not act_cfg.ast_auditors.enabled:
+                            continue
+                        if not getattr(section, spec.toggle, False):
+                            continue
+                        for obs in spec.runner(src_content, src.name):
+                            all_style_obs.append({
+                                "archivo": obs.filename,
+                                "linea": obs.line,
+                                "mensaje": f"{spec.prefix} {obs.message}",
+                            })
 
                     # 3.2.4 Validación de Restricciones (si está habilitada)
                     if act_cfg.restrictions.enabled:
