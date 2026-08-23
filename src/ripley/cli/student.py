@@ -889,3 +889,34 @@ def cmd_run(
     else:
         console.print("\n[bold yellow]⚠ Revisá los puntos anteriores antes de entregar.[/bold yellow]\n")
         raise typer.Exit(code=1)
+
+
+# ============================================================================
+# Traductor pedagógico de diagnósticos GCC
+# ============================================================================
+
+
+@app.command("explain")
+def cmd_explain(
+    log_file: str = typer.Argument(..., help="Archivo con salida de gcc/ld ('-' para stdin)."),
+    max_items: int = typer.Option(5, "--max", "-n", help="Máximo de diagnósticos traducidos."),
+) -> None:
+    """Traduce errores de GCC a lenguaje natural pedagógico."""
+    from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
+
+    if log_file == "-":
+        import sys
+
+        content = sys.stdin.read()
+    else:
+        path = Path(log_file)
+        if not path.exists():
+            console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
+            raise typer.Exit(code=1)
+        content = path.read_text(encoding="utf-8", errors="replace")
+
+    diags = translate_stderr(content)
+    if not diags:
+        console.print("[yellow]No se encontraron diagnósticos file:linea:col en la entrada.[/yellow]")
+        return
+    console.print(summarize_for_humans(diags, max_items=max_items))

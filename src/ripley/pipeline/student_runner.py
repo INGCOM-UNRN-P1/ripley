@@ -14,6 +14,7 @@ from typing import Dict, List, Optional
 from ripley.pipeline import bundle as bundle_mod
 from ripley.pipeline.availability import available_map
 from ripley.pipeline.bundle import BundleError, RipkgBundle
+from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
 from ripley.pipeline.registry import all_checks, get, is_runnable, iter_uniform_static
 from ripley.tools.compiler import Compiler
 from ripley.tools.runner import DynamicTestRunner
@@ -31,6 +32,7 @@ class StudentRunReport:
     omitted: List[str] = field(default_factory=list)
     executed_checks: List[str] = field(default_factory=list)
     signature_verified: bool = False
+    human_diagnostics: str = ""
 
     @property
     def total_findings(self) -> int:
@@ -92,6 +94,9 @@ def run_bundle(
         report.compiled_ok = result.success
         if not result.success:
             report.compile_errors = result.stderr.strip()[:4000]
+            translated = translate_stderr(result.stderr)
+            if translated:
+                report.human_diagnostics = summarize_for_humans(translated)
             return report
 
         # 2. Testcases públicos: se materializan en disco para reutilizar
