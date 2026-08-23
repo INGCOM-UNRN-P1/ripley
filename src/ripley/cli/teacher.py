@@ -719,8 +719,10 @@ def cmd_practica_pack(
 
     out = Path(output) if output else result.output_path
     if output and out != result.output_path:
+        import shutil
+
         out.parent.mkdir(parents=True, exist_ok=True)
-        Path(result.output_path).replace(out)
+        shutil.move(str(result.output_path), str(out))
 
     console.print(f"\n[bold green]Paquete creado:[/bold green] {out}")
     console.print(f"  Checks habilitados : {result.checks_enabled}")

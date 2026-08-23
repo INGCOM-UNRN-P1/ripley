@@ -140,7 +140,7 @@ Las funcionalidades se encuentran modularizadas e implementadas con suites de pr
 
 ## 3. Roadmap de Propuestas Previas Pendientes
 
-> Ver además: [`PLAN_MODULARIZACION.md`](PLAN_MODULARIZACION.md) — separación del tool en `ripley-core` / `ripley-check` (estudiante) / `ripley` (docente) con manifiesto de práctica `.ripkg`.
+> Ver además: [`PLAN_MODULARIZACION.md`](PLAN_MODULARIZACION.md) — **implementado**: capas models/core/tools/pipeline/teacher, CLIs separados `ripley` (docente) y `ripley-check` (estudiante), paquetes de práctica `.ripkg` firmables y zipapp cero-instalación.
 
 - Soporte para Makefiles estudiantiles y compilación modular.
 - Dashboard web local interactivo (`ripley serve`).

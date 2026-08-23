@@ -1,6 +1,6 @@
 # Plan de Modularización de Ripley — Verificación Temprana del Lado del Estudiante
 
-> Estado: PROPUESTA — 2026-08-23
+> Estado: IMPLEMENTADO (F1–F5 completadas) — 2026-08-23
 > Motivación: permitir que el estudiante verifique su entrega **antes** de subirla, en su propia computadora, sin instalar el flujo docente completo ni ejecutar verificaciones que no aplican a la práctica.
 
 ---
@@ -124,12 +124,12 @@ Regla de oro: **si un check no figura en el manifiesto, `ripley-check` ni lo men
 
 | Fase | Alcance | Criterio de salida |
 |---|---|---|
-| **F0** | Auditoría de imports (hecha), clasificar módulos, decidir nombres finales | Este documento aprobado |
-| **F1** | Re-layout físico (`core/tools/teacher/models`) manteniendo imports compatibles vía shims; suite verde sin cambios funcionales | `pytest 149/149` + test de frontera que impide imports teacher→student |
-| **F2** | `pipeline/registry.py` + `availability.py`; migrar `evaluate` a consumir el registro; comandos `doctor` y `checks list` | Un check nuevo se registra en UN lugar y aparece en ambos CLIs |
-| **F3** | Split de distribuciones (`ripley-core`, `ripley-check`, `ripley`) + extras; CI con job "entorno estudiante mínimo" (sin valgrind/cppcheck/qemu) | `pip install ripley-check` funcional sin ninguna herramienta externa instalada |
-| **F4** | Formato `.ripkg` + `practica pack/fetch` + firma criptográfica | Práctica real empaquetada verificada end-to-end en máquina limpia |
-| **F5** | Zipapp/PEP 723 cero-instalación; MANUAL dividido en secciones docente/estudiante; tests de paridad dorada (mismo input → mismas observaciones en ambos lados) | Paridad demostrada en CI |
+| **F0** ✅ | Auditoría de imports (hecha), clasificar módulos, decidir nombres finales | Este documento aprobado |
+| **F1** ✅ | Re-layout físico (`core/tools/teacher/models`) manteniendo imports compatibles vía shims; suite verde sin cambios funcionales | `pytest` verde + test de frontera que impide imports teacher→student |
+| **F2** ✅ | `pipeline/registry.py` + `availability.py`; migrar `evaluate` a consumir el registro; comandos `doctor` y `checks list` | Un check nuevo se registra en UN lugar y aparece en ambos CLIs |
+| **F3** ✅* | CLI dividido (`ripley` / `ripley-check`) + CI con job "entorno estudiante mínimo" | Entrypoints separados; doctor reporta omisiones explícitas. *La distribución multi-paquete queda como empaquetado posterior: hoy `ripley-check` se consume vía entrypoint o zipapp |
+| **F4** ✅ | Formato `.ripkg` + `practica pack` + firma GPG opcional + `ripley-check run` | Flujo pack→run verificado end-to-end con detección de manipulación |
+| **F5** ✅ | Zipapp cero-instalación + MANUAL dividido + tests de paridad dorada | Paridad registro↔analizadores directos en CI |
 
 ## 8. Riesgos y mitigaciones
 

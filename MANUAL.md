@@ -595,7 +595,58 @@ fail_on_error = false
 
 ---
 
-## 7. Referencias Adicionales
+
+## 8. Guía del Estudiante: verificación temprana con `ripley-check`
+
+Ripley se separa en dos superficies de uso. La suite docente (`ripley`) requiere la
+infraestructura completa; el estudiante solo necesita `ripley-check`, que comparte el
+mismo catálogo de reglas pero nunca accede a datos de Moodle, plagio ni notas.
+
+### 8.1 Instalación
+
+```bash
+# Opción A: paquete pip (requiere typer y rich, ya incluidos)
+pipx install ripley
+
+# Opción B: zipapp autocontenido sin instalación (requiere typer+rich en el sistema)
+python scripts/build_zipapp.py            # genera dist/ripley_check.pyz
+./dist/ripley_check.pyz --help
+```
+
+Herramientas externas opcionales (gcc recomendado; valgrind, frama-c, qemu,
+bwrap... se detectan automáticamente y sus checks se marcan como OMITIDOS si faltan).
+
+### 8.2 Diagnóstico del entorno
+
+```bash
+ripley-check doctor        # qué herramientas hay y qué checks se omitirán
+ripley-check checks list   # catálogo completo con scope y requisitos
+```
+
+### 8.3 Verificación contra la práctica oficial
+
+El docente publica un paquete `.ripkg` con los checks habilitados y los testcases
+públicos de la práctica:
+
+```bash
+ripley-check run --practica entrega-2.ripkg mi_solucion.c
+```
+
+El comando compila con los flags oficiales de la práctica, ejecuta los testcases
+públicos contra las salidas esperadas y aplica exactamente el subconjunto de
+verificaciones declarado por el docente. El resultado es orientativo: la nota
+siempre proviene de la evaluación docente.
+
+### 8.4 Análisis individual sin paquete
+
+Todos los analizadores funcionan de forma independiente sobre archivos locales:
+`lint`, `padding-audit`, `contract-check`, `stack-audit`, `coverage-fuzz`,
+`complexity-profile`, `benchmark`, `flowchart`, `callgraph`, `doxygen`, etc.
+Ver `ripley-check --help`.
+
+---
+
+## 9. Referencias Adicionales
 
 - 🛠️ [Guía Completa de Configuración de Herramientas Externas para C (`HERRAMIENTAS_EXTERNAS.md`)](file:///home/mrtin/dev/p1/ripley/HERRAMIENTAS_EXTERNAS.md)
 - 📌 [Pautas Oficiales de Programación I (Reglas P1: 0x0001h - 0x5006h)](file:///home/mrtin/dev/p1/ripley/practicas/entrega-2_1236012/pautas_evaluacion.md)
