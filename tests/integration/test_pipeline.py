@@ -8,8 +8,8 @@ from ripley.config import RipleyConfig
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.ingest import MoodleIngestor
-from ripley.runner import DynamicTestRunner
-from ripley.testcases import create_testcase_skeleton, TestCaseInfo
+from ripley.tools.runner import DynamicTestRunner
+from ripley.tools.testcases import create_testcase_skeleton, TestCaseInfo
 
 
 def test_complete_end_to_end_pipeline(tmp_path):
@@ -113,7 +113,7 @@ def test_complete_end_to_end_pipeline(tmp_path):
 
 
 def test_infinite_loop_timeout(tmp_path):
-    from ripley.compiler import Compiler, CompilerConfig, LimitsConfig, SandboxConfig
+    from ripley.tools.compiler import Compiler, CompilerConfig, LimitsConfig, SandboxConfig
 
     src_file = tmp_path / "infinite.c"
     src_file.write_text(

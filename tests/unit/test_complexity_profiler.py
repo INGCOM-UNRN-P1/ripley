@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from ripley.complexity_profiler import ComplexityProfiler, _classify, _linear_fit
+from ripley.tools.complexity_profiler import ComplexityProfiler, _classify, _linear_fit
 
 
 def _gcc_available() -> bool:
@@ -25,7 +25,7 @@ def test_linear_fit_and_classification_helpers():
 
 def test_profile_classifies_quadratic_program_monkeypatched(tmp_path, monkeypatch):
     """Determinista: sustituye el reloj para sintetizar tiempos O(N^2)."""
-    import ripley.complexity_profiler as cp
+    import ripley.tools.complexity_profiler as cp
 
     binary = tmp_path / "fake.out"
     binary.write_text("", encoding="utf-8")

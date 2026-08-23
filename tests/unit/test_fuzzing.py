@@ -1,7 +1,7 @@
 """Unit tests for fuzzing module."""
 
 from pathlib import Path
-from ripley.fuzzing import Fuzzer
+from ripley.tools.fuzzing import Fuzzer
 
 
 def test_fuzzer_generates_edge_cases():

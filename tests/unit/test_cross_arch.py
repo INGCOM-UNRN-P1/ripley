@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from ripley.cross_arch import CrossArchitectureTester, TARGET_MATRIX
+from ripley.tools.cross_arch import CrossArchitectureTester, TARGET_MATRIX
 
 
 def test_target_matrix_contains_expected_architectures():

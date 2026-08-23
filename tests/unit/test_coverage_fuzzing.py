@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from ripley.coverage_fuzzing import CoverageGuidedFuzzer
+from ripley.tools.coverage_fuzzing import CoverageGuidedFuzzer
 
 
 def _gcc_and_gcov_available() -> bool:

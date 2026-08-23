@@ -1,7 +1,7 @@
 """Unit tests for Property-Based Testing framework in C."""
 
 from pathlib import Path
-from ripley.property_testing import PropertyTestRunner
+from ripley.tools.property_testing import PropertyTestRunner
 
 
 def test_property_testing_idempotence_and_commutativity(tmp_path):

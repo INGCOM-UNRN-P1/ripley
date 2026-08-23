@@ -1,6 +1,6 @@
 """Unit tests for hermetic toolchain snapshots."""
 
-from ripley.toolchain import capture_snapshot, compare_snapshots, load_snapshot, save_snapshot
+from ripley.tools.toolchain import capture_snapshot, compare_snapshots, load_snapshot, save_snapshot
 
 
 def test_capture_and_save_roundtrip(tmp_path):

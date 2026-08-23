@@ -9,7 +9,7 @@ import tomli_w
 from slugify import slugify
 
 from ripley.config import RipleyConfig, load_config
-from ripley.testcases import create_testcase_skeleton
+from ripley.tools.testcases import create_testcase_skeleton
 
 
 @dataclass

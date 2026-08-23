@@ -23,18 +23,18 @@ from ripley.core.ast_auditors import (
     VariableShadowingLinter,
 )
 from ripley.core.callgraph import CallGraphGenerator
-from ripley.benchmark import EnergyBenchmark
-from ripley.complexity_profiler import ComplexityProfiler
+from ripley.tools.benchmark import EnergyBenchmark
+from ripley.tools.complexity_profiler import ComplexityProfiler
 from ripley.config import load_config
-from ripley.coverage_fuzzing import CoverageGuidedFuzzer
-from ripley.cross_arch import CrossArchitectureTester
+from ripley.tools.coverage_fuzzing import CoverageGuidedFuzzer
+from ripley.tools.cross_arch import CrossArchitectureTester
 from ripley.core.doxygen import DoxygenAuditor
-from ripley.embedded import EmbeddedMemoryRunner
+from ripley.tools.embedded import EmbeddedMemoryRunner
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.core.flowchart import FlowchartGenerator
 from ripley.formal_contracts import FormalContractAnalyzer
-from ripley.fuzzing import Fuzzer
+from ripley.tools.fuzzing import Fuzzer
 from ripley.core.heap_simulator import HeapMemorySimulator
 from ripley.ingest import MoodleIngestor
 from ripley.core.linters import DeadCodeLinter, InternalCloneLinter, MagicNumberLinter, NamingConventionLinter
@@ -44,11 +44,11 @@ from ripley.core.mocks import MockGenerator
 from ripley.core.p1_rules import P1RuleChecker
 from ripley.core.padding_audit import StructPaddingAuditor
 from ripley.plagiarism import PlagiarismDetector
-from ripley.pure_functions import PureFunctionAnalyzer
-from ripley.sandbox import NamespaceSandbox
-from ripley.socket_faults import SocketFaultInjector
-from ripley.stack_usage import StackUsageAuditor
-from ripley.toolchain import capture_snapshot, compare_snapshots, load_snapshot, save_snapshot
+from ripley.tools.pure_functions import PureFunctionAnalyzer
+from ripley.tools.sandbox import NamespaceSandbox
+from ripley.tools.socket_faults import SocketFaultInjector
+from ripley.tools.stack_usage import StackUsageAuditor
+from ripley.tools.toolchain import capture_snapshot, compare_snapshots, load_snapshot, save_snapshot
 
 
 
@@ -59,11 +59,11 @@ from ripley.practice import (
     list_practices,
     sync_practice_testcases,
 )
-from ripley.property_testing import PropertyTestRunner
-from ripley.sanitizers import SanitizerAnalyzer
+from ripley.tools.property_testing import PropertyTestRunner
+from ripley.tools.sanitizers import SanitizerAnalyzer
 from ripley.core.semantic_diff import SemanticDiffer
 from ripley.templates import check_templates, init_templates, list_templates
-from ripley.testcases import (
+from ripley.tools.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
     discover_testcases,

@@ -1,9 +1,9 @@
 """Unit tests for EmbeddedMemoryRunner."""
 
 from pathlib import Path
-from ripley.compiler import Compiler
+from ripley.tools.compiler import Compiler
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
-from ripley.embedded import EmbeddedMemoryRunner
+from ripley.tools.embedded import EmbeddedMemoryRunner
 
 
 def test_embedded_memory_runner(tmp_path):

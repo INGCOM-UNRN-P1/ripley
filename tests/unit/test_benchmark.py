@@ -4,9 +4,9 @@ import shutil
 
 import pytest
 
-from ripley.benchmark import EnergyBenchmark
+from ripley.tools.benchmark import EnergyBenchmark
 from ripley.config import CompilerConfig, SandboxConfig
-from ripley.compiler import Compiler, LimitsConfig
+from ripley.tools.compiler import Compiler, LimitsConfig
 
 
 def _gcc_available() -> bool:

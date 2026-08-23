@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from ripley.stack_usage import StackUsageAuditor
+from ripley.tools.stack_usage import StackUsageAuditor
 
 
 def _gcc_available() -> bool:

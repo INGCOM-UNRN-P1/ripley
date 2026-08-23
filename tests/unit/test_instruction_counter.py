@@ -1,7 +1,7 @@
 """Unit tests for InstructionCounter."""
 
 from pathlib import Path
-from ripley.instruction_counter import InstructionCounter
+from ripley.tools.instruction_counter import InstructionCounter
 
 
 def test_instruction_counter_execution_and_threshold(tmp_path, monkeypatch):

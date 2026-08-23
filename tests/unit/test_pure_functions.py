@@ -1,7 +1,7 @@
 """Unit tests for PureFunctionAnalyzer."""
 
 from pathlib import Path
-from ripley.pure_functions import PureFunctionAnalyzer
+from ripley.tools.pure_functions import PureFunctionAnalyzer
 
 
 def test_pure_function_static_analysis():

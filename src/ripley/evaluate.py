@@ -27,7 +27,7 @@ from ripley.core.ast_auditors import (
 )
 
 from ripley.core.callgraph import CallGraphGenerator
-from ripley.compiler import CompilationResult, Compiler
+from ripley.tools.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.db import DatabaseManager
 from ripley.core.diffing import generate_unified_diff
@@ -43,11 +43,11 @@ from ripley.core.linters import (
 from ripley.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
 from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 from ripley.core.p1_rules import P1RuleChecker
-from ripley.property_testing import PropertyTestRunner
-from ripley.pure_functions import PureFunctionAnalyzer
+from ripley.tools.property_testing import PropertyTestRunner
+from ripley.tools.pure_functions import PureFunctionAnalyzer
 from ripley.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
 from ripley.core.restrictions import CodeRestrictionsValidator
-from ripley.runner import (
+from ripley.tools.runner import (
     CppcheckResult,
     CppcheckRunner,
     CustomToolResult,
@@ -60,7 +60,7 @@ from ripley.runner import (
 from ripley.core.security import SecurityScanner
 from ripley.core.semantic_diff import extract_c_functions
 from ripley.core.style import StyleCheckResult, StyleAnalyzer
-from ripley.testcases import discover_testcases
+from ripley.tools.testcases import discover_testcases
 
 
 @dataclass

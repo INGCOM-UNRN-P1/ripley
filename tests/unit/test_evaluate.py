@@ -4,7 +4,7 @@ from pathlib import Path
 from ripley.config import RipleyConfig
 from ripley.db import DatabaseManager, StudentRecord
 from ripley.evaluate import Evaluator
-from ripley.testcases import create_testcase_skeleton
+from ripley.tools.testcases import create_testcase_skeleton
 
 
 def test_evaluator_evaluates_student_successfully(tmp_path):

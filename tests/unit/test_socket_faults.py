@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 
-from ripley.socket_faults import SocketFaultInjector
+from ripley.tools.socket_faults import SocketFaultInjector
 
 
 def _gcc_available() -> bool:

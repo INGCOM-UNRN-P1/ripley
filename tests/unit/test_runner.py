@@ -3,7 +3,7 @@
 from pathlib import Path
 import subprocess
 
-from ripley.compiler import Compiler
+from ripley.tools.compiler import Compiler
 from ripley.config import (
     CompilerConfig,
     CppcheckConfig,
@@ -13,7 +13,7 @@ from ripley.config import (
     SandboxConfig,
     ValgrindConfig,
 )
-from ripley.runner import (
+from ripley.tools.runner import (
     CppcheckRunner,
     CustomToolRunner,
     DynamicTestRunner,
@@ -22,7 +22,7 @@ from ripley.runner import (
     compare_outputs,
     normalize_output_text,
 )
-from ripley.testcases import TestCaseInfo
+from ripley.tools.testcases import TestCaseInfo
 
 
 

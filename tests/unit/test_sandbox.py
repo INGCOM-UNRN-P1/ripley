@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from ripley.sandbox import NamespaceSandbox
+from ripley.tools.sandbox import NamespaceSandbox
 
 
 def test_detect_strategy_returns_known_value():
