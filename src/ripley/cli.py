@@ -23,12 +23,17 @@ from ripley.ast_auditors import (
     VariableShadowingLinter,
 )
 from ripley.callgraph import CallGraphGenerator
+from ripley.benchmark import EnergyBenchmark
+from ripley.complexity_profiler import ComplexityProfiler
 from ripley.config import load_config
+from ripley.coverage_fuzzing import CoverageGuidedFuzzer
+from ripley.cross_arch import CrossArchitectureTester
 from ripley.doxygen import DoxygenAuditor
 from ripley.embedded import EmbeddedMemoryRunner
 from ripley.evaluate import Evaluator
 from ripley.exporter import MoodleExporter
 from ripley.flowchart import FlowchartGenerator
+from ripley.formal_contracts import FormalContractAnalyzer
 from ripley.fuzzing import Fuzzer
 from ripley.heap_simulator import HeapMemorySimulator
 from ripley.ingest import MoodleIngestor
@@ -37,8 +42,13 @@ from ripley.mapping import InteractiveMapper
 from ripley.memory_visualizer import DynamicMemoryVisualizer
 from ripley.mocks import MockGenerator
 from ripley.p1_rules import P1RuleChecker
+from ripley.padding_audit import StructPaddingAuditor
 from ripley.plagiarism import PlagiarismDetector
 from ripley.pure_functions import PureFunctionAnalyzer
+from ripley.sandbox import NamespaceSandbox
+from ripley.socket_faults import SocketFaultInjector
+from ripley.stack_usage import StackUsageAuditor
+from ripley.toolchain import capture_snapshot, compare_snapshots, load_snapshot, save_snapshot
 
 
 
@@ -1147,6 +1157,316 @@ def cmd_property_test(
         console.print(f"[bold red]✗ {res.message}[/bold red]")
         if res.counterexample_output:
             console.print(f"[yellow]Contraejemplo hallado:[/yellow] {res.counterexample_output}\n")
+        raise typer.Exit(code=1)
+
+
+# ============================================================================
+# Módulo 1: Compilación, Aislamiento y Entornos Seguros
+# ============================================================================
+
+
+@app.command("cross-test")
+def cmd_cross_test(
+    file_path: str = typer.Argument(..., help="Ruta al archivo fuente C (.c)."),
+    stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Archivo con la entrada estándar."),
+) -> None:
+    """Compila y ejecuta la fuente en múltiples arquitecturas vía QEMU (x86_64, ARM64, RISC-V, MIPS-BE)."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Fuente no encontrada: {path}[/bold red]")
+        raise typer.Exit(code=1)
+    stdin_data = Path(stdin_file).read_text(encoding="utf-8") if stdin_file else ""
+
+    tester = CrossArchitectureTester()
+    report = tester.test(path, stdin_data=stdin_data)
+
+    console.print(f"\n[bold green]Matriz de Compilación Cruzada:[/bold green] {path.name}")
+    table = Table()
+    table.add_column("Arquitectura", style="cyan")
+    table.add_column("Toolchain")
+    table.add_column("Emulador")
+    table.add_column("Estado")
+    for t in report.targets:
+        status = (
+            "[green]OK - salida consistente[/green]"
+            if t.compiled and t.output_matched
+            else "[red]Salida divergente[/red]"
+            if t.compiled and t.ran and not t.output_matched
+            else "[yellow]" + (t.message[:60] or "compilado sin ejecutar") + "[/yellow]"
+            if t.compiled
+            else "[dim]" + t.message[:70] + "[/dim]"
+        )
+        table.add_row(t.architecture, "sí" if t.compiler_used else "no", t.emulator_used or "-", status)
+    console.print(table)
+
+
+@app.command("sandbox-test")
+def cmd_sandbox_test(
+    binary_path: str = typer.Argument(..., help="Binario a ejecutar aislado."),
+    stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Archivo con la entrada estándar."),
+) -> None:
+    """Ejecuta el binario dentro de namespaces Linux (bubblewrap/unshare) sin root."""
+    binp = Path(binary_path)
+    if not binp.exists():
+        console.print(f"[bold red]Binario no encontrado: {binp}[/bold red]")
+        raise typer.Exit(code=1)
+    stdin_data = Path(stdin_file).read_text(encoding="utf-8") if stdin_file else ""
+
+    sandbox = NamespaceSandbox()
+    self_test = sandbox.self_test()
+    strategy = sandbox.detect_strategy()
+    style_map = {"bubblewrap": "[green]bubblewrap[/green]", "unshare": "[yellow]unshare (user-ns)[/yellow]", "none": "[red]sin aislamiento[/red]"}
+    console.print(f"\n[bold]Estrategia detectada:[/bold] {style_map.get(strategy, strategy)}")
+    console.print(f"  Self-test: {'[green]OK[/green]' if self_test.success else '[red]FALLÓ[/red]'} — {self_test.message}")
+
+    res = sandbox.run(binp, stdin_data=stdin_data)
+    console.print(f"  rc={res.returncode} | stdout: {len(res.stdout)} bytes | stderr: {len(res.stderr)} bytes")
+    console.print(f"  {res.message}")
+    if not res.success:
+        raise typer.Exit(code=1)
+
+
+@app.command("toolchain-snapshot")
+def cmd_toolchain_snapshot(
+    output: str = typer.Option(".ripley/toolchain_snapshot.json", "--output", "-o", help="Ruta del JSON de instantánea."),
+    verify: bool = typer.Option(False, "--verify", help="Compara contra la instantánea guardada en lugar de crearla nueva."),
+) -> None:
+    """Captura o verifica una instantánea hermética del toolchain para reproducibilidad."""
+    current = capture_snapshot(compile_flags=load_config().compiler.flags)
+    snapshot_path = Path(output)
+
+    if verify:
+        baseline = load_snapshot(snapshot_path)
+        if baseline is None:
+            console.print(f"[bold red]No existe instantánea previa en {snapshot_path}.[/bold red]")
+            raise typer.Exit(code=1)
+        comparison = compare_snapshots(baseline, current)
+        if comparison.reproducible:
+            console.print(f"[bold green]✓ {comparison.message}[/bold green]")
+        else:
+            console.print(f"[bold yellow]⚠ {comparison.message}[/bold yellow]")
+            for diff in comparison.differences:
+                console.print(f"   • {diff}")
+            raise typer.Exit(code=1)
+    else:
+        save_snapshot(current, snapshot_path)
+        console.print(f"\n[bold green]Instantánea de toolchain guardada en {snapshot_path}[/bold green]")
+        console.print(f"  Compilador : {current.compiler_version} ({current.compiler_target})")
+        console.print(f"  libc       : {current.libc_version}")
+        console.print(f"  Kernel/Maq : {current.kernel} / {current.machine}")
+
+
+# ============================================================================
+# Módulo 2: Testing Dinámico, Rendimiento y Fuzzing Avanzado
+# ============================================================================
+
+
+@app.command("coverage-fuzz")
+def cmd_coverage_fuzz(
+    file_path: str = typer.Argument(..., help="Fuente C del alumno (.c)."),
+    iterations: int = typer.Option(200, "--iterations", "-n", help="Máximo de iteraciones de fuzzing."),
+    seed: int = typer.Option(42, "--seed", help="Semilla aleatoria reproducible."),
+) -> None:
+    """Fuzzing guiado por cobertura (gcov): prioriza entradas que descubren líneas nuevas."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Fuente no encontrada: {path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    fuzzer = CoverageGuidedFuzzer(seed=seed)
+    with console.status("[bold cyan]Fuzzing guiado por cobertura en curso..."):
+        report = fuzzer.fuzz(path, max_iterations=iterations)
+
+    if not report.available:
+        console.print(f"[bold red]{report.message}[/bold red]")
+        raise typer.Exit(code=1)
+    console.print(f"\n[bold green]Reporte de Fuzzing Guiado por Cobertura:[/bold green] {report.summary()}")
+    for crash in report.crashes[:5]:
+        console.print(f"  [bold red]CRASH rc={crash.returncode}[/bold red] input: {crash.input_data!r:.80}")
+        console.print(f"    {crash.stderr_excerpt[:160]}")
+    if report.crashes:
+        raise typer.Exit(code=1)
+
+
+@app.command("complexity-profile")
+def cmd_complexity_profile(
+    binary_path: str = typer.Argument(..., help="Binario ya compilado a perfilar."),
+    pattern: str = typer.Option("{n}\\n", "--pattern", help="Plantilla de entrada; '{n}' se reemplaza por el tamaño N."),
+    sizes: str = typer.Option("10,100,1000,10000", "--sizes", help="Tamaños N separados por coma."),
+    repeats: int = typer.Option(3, "--repeats", help="Repeticiones por tamaño."),
+) -> None:
+    """Analiza la complejidad asintótica empírica O(N) vs O(N^2) ajustando regresiones log-log."""
+    binp = Path(binary_path)
+    if not binp.exists():
+        console.print(f"[bold red]Binario no encontrado: {binp}[/bold red]")
+        raise typer.Exit(code=1)
+
+    size_list = [int(s.strip()) for s in sizes.split(",") if s.strip()]
+    profiler = ComplexityProfiler(sizes=size_list, repeats_per_size=repeats)
+    report = profiler.profile(binp, input_pattern=pattern.replace("\\n", "\n"))
+
+    console.print(f"\n[bold green]Perfil de Complejidad Empírica:[/bold green] {binp.name}")
+    if not report.available:
+        console.print(f"[bold red]{report.message}[/bold red]")
+        raise typer.Exit(code=1)
+    table = Table()
+    table.add_column("N", justify="right", style="cyan")
+    table.add_column("Tiempo promedio (ms)", justify="right")
+    for m in report.measurements:
+        table.add_row(str(m.n), f"{m.time_ms:.2f}")
+    console.print(table)
+    console.print(f"  Pendiente log-log: [bold]{report.slope:.2f}[/bold] (R²={report.r_squared:.4f})")
+    console.print(f"  Clasificación estimada: [bold magenta]{report.classification}[/bold magenta]")
+
+
+@app.command("stack-audit")
+def cmd_stack_audit(
+    files: list[str] = typer.Argument(..., help="Archivos fuente C a auditar."),
+    threshold: int = typer.Option(1024, "--threshold", "-t", help="Umbral de bytes de stack por función."),
+) -> None:
+    """Audita el consumo máximo de stack por función con -fstack-usage."""
+    sources = [Path(f) for f in files]
+    missing = [s for s in sources if not s.exists()]
+    if missing:
+        console.print(f"[bold red]Archivos no encontrados: {[str(m) for m in missing]}[/bold red]")
+        raise typer.Exit(code=1)
+
+    auditor = StackUsageAuditor(threshold_bytes=threshold)
+    report = auditor.audit(sources)
+    if not report.available:
+        console.print(f"[bold red]{report.message}[/bold red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold green]Auditoría de Consumo de Stack[/bold green] (umbral: {threshold} B)")
+    offenders = report.offenders
+    dynamic = report.dynamic_entries
+    if not offenders and not dynamic:
+        console.print("[green]✓ Ninguna función supera el umbral ni usa asignaciones dinámicas.[/green]")
+        return
+    table = Table()
+    table.add_column("Función", style="cyan")
+    table.add_column("Ubicación", dim=True)
+    table.add_column("Bytes", justify="right")
+    table.add_column("Tipo")
+    for e in offenders:
+        kind = "[red]dinámico (VLA/alloca)[/red]" if e.is_dynamic else "[yellow]estático grande[/yellow]"
+        table.add_row(e.function, f"{e.source_file}:{e.line}", str(e.size_bytes), kind)
+    console.print(table)
+
+
+@app.command("socket-fault")
+def cmd_socket_fault(
+    binary_path: str = typer.Argument(..., help="Binario que utiliza sockets."),
+    rounds: int = typer.Option(5, "--rounds", help="Cantidad de rondas de inyección de fallas."),
+) -> None:
+    """Inyecta fallas de red (connect/send/recv) vía LD_PRELOAD y audita fugas de descriptores."""
+    binp = Path(binary_path)
+    if not binp.exists():
+        console.print(f"[bold red]Binario no encontrado: {binp}[/bold red]")
+        raise typer.Exit(code=1)
+
+    injector = SocketFaultInjector()
+    try:
+        audit = injector.audit(binp, max_fault_rounds=rounds)
+    finally:
+        injector.close()
+
+    if not audit.available:
+        console.print(f"[bold red]{audit.message}[/bold red]")
+        raise typer.Exit(code=1)
+    if audit.baseline:
+        b = audit.baseline
+        console.print(f"\n[bold green]Línea base:[/bold green] sockets={b.sockets_created} cerrados={b.sockets_closed} fugas={b.leaked_fds}")
+    for r in audit.fault_rounds:
+        console.print(
+            f"  falla tras op #{r.fail_after}: creados={r.sockets_created} cerrados={r.sockets_closed} "
+            f"fugas=[{'red' if r.leaked_fds > 0 else 'green'}]{r.leaked_fds}[/] fallas_inyectadas={r.injected_failures}"
+        )
+    console.print(f"\n  Veredicto: {'[bold red]' + audit.message + '[/bold red]' if audit.leaks_under_faults else '[green]' + audit.message + '[/green]'}")
+    if audit.leaks_under_faults:
+        raise typer.Exit(code=1)
+
+
+@app.command("benchmark")
+def cmd_benchmark(
+    binary_path: str = typer.Argument(..., help="Binario a medir."),
+    repeats: int = typer.Option(5, "--repeats", "-r", help="Repeticiones para el tiempo de pared."),
+    stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Entrada estándar opcional."),
+) -> None:
+    """Benchmark de ciclos de instrucción y consumo energético estimado."""
+    binp = Path(binary_path)
+    if not binp.exists():
+        console.print(f"[bold red]Binario no encontrado: {binp}[/bold red]")
+        raise typer.Exit(code=1)
+    stdin_data = Path(stdin_file).read_text(encoding="utf-8") if stdin_file else ""
+
+    bench = EnergyBenchmark(repeats=repeats)
+    result = bench.run(binp, stdin_data=stdin_data)
+
+    console.print(f"\n[bold green]Benchmark Energético y de Ciclos:[/bold green] {result.binary}")
+    console.print(f"  Tiempo medio : {result.mean_time_ms:.2f} ms (±{result.stddev_time_ms:.2f}, min {result.min_time_ms:.2f})")
+    console.print(f"  Instrucciones: {result.instruction_count:,} {'(Callgrind)' if result.counters_available else '(valgrind no disponible: valor aproximado)'}")
+    console.print(f"  Ciclos est.  : {result.estimated_cycles:,}")
+    console.print(f"  Energía est. : {result.estimated_energy_joules * 1e6:.2f} µJ")
+    console.print(f"  Score        : {result.throughput_score:,.0f} instrucciones/ms")
+
+
+# ============================================================================
+# Módulo 3: Análisis Semántico y Verificación Formal
+# ============================================================================
+
+
+@app.command("contract-check")
+def cmd_contract_check(
+    file_path: str = typer.Argument(..., help="Fuente C con contratos ACSL /*@ ... */."),
+    run_prover: bool = typer.Option(True, "--prover/--no-prover", help="Ejecutar Frama-C WP si está instalado."),
+) -> None:
+    """Verifica contratos ACSL (requires/ensures): inventario estático + demostración Frama-C."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Fuente no encontrada: {path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    code = path.read_text(encoding="utf-8", errors="replace")
+    analyzer = FormalContractAnalyzer()
+    coverage = analyzer.audit_contract_coverage(code, path.name)
+
+    console.print(f"\n[bold green]Cobertura de Contratos ACSL:[/bold green] {coverage['coverage_pct']}% ({coverage['documented']}/{coverage['total_functions']} funciones)")
+    if coverage["incomplete_contracts"]:
+        console.print(f"  [yellow]Contratos incompletos (faltan requires/ensures): {coverage['incomplete_contracts']}[/yellow]")
+    if coverage["undocumented_functions"]:
+        console.print(f"  [dim]Sin contrato: {coverage['undocumented_functions'][:8]}[/dim]")
+
+    if not run_prover:
+        return
+    prover = analyzer.run_frama_c(path)
+    if not prover.available:
+        console.print(f"  [dim]{prover.message}[/dim]")
+        return
+    verdict = "[green]✓ todas las metas probadas[/green]" if prover.all_proved else f"[yellow]{prover.unproved_goals} metas sin probar[/yellow]"
+    console.print(f"  Frama-C WP: {prover.proved_goals} probadas, {verdict}")
+
+
+@app.command("padding-audit")
+def cmd_padding_audit(
+    files: list[str] = typer.Argument(..., help="Archivos fuente C a auditar."),
+) -> None:
+    """Detecta structs con padding enviados a archivos/sockets sin inicializar (memset)."""
+    findings = 0
+    for f in files:
+        path = Path(f)
+        if not path.exists():
+            console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
+            raise typer.Exit(code=1)
+        code = path.read_text(encoding="utf-8", errors="replace")
+        obs = StructPaddingAuditor().analyze(code, path.name)
+        for o in obs:
+            findings += 1
+            console.print(f"[bold red]ADVERTENCIA[/bold red] {o.filename}:{o.line} — {o.message}")
+            console.print(f"  [dim]→ {o.suggestion}[/dim]")
+    if findings == 0:
+        console.print("[green]✓ Sin riesgos de filtración de bytes de relleno detectados.[/green]")
+    else:
         raise typer.Exit(code=1)
 
 
