@@ -31,20 +31,33 @@ class ExecutionResult:
     duration_ms: float = 0.0
 
 
-def set_process_limits(memory_limit_mb: int, cpu_timeout_sec: int) -> None:
-    """Configura los límites de recursos de Unix en el proceso hijo antes de ejecutar."""
+def set_process_limits(
+    memory_limit_mb: int,
+    cpu_timeout_sec: int,
+    enforce_data_limit: bool = False,
+) -> None:
+    """Configura los límites de recursos de Unix en el proceso hijo antes de ejecutar.
+
+    RLIMIT_DATA solo se aplica con ``enforce_data_limit=True``: los binarios
+    instrumentados con AddressSanitizer reservan regiones virtuales masivas
+    (shadow memory y arena del allocator) que el kernel contabiliza en dicho
+    límite, por lo que forzarlo provoca el aborto inmediato del proceso
+    auditado. La protección de memoria queda delegada a los sanitizadores,
+    Valgrind y el timeout de CPU.
+    """
     try:
         # Límite de CPU
         resource.setrlimit(resource.RLIMIT_CPU, (cpu_timeout_sec, cpu_timeout_sec + 2))
     except (ValueError, OSError):
         pass
 
-    try:
-        # Límite de segmento de datos (heap)
-        mem_bytes = memory_limit_mb * 1024 * 1024
-        resource.setrlimit(resource.RLIMIT_DATA, (mem_bytes, mem_bytes))
-    except (ValueError, OSError):
-        pass
+    if enforce_data_limit:
+        try:
+            # Límite de segmento de datos (heap)
+            mem_bytes = memory_limit_mb * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_DATA, (mem_bytes, mem_bytes))
+        except (ValueError, OSError):
+            pass
 
     try:
         # Límite de tamaño de archivo generado (RLIMIT_FSIZE) a 20MB
