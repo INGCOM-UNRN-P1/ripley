@@ -32,3 +32,6 @@ packages = ["src/ripley"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: pruebas de integración que requieren herramientas externas completas",
+]

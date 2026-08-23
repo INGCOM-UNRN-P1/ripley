@@ -105,3 +105,17 @@ register(CheckSpec(
     toggle="enabled",
     requires_tools=("make", "gcc"),
 ))
+
+
+# ---------------------------------------------------------------------------
+# Prácticas gráficas bajo framebuffer virtual (dinámico)
+# ---------------------------------------------------------------------------
+register(CheckSpec(
+    check_id="graphics.xvfb",
+    title="Prácticas SDL2/Raylib: ejecución bajo Xvfb y comparación de capturas",
+    layer="dynamic",
+    scope="both",
+    config_section="graphics",
+    toggle="enabled",
+    requires_tools=("Xvfb", "import", "compare"),
+))

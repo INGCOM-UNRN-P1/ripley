@@ -199,6 +199,18 @@ class PureFunctionsConfig:
 
 
 @dataclass
+class GraphicsConfig:
+    """Evaluación de prácticas gráficas (SDL2/Raylib) bajo framebuffer virtual."""
+    enabled: bool = False
+    screen: str = "1280x720x24"
+    settle_seconds: float = 1.0
+    max_diff_pixels: int = 100
+    display_base: int = 90
+    capture_executable: str = "import"   # ImageMagick
+    compare_executable: str = "compare"  # ImageMagick
+
+
+@dataclass
 class MakefileConfig:
     """Soporte para Makefiles estudiantiles y compilación modular."""
     enabled: bool = False
@@ -257,6 +269,7 @@ class RipleyConfig:
     pure_functions: PureFunctionsConfig = field(default_factory=PureFunctionsConfig)
     padding: PaddingAuditConfig = field(default_factory=PaddingAuditConfig)
     makefile: MakefileConfig = field(default_factory=MakefileConfig)
+    graphics: GraphicsConfig = field(default_factory=GraphicsConfig)
     restrictions: RestrictionsConfig = field(default_factory=RestrictionsConfig)
     doxygen: DoxygenConfig = field(default_factory=DoxygenConfig)
     valgrind: ValgrindConfig = field(default_factory=ValgrindConfig)
@@ -314,6 +327,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     security_data = data.get("security", {})
     sandbox_data = data.get("sandbox", {})
     makefile_data = data.get("makefile", {})
+    graphics_data = data.get("graphics", {})
 
     cfg = RipleyConfig(
         compiler=CompilerConfig(
@@ -419,6 +433,13 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             target=makefile_data.get("target", "all"),
             timeout_segundos=makefile_data.get("timeout_segundos", 30),
             expected_binary=makefile_data.get("expected_binary", ""),
+        ),
+        graphics=GraphicsConfig(
+            enabled=graphics_data.get("enabled", False),
+            screen=graphics_data.get("screen", "1280x720x24"),
+            settle_seconds=float(graphics_data.get("settle_seconds", 1.0)),
+            max_diff_pixels=int(graphics_data.get("max_diff_pixels", 100)),
+            display_base=int(graphics_data.get("display_base", 90)),
         ),
         restrictions=RestrictionsConfig(
             enabled=restrictions_data.get("enabled", False),

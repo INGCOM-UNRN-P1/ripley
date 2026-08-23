@@ -728,3 +728,86 @@ def cmd_practica_pack(
     console.print(f"  Checks habilitados : {result.checks_enabled}")
     console.print(f"  Archivos payload   : {result.payload_files}")
     console.print(f"  Firmado            : {'sí' if result.signed else 'no (unsigned=true)'}")
+
+
+@practica_app.command("graphics-capture")
+def cmd_practica_graphics_capture(
+    binary_path: Path = typer.Argument(..., help="Binario gráfico (SDL2/Raylib) a ejecutar."),
+    output: Path = typer.Option("golden.png", "--output", "-o", help="PNG dorado a generar."),
+    args_str: str = typer.Option("", "--args", help="Argumentos CLI para el binario."),
+    stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Entrada estándar opcional."),
+) -> None:
+    """Genera la imagen dorada de referencia ejecutando el binario bajo Xvfb."""
+    import shlex
+
+    from ripley.config import load_config
+    from ripley.tools.graphics_eval import GraphicsEvaluator
+
+    cfg = load_config().graphics
+    evaluator = GraphicsEvaluator(cfg)
+    if not evaluator.available:
+        console.print(f"[bold red]{evaluator._probe_msg}[/bold red]")
+        raise typer.Exit(code=1)
+
+    cli_args = tuple(shlex.split(args_str)) if args_str else ()
+    stdin_data = Path(stdin_file).read_text(encoding="utf-8") if stdin_file else ""
+    cap = evaluator.capture_screenshot(binary_path, cli_args=cli_args,
+                                       stdin_data=stdin_data, workdir=output.parent)
+    if not cap.ok or cap.screenshot_path is None:
+        console.print(f"[bold red]{cap.message}[/bold red]")
+        raise typer.Exit(code=1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    shutil_move(cap.screenshot_path, output)
+    console.print(f"[green]✓ Golden generado:[/green] {output} (display {cap.display})")
+
+
+def shutil_move(src: Path, dst: Path) -> None:
+    import shutil as _sh
+
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    _sh.move(str(src), str(dst))
+
+
+@practica_app.command("graphics-eval")
+def cmd_practica_graphics_eval(
+    binary_path: Path = typer.Argument(..., help="Binario del alumno a evaluar."),
+    golden: list[Path] = typer.Option(..., "--golden", "-g", help="Imagen(es) doradas contra las que comparar."),
+    args_str: str = typer.Option("", "--args", help="Argumentos CLI para el binario (mismo escenario por golden)."),
+    stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Entrada estándar opcional."),
+) -> None:
+    """Evalúa un TP gráfico: captura bajo Xvfb y compara píxeles contra los goldens."""
+    import shlex
+
+    from ripley.config import load_config
+    from ripley.tools.graphics_eval import GraphicsEvaluator
+
+    cfg = load_config().graphics
+    if not cfg.enabled:
+        console.print("[yellow][graphics] enabled=false en ripley.toml; evaluando de todos modos.[/yellow]")
+    evaluator = GraphicsEvaluator(cfg)
+    if not evaluator.available:
+        console.print(f"[bold red]{evaluator._probe_msg}[/bold red]")
+        raise typer.Exit(code=1)
+
+    cli_args = tuple(shlex.split(args_str)) if args_str else ()
+    stdin_data = Path(stdin_file).read_text(encoding="utf-8") if stdin_file else ""
+
+    table = Table(title=f"Evaluación Gráfica — {binary_path.name}")
+    table.add_column("Golden", style="cyan")
+    table.add_column("Dif. píxeles", justify="right")
+    table.add_column("Umbral", justify="right")
+    table.add_column("Resultado")
+    fallas = 0
+    for expected in golden:
+        res = evaluator.evaluate_case(binary_path, expected, cli_args=cli_args,
+                                      stdin_data=stdin_data)
+        if res.diff_pixels < 0 and not res.passed:
+            console.print(f"[bold red]{res.message}[/bold red]")
+            raise typer.Exit(code=1)
+        ok = res.passed
+        fallas += 0 if ok else 1
+        table.add_row(expected.name, str(res.diff_pixels), str(res.threshold),
+                      "[green]APROBADO[/green]" if ok else "[red]RECHAZADO[/red]")
+    console.print(table)
+    if fallas:
+        raise typer.Exit(code=1)
