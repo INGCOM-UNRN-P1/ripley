@@ -932,10 +932,11 @@ def cmd_explain(
 def cmd_make_audit(
     directory: Path = typer.Argument(".", help="Directorio que contiene el Makefile y las fuentes."),
     build: bool = typer.Option(False, "--build", help="Ejecutar `make all` tras la auditoría."),
-    target: str = typer.Option("all", "--target", "-t", help="Objetivo a construir con --build."),
+    full: bool = typer.Option(False, "--full", help="Verificación integral: build, deps de headers, huérfanos, test y clean."),
+    target: str = typer.Option("all", "--target", "-t", help="Objetivo a construir con --build/--full."),
 ) -> None:
-    """Audita la calidad del Makefile estudiantil y opcionalmente compila de forma modular."""
-    from ripley.tools.makefile import MakefileAnalyzer, make_build
+    """Audita la calidad del Makefile estudiantil; --full ejecuta el circuito completo."""
+    from ripley.tools.makefile import MakefileAnalyzer, make_build, verify_project
 
     makefile = directory / "Makefile"
     if not makefile.exists():
@@ -943,6 +944,26 @@ def cmd_make_audit(
     if not makefile.exists():
         console.print(f"[bold red]Sin Makefile en {directory}[/bold red]")
         raise typer.Exit(code=1)
+
+    if full:
+        rep = verify_project(directory, target=target)
+        console.print(f"\n[bold]Verificación integral:[/bold] {rep.message}")
+        filas = [
+            ("Build", "[green]OK[/green]" if rep.build_ok else "[red]FALLÓ[/red]"),
+            ("Idempotente (make -q)", {"True": "[green]sí[/green]", "False": "[red]NO (recompila sin cambios)[/red]"}.get(str(rep.idempotent), "[dim]-[/dim]")),
+            ("Headers sin dependencia", ", ".join(rep.missing_header_deps) or "[green]ninguno[/green]"),
+            ("Fuentes huérfanas", ", ".join(rep.orphan_sources) or "[green]ninguna[/green]"),
+            ("make test", {True: "[green]OK[/green]", False: "[red]FALLÓ[/red]"}.get(str(rep.test_ok), "[dim]sin target[/dim]")),
+            ("make clean limpia todo", {"True": "[green]sí[/green]", "False": "[red]NO[/red]"}.get(str(rep.clean_ok), "[dim]sin target[/dim]")),
+        ]
+        tabla = Table(title="Circuito de Makefile")
+        tabla.add_column("Verificación"); tabla.add_column("Resultado")
+        for k, v in filas: tabla.add_row(k, v)
+        console.print(tabla)
+        for o in rep.estructura:
+            color = {"ERROR": "red", "ADVERTENCIA": "yellow"}.get(o.severity, "cyan")
+            console.print(f"[{color}]{o.severity}[/{color}] {o.message}")
+        raise typer.Exit(code=0 if rep.ok else 1)
 
     obs = MakefileAnalyzer().analyze(makefile.read_text(encoding="utf-8", errors="replace"), makefile.name)
     if not obs:
@@ -1477,3 +1498,32 @@ def cmd_analyze(
     if not result.compilation.get("success", False):
         raise typer.Exit(code=1)
 
+
+# ============================================================================
+# Ripley dentro de tu Makefile (ripley.mk)
+# ============================================================================
+
+
+@app.command("make-integrate")
+def cmd_make_integrate(
+    directory: Path = typer.Option(".", "--dir", "-d", help="Proyecto donde escribir ripley.mk."),
+    practica: str = typer.Option("", "--practica", "-p", help="Slug del .ripkg para run/watch."),
+    output: str = typer.Option("ripley.mk", "--output", "-o", help="Archivo a generar."),
+    force: bool = typer.Option(False, "--force", help="Sobrescribir si ya existe."),
+) -> None:
+    """Genera ripley.mk para incluir al final de tu Makefile: targets verify/lint/watch."""
+    from ripley.tools.makefile import render_ripley_mk, suggest_sources
+
+    destino = directory / output
+    if destino.exists() and not force:
+        console.print(f"[yellow]{destino} ya existe (usá --force para sobrescribir).[/yellow]")
+        raise typer.Exit(code=1)
+
+    fuentes = suggest_sources(directory)
+    mk = render_ripley_mk(sources, practica=practica)
+    destino.write_text(mk, encoding="utf-8")
+
+    console.print(f"\n[bold green]✓ Generado:[/bold green] {destino}")
+    console.print(f"  Fuentes detectadas : {' '.join(fuentes) or '(ninguna)'}")
+    console.print("  Siguiente paso     : agregá al final de tu Makefile → [bold]include ripley.mk[/bold]")
+    console.print("  Targets disponibles : make ripley-verify · make ripley-lint · make ripley-watch · make help")
