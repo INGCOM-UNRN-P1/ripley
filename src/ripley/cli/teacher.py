@@ -12,7 +12,6 @@ from rich.table import Table
 from ripley.cli._common import console
 from ripley.config import load_config
 from ripley.teacher.evaluate import Evaluator
-from ripley.teacher.exporter import MoodleExporter
 from ripley.teacher.templates import check_templates, init_templates, list_templates
 from ripley.teacher.practice import (
     ExerciseTemplateSpec,
@@ -366,21 +365,14 @@ def cmd_export(
     activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a exportar (ej. entrega-1_1228009)."),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
-    """Exporta las calificaciones para Moodle (CSV), el ZIP masivo de retroalimentación y el dashboard."""
-    activity = Path(activity).name or activity.strip("/\\")
-    exporter = MoodleExporter(workspace_dir=workspace)
+    """(Migrado a Dredd) Exporta las calificaciones para Moodle (CSV), el ZIP masivo y el dashboard."""
+    console.print(
+        "\n[bold yellow]⚠ El comando 'export' ha sido migrado al orquestador Dredd.[/bold yellow]"
+    )
+    console.print("  Para generar CSV, ZIP y Dashboard docente, ejecutá:")
+    console.print(f"  [bold cyan]dredd export {activity}[/bold cyan]\n")
 
-    try:
-        csv_path = exporter.export_grades_csv(activity)
-        zip_path = exporter.export_feedback_zip(activity)
-        dash_path = exporter.generate_dashboard(activity)
 
-        console.print(f"\n[bold green]Exportación completada exitosamente para '{activity}':[/bold green]\n")
-        console.print(f" - [cyan]Libro de Calificaciones CSV:[/cyan] {csv_path.name}")
-        console.print(f" - [cyan]ZIP de Retroalimentación:[/cyan] {zip_path.name}")
-        console.print(f" - [cyan]Dashboard Consolidado Docente:[/cyan] {dash_path.name}\n")
-    except Exception as e:
-        console.print(f"[bold red]Error durante la exportación:[/bold red] {e}")
 @practica_app.command("init")
 def cmd_practice_init(
     name: Optional[str] = typer.Option(
@@ -791,26 +783,13 @@ def cmd_audit_publish(
 
 @app.command("export-report")
 def cmd_export_report(
-    source_md: Path = typer.Argument(..., help="Informe Markdown generado por Ripley (.md)."),
+    source_md: Path = typer.Argument(..., help="Informe Markdown (.md)."),
     format_: str = typer.Option("html", "--format", "-f", help="Formato de salida: html | pdf."),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Archivo destino (default junto al .md)."),
-    title: str = typer.Option("", "--title", help="Título del documento (default: nombre del archivo)."),
 ) -> None:
-    """Convierte informes Markdown a HTML enriquecido autocontenido o PDF (sin dependencias)."""
-    from ripley.teacher.report_export import export_report
+    """(Migrado a Dredd) Convierte informes Markdown a HTML enriquecido autocontenido o PDF."""
+    console.print(
+        "\n[bold yellow]⚠ El comando 'export-report' ha sido migrado al orquestador Dredd.[/bold yellow]"
+    )
+    console.print("  Para exportar informes a HTML o PDF, ejecutá:")
+    console.print(f"  [bold cyan]dredd export-report {source_md} --format {format_}[/bold cyan]\n")
 
-    if not source_md.exists():
-        console.print(f"[bold red]Informe no encontrado: {source_md}[/bold red]")
-        raise typer.Exit(code=1)
-    try:
-        out = export_report(
-            source_md,
-            fmt=format_,
-            out_path=output,
-            title=title or "Informe de Evaluación — Ripley",
-        )
-    except (ValueError, FileNotFoundError) as e:
-        console.print(f"[bold red]{e}[/bold red]")
-        raise typer.Exit(code=1)
-    size_kb = out.stat().st_size / 1024
-    console.print(f"\n[bold green]✓ Reporte exportado:[/bold green] {out} ({size_kb:.1f} KB, {format_.lower()})")

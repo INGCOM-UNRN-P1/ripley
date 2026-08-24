@@ -6,7 +6,6 @@ import pytest
 
 from ripley.config import RipleyConfig
 from ripley.teacher.evaluate import Evaluator
-from ripley.teacher.exporter import MoodleExporter
 from ripley.tools.runner import DynamicTestRunner
 from ripley.tools.testcases import create_testcase_skeleton, TestCaseInfo
 
@@ -59,12 +58,11 @@ def test_complete_end_to_end_pipeline(tmp_path):
         cases_count=2,
     )
     # Configurar entradas y salidas esperadas
-    t_dir = ws / "practicas" / moodle_info.activity_slug / "ejercicios" / "ejercicio1" / "tests"
+    t_dir = ws / "practicas" / activity_slug / "ejercicios" / "ejercicio1" / "tests"
     (t_dir / "caso1.in").write_text("10\n", encoding="utf-8")
     (t_dir / "caso1.out").write_text("Resultado: 20\n", encoding="utf-8")
     (t_dir / "caso2.in").write_text("25\n", encoding="utf-8")
     (t_dir / "caso2.out").write_text("Resultado: 50\n", encoding="utf-8")
-
 
     # 4. Evaluación inicial
     cfg = RipleyConfig()
@@ -83,20 +81,6 @@ def test_complete_end_to_end_pipeline(tmp_path):
     perez_res = next(r for r in eval_results if "perez" in r.student_slug)
     assert perez_res.compiled is False
     assert perez_res.preliminary_grade == 0.0
-
-    # 5. Exportación
-    exporter = MoodleExporter(workspace_dir=ws)
-    csv_file = exporter.export_grades_csv(activity_slug)
-    zip_file = exporter.export_feedback_zip(activity_slug)
-    dash_file = exporter.generate_dashboard(activity_slug)
-
-    assert csv_file.exists()
-    assert zip_file.exists()
-    assert dash_file.exists()
-
-    dash_content = dash_file.read_text(encoding="utf-8")
-    assert "50.0%" in dash_content
-    assert "Yucra Agustin Daniel" in dash_content
 
 
 
