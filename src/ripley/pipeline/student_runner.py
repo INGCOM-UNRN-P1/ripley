@@ -15,6 +15,8 @@ from ripley.pipeline import bundle as bundle_mod
 from ripley.pipeline.availability import available_map
 from ripley.pipeline.bundle import BundleError, RipkgBundle
 from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
+import ripley.pipeline.checks  # noqa: F401  (pobla el registro)
+from ripley.pipeline.plugins import HOOKS, PluginContext, PluginManager
 from ripley.pipeline.registry import all_checks, get, is_runnable, iter_uniform_static
 from ripley.tools.compiler import Compiler
 from ripley.tools.makefile import make_build
@@ -34,6 +36,7 @@ class StudentRunReport:
     executed_checks: List[str] = field(default_factory=list)
     signature_verified: bool = False
     human_diagnostics: str = ""
+    plugins_ran: List[str] = field(default_factory=list)
 
     @property
     def total_findings(self) -> int:
@@ -57,10 +60,22 @@ def run_bundle(
     verify_signature: bool = False,
 ) -> StudentRunReport:
     """Ejecuta la verificación temprana completa sobre fuentes locales."""
+    plugins_dir = Path(source_files[0]).resolve().parent / "plugins"
+    if not plugins_dir.is_dir():
+        plugins_dir = Path.cwd() / "plugins"
+    manager = PluginManager(plugins_dir)
+    ctx = PluginContext(phase="session_start", workspace_dir=Path.cwd(),
+                        sources=[Path(s).resolve() for s in source_files],
+                        activity=Path(bundle_path).stem)
+    manager.dispatch("session_start", ctx)
+
     try:
         loaded: RipkgBundle = bundle_mod.load_bundle(bundle_path, verify_signature=verify_signature)
     except BundleError:
         raise
+    finally:
+        if manager.errors:
+            ctx.set("plugin_errors", list(manager.errors))
     report = StudentRunReport(
         practica=loaded.practica,
         signature_verified=verify_signature and loaded.signed,
@@ -118,13 +133,17 @@ def run_bundle(
             else:
                 binary = build.binary_path
 
+        manager.dispatch("pre_compile", ctx)
         result = compiler.compile(sources, binary)
+        ctx.set("compile", {"success": result.success})
+        manager.dispatch("post_compile", ctx)
         report.compiled_ok = result.success
         if not result.success:
             report.compile_errors = result.stderr.strip()[:4000]
             translated = translate_stderr(result.stderr)
             if translated:
                 report.human_diagnostics = summarize_for_humans(translated)
+            manager.dispatch("session_end", ctx)
             return report
 
         # 2. Testcases públicos: se materializan en disco para reutilizar
@@ -174,6 +193,19 @@ def run_bundle(
                 })
         report.findings[spec.check_id] = findings
         report.executed_checks.append(spec.check_id)
+
+    ctx.observations = [
+        {**obs, "check": cid}
+        for cid, obs_list in report.findings.items()
+        for obs in obs_list
+    ]
+    manager.dispatch("post_checks", ctx)
+    for plugin_name in (p.name for p in manager.plugins):
+        report.plugins_ran.append(plugin_name)
+
+    manager.dispatch("pre_report", ctx)
+    manager.dispatch("post_report", ctx)
+    manager.dispatch("session_end", ctx)
 
     # Checks del manifiesto que no son uniform-static: listados como omitidos
     # cuando sus herramientas no están; los dinámicos avanzados quedan para CLIs.
