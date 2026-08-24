@@ -50,6 +50,15 @@ def test_complete_end_to_end_pipeline(tmp_path):
         encoding="utf-8",
     )
 
+    from ripley.teacher.db import DatabaseManager, StudentRecord
+    db1 = DatabaseManager(yucra_dir.parent / ".metadata.db")
+    db1.upsert_student(StudentRecord("1848964", "Yucra Agustin Daniel", "yucra-agustin-daniel_1848964", "1848964"))
+    db1.add_revision("yucra-agustin-daniel_1848964", 1, "hash1", str(yucra_dir), [{"filename": "ejercicio1.c", "file_hash": "h1", "size_bytes": 100}], [])
+
+    db2 = DatabaseManager(perez_dir.parent / ".metadata.db")
+    db2.upsert_student(StudentRecord("223344", "Perez Maria", "perez-maria_223344", "223344"))
+    db2.add_revision("perez-maria_223344", 1, "hash2", str(perez_dir), [{"filename": "ejercicio1.c", "file_hash": "h2", "size_bytes": 100}], [])
+
     # 3. Crear Casos de Prueba
     create_testcase_skeleton(
         workspace_dir=ws,
