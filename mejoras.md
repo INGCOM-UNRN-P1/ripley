@@ -1,10 +1,10 @@
 # Ripley - Registro Modular de Funcionalidades y Mejoras
 
-> **Última revisión:** 2026-08-23 — `217` tests pasando, `3` omitidos por herramientas externas ausentes en el entorno (`pytest`, suite unitaria + integración).
+> **Última revisión:** 2026-08-23 — `245` tests pasando, `3` omitidos por herramientas externas ausentes en el entorno (`pytest`, suite unitaria + integración).
 
 ---
 
-## 1. Funcionalidades Implementadas (70)
+## 1. Funcionalidades Implementadas (72)
 
 Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pipeline/teacher`, ver [`PLAN_MODULARIZACION.md`](PLAN_MODULARIZACION.md)) con suites de pruebas unitarias e integradas:
 
@@ -97,12 +97,14 @@ Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pi
 68. **Traductor Pedagógico de Errores de GCC a Lenguaje Natural:** ~25 reglas de diagnóstico (`expected ';'`, `undeclared`, `undefined reference`, formatos printf, linker…) con título, explicación y sugerencia; integrado en fallos de compilación de `ripley-check run` y comando `explain` ([`src/ripley/core/gcc_translator.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/core/gcc_translator.py), CLI `ripley-check explain`).
 69. **Soporte para Makefiles Estudiantiles y Compilación Modular:** Auditoría de calidad del Makefile (objetivo `all` primero, `clean`, `.PHONY`, TABs, CC hardcodeado), build vía `make` con descubrimiento de binario y errores traducidos; se prefiere automáticamente cuando la práctica lo habilita ([`src/ripley/tools/makefile.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/tools/makefile.py), CLI `make-audit`, check `build.makefile`).
 70. **Modo Live TDD / Watch:** Vigilancia por polling sin dependencias externas: al guardar recompila con los flags oficiales de la práctica, corre los testcases públicos y muestra diagnósticos traducidos en vivo ([`src/ripley/tools/watcher.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/tools/watcher.py), CLI `ripley-check watch --practica …`).
+71. **Glosario Visual Accesible de Conceptos de Bajo Nivel:** 11 conceptos con diagramas SVG puros; `role=img` con `<title>/<desc>` para lectores de pantalla, temas dark/light/**high-contrast**/colorblind-safe (Okabe-Ito), escala tipográfica ampliada y HTML semántico autocontenido sin recursos externos (✔ propuesta 23) ([`src/ripley/core/glossary.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/core/glossary.py), CLI `ripley-check glossary`).
+72. **Flujo de Auditoría Docente con Estados:** Máquina de estados por entrega (ingresada → evaluada → en_revision → calificada → publicada, con derivas observada/sospechosa/apelada), transiciones validadas con override `--force` auditado y bitácora append-only (actor/nota/timestamp) en la `.metadata.db` por alumno; tablero agregado, historia completa y publicación masiva (roadmap ✔) ([`src/ripley/teacher/audit.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/teacher/audit.py), CLI `ripley audit board|transition|history|publish`).
 
 ---
 
-## 2. Propuestas de Mejora Pendientes (9)
+## 2. Propuestas de Mejora Pendientes (8)
 
-> **Propuestas ya implementadas** (tachadas abajo) y migradas a la Sección 1: **1–19, 24 y 28** — los Módulos 1, 2, 3 del registro original están completos, más los ítems 19 y 28 del Módulo 4/5. Quedan pendientes además cinco entradas históricas del Roadmap (Sección 3).
+> **Propuestas ya implementadas** (tachadas abajo) y migradas a la Sección 1: **1–19, 23, 24 y 28** — los Módulos 1, 2, 3 del registro original están completos, más los ítems 19 y 28 del Módulo 4/5. Quedan pendientes además cinco entradas históricas del Roadmap (Sección 3).
 
 ### Módulo 1: Compilación, Aislamiento y Entornos Seguros
 1. ~~**Soporte para Compilación Cruzada Multi-Arquitectura (x86_64, ARM64, RISC-V con QEMU)**~~ → **Implementada** (Sección 1, ítem 56).
@@ -133,7 +135,7 @@ Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pi
 20. **Recomendador de Lecturas y Ejercicios de Refuerzo:** Vincular cada error detectado con secciones específicas de la bibliografía de la materia.
 21. **Modo Tutor Socrático Interactivo en Terminal (`ripley tutor`):** Asistente CLI que guía al estudiante a depurar su código mediante preguntas orientadoras sin revelar la solución.
 22. **Métrica de Complejidad Cognitiva de SonarQube:** Medir la dificultad de lectura del código penalizando anidamientos profundos y estructuras intrincadas.
-23. **Glosario Visual de Conceptos de Bajo Nivel:** Recursos gráficos y diagramas explicativos adaptados para estudiantes con necesidades de accesibilidad.
+23. ~~**Glosario Visual de Conceptos de Bajo Nivel**~~ → **Implementada** (Sección 1, ítem 71).
 24. ~~**Informes de Evolución Longitudinal del Aprendizaje**~~ → **Implementada** (Sección 1, ítem 49).
 
 ### Módulo 5: Infraestructura, Integración y Ecosistema Docente
@@ -160,4 +162,4 @@ Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pi
 - Firma criptográfica e inmutabilidad con GPG/Ed25519 → **Implementada para paquetes** (`.ripkg` firmables y verificación SHA-256 + GPG detached, ver [`src/ripley/pipeline/bundle.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/pipeline/bundle.py)); pendiente extender a informes docentes.
 - Sistema de plugins y hooks de ciclo de vida en `plugins/`.
 - Base de datos compartida PostgreSQL / SQLite en red.
-- Flujo de trabajo con estados de auditoría docente.
+- ~~Flujo de trabajo con estados de auditoría docente.~~ → **Implementado** (Sección 1, ítem 72).
