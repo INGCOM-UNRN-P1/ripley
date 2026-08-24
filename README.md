@@ -1,61 +1,99 @@
-# Ripley
+# Ripley: Motor y CLI de Verificación Pedagógica para C
 
-**CLI para procesar, compilar, verificar y calificar entregas masivas de C** — con verificación
-temprana del lado del estudiante y flujo de auditoría docente.
+Motor de análisis estático, reglas de cátedra P1 (0xXXXXh), compilación sandbox y feedback temprano para código C universitario.
 
-[![CI](https://github.com/anomalyco/ripley/actions/workflows/ci.yml/badge.svg)](../../actions)
-`74 funcionalidades · 263 tests · Python ≥ 3.11`
+---
 
-## Dos herramientas, un mismo catálogo de reglas
+## 🎯 Rol en el Ecosistema
 
-| | Docente | Estudiante |
-|---|---|---|
-| Comando | `ripley` | `ripley-check` |
-| Ingesta Moodle + evaluación + notas | ✔ | — |
-| Auditoría con estados (borrador→publicada) | ✔ | — |
-| Plagio (Winnowing) · export CSV/dashboard | ✔ | — |
-| Compilar, lintear, correr testcases públicos | ✔ | ✔ |
-| Watch TDD · traductor GCC · glosario accesible | ✔ | ✔ |
+- **`ripley` (Motor & CLI)**: Análisis estático determinista y sin estado (`ripley check`, `ripley analyze`), traducción de errores de GCC en lenguaje llano, auditoría de AST, reglas de estilo, contratos ACSL, sandbox de ejecución y soporte TDD.
+- **Distribución Estudiantil**: Empaquetado autónomo en un único archivo ejecutable sin dependencias externas pesadas (`ripley.pyz`).
+- **Orquestación Masiva**: La gestión de lotes masivos de Moodle, sincronización de repositorios de GitHub Classroom, generación de Pull Requests y detección de plagio a nivel cohorte es delegada al orquestador docente **`dredd`**.
 
-El estudiante recibe un paquete **`.ripkg`** firmado por el docente con los checks habilitados:
-`ripley-check run --practica entrega-2.ripkg src/*.c` ejecuta exactamente ese subconjunto.
-Lo que falta en su máquina aparece como **OMITIDO con motivo**, nunca como aprobado.
+---
 
-## Instalación
+## 🚀 Instalación y Uso Rápido
 
 ```bash
-pipx install ripley                 # ambos comandos
-# estudiante sin instalación:
-python scripts/build_zipapp.py && ./dist/ripley_check.pyz doctor
+# Instalación en modo desarrollo
+cd ripley
+uv sync --extra dev
+
+# Verificación de entorno y herramientas instaladas
+uv run ripley doctor
 ```
 
-Requiere Python ≥ 3.11 y gcc. Valgrind/cppcheck/gcov/frama-c/qemu/bwrap/Xvfb son opcionales
-por funcionalidad ([matriz completa](docs/referencia/herramientas-externas.md)).
-
-## 30 segundos de demostración
+### Ejecución Standalone (Zipapp)
+Podés generar o descargar el binario `ripley.pyz` ejecutable directamente en cualquier máquina con Python 3:
 
 ```bash
-# docente: empaqueta la práctica
-ripley practica pack entrega-2_1236012 -o entrega-2.ripkg
+# Construir zipapp standalone
+uv run python scripts/build_zipapp.py
 
-# estudiante: verifica antes de entregar
-ripley-check run --practica entrega-2.ripkg solucion.c
-ripley-check watch --practica entrega-2.ripkg src/     # live TDD al guardar
+# Ejecutar verificación pedagógica en un archivo o directorio
+./dist/ripley.pyz check src/ejercicio1.c
 ```
 
-## Documentación
+---
 
-Toda la documentación vive en [`docs/`](docs/index.md):
+## 🛠️ Comandos Principales
 
-- 📘 [Manual del docente](docs/manual/docente.md)
-- 📗 [Manual del estudiante](docs/manual/estudiante.md)
-- ⚙️ [Configuración `ripley.toml`](docs/referencia/configuracion.md)
-- 🏛️ [Arquitectura](docs/arquitectura/overview.md) · [Desarrollo](docs/desarrollo.md)
-- 📋 [Registro de mejoras (74)](docs/referencia/mejoras.md) · [Especificación original](docs/referencia/especificacion-original.md)
-
-## Desarrollo
+### 1. Verificación Estudiantil (`ripley check`)
+Analiza reglas P1, estilo, convenciones de nomenclatura, números mágicos, compilación protegida con AddressSanitizer y ejecución de testcases:
 
 ```bash
-uv sync --extra dev && uv run pytest    # suite verde esperada (skips ambientales permitidos)
+# Verificación de archivo único
+ripley check solucion.c
+
+# Verificación de proyecto o directorio completo
+ripley check . --strict
 ```
-Guía de contribución y recetas (agregar checks, comandos, plugins): [`docs/desarrollo.md`](docs/desarrollo.md).
+
+### 2. Análisis Programático para Orquestadores (`ripley analyze`)
+Genera salida JSON estructurada con diagnóstico completo para ser consumida por herramientas automáticas (Dredd, CI/CD, scripts):
+
+```bash
+ripley analyze src/ --format json
+```
+
+### 3. Modo Live TDD (`ripley watch`)
+Recompila y verifica automáticamente el código cada vez que se guarda un archivo:
+
+```bash
+ripley watch src/
+```
+
+### 4. Traductor Pedagógico de Errores GCC (`ripley explain` / `ripley gcc-explain`)
+Traduce mensajes crípticos del compilador y enlazador (`ld`) a explicaciones claras en español con sugerencias de corrección:
+
+```bash
+gcc -Wall main.c 2>&1 | ripley gcc-explain -
+```
+
+---
+
+## 🧱 Estructura del Código
+
+```
+src/ripley/
+├── cli/                 # Comandos de interfaz estudiantil y orquestación
+│   ├── student.py       # check, analyze, watch, doctor, explain
+│   └── teacher.py       # gestión de prácticas y esqueletos de testcases
+├── core/                # Motor de análisis estático desacoplado
+│   ├── engine.py        # Pipeline principal analyze_target() -> AnalysisResult
+│   ├── gcc_translator.py# Traductor de errores de gcc/ld a lenguaje pedagógico
+│   ├── p1_rules.py      # Chequeador de reglas P1 (0x0001h - 0xEEEEh)
+│   ├── linters.py       # Magic numbers, dead code, naming conventions
+│   └── ...              # Memory visualizer, flowchart, callgraph
+├── pipeline/            # Manifiestos, paquetes .ripkg y catálogo de checks
+└── tools/               # Compilador aislado, test runner, sanitizers, sandbox
+```
+
+---
+
+## 🧪 Pruebas Unitarias e Integración
+
+```bash
+uv run pytest
+```
+*Toda la suite (245+ tests) ejecuta con cobertura completa sin requerir herramientas externas privativas.*

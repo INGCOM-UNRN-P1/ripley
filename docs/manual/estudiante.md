@@ -1,126 +1,90 @@
 # Manual del Estudiante
 
-> Audiencia: estudiante de Programación I que quiere entregar **bien a la primera**.
-> Ripley usa exactamente las mismas reglas que tu docente: lo que ves acá es lo que él ve.
+> Audiencia: Estudiante de Programación I que quiere verificar su código, entender errores de compilación y entregar **bien a la primera**.
+> Ripley utiliza exactamente el mismo motor y reglas que los docentes: lo que ves localmente es lo que se evalúa.
 
-## 1. Instalación (una sola vez)
+---
 
-```bash
-# Opción A: pip
-pipx install ripley            # provee `ripley-check`
+## 1. Opciones de Ejecución
 
-# Opción B: zipapp sin instalación (necesita typer+rich en el sistema)
-python scripts/build_zipapp.py # genera dist/ripley_check.pyz
-./dist/ripley_check.pyz --help
-```
-
-Requisito duro: **gcc**. Opcionales (valgrind, cppcheck, gcov…) se detectan solos.
+### Opción A: Binario Autónomo (`ripley.pyz`)
+No requiere instalar dependencias adicionales. Descargá el archivo `ripley.pyz` y ejecutalo directamente:
 
 ```bash
-ripley-check doctor        # ¿qué checks podré correr? ¿qué me falta?
+# Otorgar permisos de ejecución (Linux/macOS)
+chmod +x ripley.pyz
+
+# Ejecutar verificación pedagógica
+./ripley.pyz check solucion.c
+
+# Diagnóstico de herramientas locales
+./ripley.pyz doctor
 ```
 
-Todo lo ausente aparece como **OMITIDO (motivo)** en los reportes — nunca como aprobado.
-
-## 2. Flujo con el paquete de la práctica
-
-Tu docente publica un `entrega-N.ripkg` (checks habilitados + testcases públicos + flags oficiales).
+### Opción B: Instalación en Entorno Python
+Si estás en el entorno virtual de la cátedra:
 
 ```bash
-ripley-check run --practica entrega-N.ripkg src/*.c
+ripley check solucion.c
 ```
 
-Salida típica:
+---
 
-```text
-Verificación temprana — entrega-2_1236012
-  Compilación       : OK
-  Testcases públicos: 3/3
-  ast.backward_goto: 1 hallazgos (0 ERROR)
-    · main.c:14 Salto hacia atrás con `goto inicio;` …
-  [dim]Omitidos por falta de herramientas: core.struct_padding…[/dim]
+## 2. Comandos Principales
 
-⚠ Revisá los puntos anteriores antes de entregar.
-```
-
-Reglas de oro:
-- `ERROR` o testcase fallido ⇒ **no entregues todavía** (`run` sale con exit code 1).
-- `OMITIDO` = tu máquina no tiene esa herramienta; el docente sí la correrá.
-- El resultado es orientativo: la nota definitiva siempre es la evaluación docente.
-
-## 3. Live TDD mientras programás
+### 2.1 Verificación Integral (`ripley check`)
+Analiza en un solo paso las reglas P1 de la cátedra, convenciones de nomenclatura, números mágicos, compilación protegida con AddressSanitizer y ejecución de testcases:
 
 ```bash
-ripley-check watch --practica entrega-N.ripkg src/
+# Verificación de un archivo específico
+ripley check ejercicio1.c
+
+# Verificación del proyecto completo con salida estricta
+ripley check . --strict
 ```
 
-Al cada guardado recompila con los flags oficiales, corre los testcases públicos y muestra
-errores de GCC traducidos. Ctrl+C para salir. Sin paquete también funciona (solo compila).
-
-## 4. Cuando GCC te grita
+### 2.2 Modo Live TDD (`ripley watch`)
+Recompila y verifica automáticamente cada vez que guardás un archivo `.c` o `.h`:
 
 ```bash
-gcc main.c -o app 2> errores.log
-ripley-check explain errores.log          # o: gcc … |& ripley-check explain -
+ripley watch src/
 ```
 
-Traducción pedagógica (~25 reglas): qué significa, por qué pasa y cómo arreglarlo —
-en español, conservando el mensaje original.
+### 2.3 Traductor de Errores GCC (`ripley explain`)
+Cuando el compilador o enlazador arroja mensajes confusos:
 
-## 5. Análisis suelto (sin paquete)
+```bash
+gcc -Wall main.c 2> errores.log
+ripley explain errores.log
 
-| Comando | Qué hace |
+# O directamente desde la tubería:
+gcc -Wall main.c 2>&1 | ripley explain -
+```
+
+---
+
+## 3. Análisis Específicos y Herramientas Avanzadas
+
+| Comando | Descripción |
 |---|---|
-| `lint -f archivo.c` | números mágicos, duplicación, nombres, código muerto, reglas P1 (0xXXXXh) |
-| `make-audit . [--build]` | calidad del Makefile + build modular vía make |
-| `padding-audit *.c` | structs con padding enviados a archivos/sockets sin memset |
-| `contract-check fuente.c` | contratos ACSL `requires/ensures` (+ Frama-C si está) |
-| `stack-audit *.c -t 1024` | consumo de stack por función (-fstack-usage), VLA |
-| `coverage-fuzz fuente.c` | fuzzing guiado por cobertura: busca inputs que rompen tu programa |
-| `complexity-profile app.out` | ¿tu algoritmo es O(N) u O(N²)? regresión log-log empírica |
-| `benchmark app.out` | tiempo, instrucciones y energía estimada |
-| `property-test` · `pure-audit` · `mock generate` | testing avanzado en C |
-| `flowchart` · `callgraph` · `memory-visualize` · `doxygen` | documentación y visualización |
+| `ripley lint -f archivo.c` | Auditoría de reglas P1 (0xXXXXh), código muerto, números mágicos y convenciones. |
+| `ripley padding-audit *.c` | Detección de structs con padding enviados a archivos/sockets sin inicializar. |
+| `ripley contract-check archivo.c` | Verificación de pre/postcondiciones formales en contratos ACSL. |
+| `ripley stack-audit *.c` | Medición de consumo de stack y variables de longitud variable (VLA). |
+| `ripley complexity-profile bin.out` | Análisis empírico de complejidad asintótica $O(N)$ vs $O(N^2)$. |
+| `ripley benchmark bin.out` | Medición de tiempos de ejecución y ciclos de CPU. |
+| `ripley flowchart archivo.c` | Generación de diagramas de flujo en formato Mermaid / SVG. |
+| `ripley glossary --list` | Glosario interactivo accesible sobre conceptos de memoria, punteros y heap. |
 
-## 6. Glosario visual accesible
+---
 
-```bash
-ripley-check glossary --list
-ripley-check glossary puntero heap dangling-pointer \
-    --theme high-contrast --large-text -o glosario.html
-```
+## 4. Códigos de Diagnóstico P1 Comunes
 
-11 conceptos con diagramas SVG: temas alto contraste / colorblind-safe, texto ampliable,
-`<title>/<desc>` para lectores de pantalla y descripción larga visible bajo cada figura.
-Un solo archivo HTML autocontenido.
-
-## 7. Animaciones de memoria
-
-¿Falla un caso de heap? Generá la animación paso a paso:
-
-```bash
-ripley-check memory-animate --ops "malloc:32:nodo1,malloc:64:nodo2,free:nodo1" -o mem.svg --gif mem.gif
-```
-
-Muestra cuándo un puntero queda **DANGLING**, marca fugas y rechaza double-free.
-
-## 8. Verificación automática en tus commits
-
-```bash
-cd tu-repo-git
-ripley-check plugins git-hook install pre-commit
-git commit -m "…"   # compila stageados + 5 checks rápidos; ERROR bloquea el commit
-```
-
-Plugins propios: carpeta `plugins/` con funciones hook (`pre_compile(ctx)`, `post_checks(ctx)`…).
-Desactivar todo: `RIPLEY_DISABLE_PLUGINS=1`. Quitar shim: `plugins git-hook uninstall pre-commit`.
-
-## 9. Solución de problemas
-
-| Síntoma | Qué significa | Qué hacer |
+| Código | Significado | Sugerencia |
 |---|---|---|
-| `run` dice OMITIDO valgrind | no lo tenés instalado | instalalo o ignorá: el docente lo correrá allá |
-| Compila acá pero falla en `run` | flags distintas a las tuyas | usá siempre `run/watch`; no compiles "a mano" para decidir |
-| ASan aborta al arrancar en WSL1 | WSL1 no soporta ASan completo | usá WSL2 o Linux nativo |
-| bwrap no disponible | notebook sin bubblewrap | normal: sandbox cae a fallback reportado |
-| El commit git se bloquea | pre-commit encontró ERROR | corregí; `--strict` además bloquea por advertencias |
+| `0x0001h` | Bucle infinito potencial | Revisá las condiciones de corte del `while` / `for`. |
+| `0x0002h` | Uso de `goto` hacia atrás | Reemplazá el salto por estructuras de control estructuradas. |
+| `0x3004h` | Struct sin `typedef` o sufijo `_t` | Definila como `typedef struct { ... } nombre_t;`. |
+| `0x5006h` | Uso de función insegura (`gets`) | Reemplazá por `fgets(buffer, sizeof(buffer), stdin)`. |
+| `0x7001h` | Falta calificador `const` | Declarar punteros de solo lectura como `const tipo *`. |
+| `0x8001h` | Include innecesario (IWYU) | Eliminá directivas `#include` cuyos símbolos no se usen. |
