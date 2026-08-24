@@ -280,3 +280,102 @@ class DatabaseManager:
             )
             res["test_results"] = [dict(r) for r in cursor.fetchall()]
             return res
+
+    # ------------------------------------------------------------------
+    # Flujo de auditoría docente: estados por entrega + bitácora append-only
+    # ------------------------------------------------------------------
+    def _init_audit_tables(self, conn: sqlite3.Connection) -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS submission_states (
+                actividad TEXT NOT NULL,
+                alumno TEXT NOT NULL,
+                estado TEXT NOT NULL DEFAULT 'ingresada',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (actividad, alumno)
+            );
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audit_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actividad TEXT NOT NULL,
+                alumno TEXT NOT NULL,
+                estado_anterior TEXT,
+                estado_nuevo TEXT NOT NULL,
+                actor TEXT DEFAULT '',
+                nota TEXT DEFAULT '',
+                forzado INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+    def get_submission_state(self, actividad: str, alumno: str) -> Optional[str]:
+        with self._get_connection() as conn:
+            self._init_audit_tables(conn)
+            row = conn.execute(
+                "SELECT estado FROM submission_states WHERE actividad = ? AND alumno = ?",
+                (actividad, alumno),
+            ).fetchone()
+            return row["estado"] if row else None
+
+    def set_submission_state(self, actividad: str, alumno: str, estado: str) -> None:
+        with self._get_connection() as conn:
+            self._init_audit_tables(conn)
+            conn.execute(
+                """
+                INSERT INTO submission_states (actividad, alumno, estado, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(actividad, alumno) DO UPDATE SET
+                    estado = excluded.estado,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (actividad, alumno, estado),
+            )
+            conn.commit()
+
+    def insert_audit_event(
+        self,
+        actividad: str,
+        alumno: str,
+        estado_anterior: Optional[str],
+        estado_nuevo: str,
+        actor: str = "",
+        nota: str = "",
+        forzado: bool = False,
+    ) -> int:
+        with self._get_connection() as conn:
+            self._init_audit_tables(conn)
+            cur = conn.execute(
+                """
+                INSERT INTO audit_events
+                    (actividad, alumno, estado_anterior, estado_nuevo, actor, nota, forzado)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (actividad, alumno, estado_anterior, estado_nuevo, actor, nota, int(forzado)),
+            )
+            conn.commit()
+            return int(cur.lastrowid)
+
+    def get_audit_history(self, actividad: str, alumno: str) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            self._init_audit_tables(conn)
+            rows = conn.execute(
+                """SELECT id, estado_anterior, estado_nuevo, actor, nota, forzado, created_at
+                   FROM audit_events WHERE actividad = ? AND alumno = ?
+                   ORDER BY id ASC""",
+                (actividad, alumno),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def list_activity_states(self, actividad: str) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            self._init_audit_tables(conn)
+            rows = conn.execute(
+                """SELECT alumno, estado, updated_at FROM submission_states
+                   WHERE actividad = ? ORDER BY alumno ASC""",
+                (actividad,),
+            ).fetchall()
+            return [dict(r) for r in rows]
