@@ -149,7 +149,7 @@ Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pi
 27. **Servicio Centralizado de Analítica Académica (Grafana / Prometheus):** Exponer métricas de rendimiento y errores recurrentes de toda la cursada hacia paneles de monitoreo.
 28. ~~**Evaluación de Trabajos Prácticos Gráficos (SDL2 / Raylib en Framebuffer Virtual)**~~ → **Implementada** (Sección 1, ítem 67).
 29. **Auditoría de Co-Autoría y Firmas Criptográficas Git:** Analizar firmas GPG/SSH e historial de commits para fiscalizar la participación equitativa en entregas grupales.
-30. **Modo Evaluación Presencial con Bloqueo de Red (Exam Lockout Mode):** Configuración de entorno de examen presencial que bloquea accesos no autorizados a la red y periféricos.
+30. **Modo Evaluación Presencial con Bloqueo de Red (Exam Lockout Mode):** Configuración de entorno de examen presencial que bloquea accesos no autorizados a la red y periféricos → **Diseño aprobado para implementación**: ver [`PLAN_EXAM_LOCKOUT.md`](PLAN_EXAM_LOCKOUT.md) (4 capas: nftables etiquetado/bwrap, sesión con timer monotónico sellado, sobres `.rexam` HMAC, recolección integrada al tablero de auditoría; fases E0–E5).
 
 ---
 
