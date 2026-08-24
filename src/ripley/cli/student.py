@@ -33,6 +33,7 @@ from ripley.core.linters import (
     MagicNumberLinter,
     NamingConventionLinter,
 )
+from ripley.core.mem_trace import save_trace
 from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 from ripley.core.mocks import MockGenerator
 from ripley.core.p1_rules import P1RuleChecker
@@ -340,6 +341,38 @@ def cmd_pure_audit(
             console.print(f"\n[bold green]✓ Verificación con compilador exitosa:[/bold green] {msg}\n")
         else:
             console.print(f"\n[bold yellow]! Advertencia del compilador:[/bold yellow] {msg}\n")
+
+
+@app.command("trace")
+def cmd_trace(
+    file_path: str = typer.Argument(..., help="Ruta al archivo fuente C (.c)."),
+    output: str = typer.Option("traza.html", "--output", "-o", help="Archivo HTML de salida."),
+    capacity: int = typer.Option(65536, "--capacity", "-c", help="Capacidad del heap simulado en bytes."),
+) -> None:
+    """Genera una traza visual interactiva de memoria (Stack/Heap/Punteros) en HTML."""
+    path = Path(file_path)
+    if not path.exists():
+        console.print(f"[bold red]Archivo no encontrado: {path}[/bold red]")
+        raise typer.Exit(code=1)
+
+    try:
+        result = save_trace(path, Path(output), capacity=capacity)
+    except Exception as e:
+        console.print(f"[bold red]Error al generar la traza de memoria:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold green]✓ Traza de memoria guardada en:[/bold green] [cyan]{result.output}[/cyan]")
+    console.print(f" - [cyan]Eventos detectados:[/cyan] {result.event_count}")
+    console.print(f" - [cyan]Frames animados:[/cyan] {len(result.frames)}")
+    console.print(f" - [cyan]Estructuras detectadas:[/cyan] {len(result.structs)}")
+    if result.report is not None:
+        console.print(
+            f" - [cyan]Fragmentación externa final:[/cyan] "
+            f"[bold yellow]{result.report.fragmentation_index * 100:.1f}%[/bold yellow]"
+        )
+    for w in result.warnings:
+        console.print(f" [bold yellow]⚠ {w}[/bold yellow]")
+    console.print()
 
 
 @app.command("memory-visualize")
