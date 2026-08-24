@@ -445,6 +445,35 @@ Genera:
 
 ---
 
+### 4.1 Comandos incorporados en las últimas iteraciones (resumen)
+
+Verificación temprana (estudiante, `ripley-check`):
+
+| Comando | Propósito |
+|---|---|
+| `run --practica X.ripkg fuentes.c` | Verificación completa: compila con flags oficiales, corre testcases públicos y aplica los checks del manifiesto; errores de compilación se traducen a lenguaje natural |
+| `watch [-p X.ripkg] [dirs]` | Modo Live TDD: recompila y verifica al guardar (Ctrl+C para salir) |
+| `explain log_gcc.txt` / `-` | Traduce diagnósticos de GCC a español pedagógico |
+| `make-audit [dir] --build` | Audita el Makefile estudiantil y construye de forma modular vía make |
+| `glossary [--theme high-contrast] [--large-text]` | Glosario visual accesible de conceptos de bajo nivel (HTML autocontenido) |
+| `memory-animate --ops "malloc:32:n1,free:n1" [--gif]` | Animación SVG/GIF del estado Stack/Heap/Punteros paso a paso |
+| `plugins list / dispatch / git-hook install pre-commit` | Hooks de ciclo de vida en `plugins/`; shim de git que verifica los `.c` stageados antes del commit |
+| `doctor` · `checks list` | Herramientas externas disponibles y catálogo unificado de verificaciones |
+
+Análisis avanzado: `coverage-fuzz`, `complexity-profile`, `stack-audit`, `benchmark`,
+`socket-fault`, `cross-test`, `sandbox-test`, `contract-check`, `padding-audit`,
+`pure-audit`, `toolchain-snapshot`.
+
+Docente (`ripley`):
+
+| Comando | Propósito |
+|---|---
+| `practica pack <slug>` | Empaqueta la práctica (.ripkg) con checks habilitados + testcases públicos para distribución estudiantil |
+| `practica graphics-capture / graphics-eval` | Goldens y evaluación de TPs gráficos bajo Xvfb comparando píxeles |
+| `audit board / transition / history / publish` | Flujo de auditoría docente: estados por entrega (ingresada→…→publicada, con derivas observada/sospechosa/apelada), bitácora append-only actor/nota/fecha |
+| `export-report informe.md --format html\|pdf` | Convierte informes Markdown a HTML enriquecido o PDF autocontenido sin dependencias |
+
+
 ## 5. Diagnósticos Especializados y Sanitizadores
 
 Ripley incluye interceptores pedagógicos para los errores más complejos en C:

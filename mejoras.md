@@ -1,10 +1,10 @@
 # Ripley - Registro Modular de Funcionalidades y Mejoras
 
-> **Última revisión:** 2026-08-23 — `245` tests pasando, `3` omitidos por herramientas externas ausentes en el entorno (`pytest`, suite unitaria + integración).
+> **Última revisión:** 2026-08-23 — `263` tests pasando, `3` omitidos por herramientas externas ausentes en el entorno (`pytest`, suite unitaria + integración).
 
 ---
 
-## 1. Funcionalidades Implementadas (72)
+## 1. Funcionalidades Implementadas (74)
 
 Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pipeline/teacher`, ver [`PLAN_MODULARIZACION.md`](PLAN_MODULARIZACION.md)) con suites de pruebas unitarias e integradas:
 
@@ -100,11 +100,16 @@ Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pi
 71. **Glosario Visual Accesible de Conceptos de Bajo Nivel:** 11 conceptos con diagramas SVG puros; `role=img` con `<title>/<desc>` para lectores de pantalla, temas dark/light/**high-contrast**/colorblind-safe (Okabe-Ito), escala tipográfica ampliada y HTML semántico autocontenido sin recursos externos (✔ propuesta 23) ([`src/ripley/core/glossary.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/core/glossary.py), CLI `ripley-check glossary`).
 72. **Flujo de Auditoría Docente con Estados:** Máquina de estados por entrega (ingresada → evaluada → en_revision → calificada → publicada, con derivas observada/sospechosa/apelada), transiciones validadas con override `--force` auditado y bitácora append-only (actor/nota/timestamp) en la `.metadata.db` por alumno; tablero agregado, historia completa y publicación masiva (roadmap ✔) ([`src/ripley/teacher/audit.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/teacher/audit.py), CLI `ripley audit board|transition|history|publish`).
 
+
+### Módulo K: Extensibilidad y Salidas Enriquecidas
+73. **Sistema de Plugins y Hooks de Ciclo de Vida:** Descubrimiento de `*.py` en `plugins/` (orden alfabético), 8 hooks de corrida (`session_start/end`, `pre/post_compile`, `pre/post_checks`, `pre/post_report`) más hook especial `pre_commit_git`; contexto mutable con hallazgos, fail-open contado o modo estricto, escape hatch `RIPLEY_DISABLE_PLUGINS`. Integrado en `ripley-check run` y compatible con git: shim ejecutable que preserva hooks previos como `.bak` y bloquea el commit si el circuito rápido detecta errores (roadmap ✔) ([`src/ripley/pipeline/plugins.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/pipeline/plugins.py), CLI `ripley-check plugins list|dispatch|git-hook`).
+74. **Exportación a PDF y HTML Enriquecido:** Conversión del subconjunto Markdown de los informes Ripley a HTML estilizado autocontenido (lang=es, sin recursos externos, reglas @media print) y PDF escrito en Python puro (A4, Helvetica/Courier WinAnsi para acentos, paginación automática, tablas monoespaciadas alineadas) sin dependencias externas (roadmap ✔) ([`src/ripley/teacher/report_export.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/teacher/report_export.py), CLI `ripley export-report informe.md --format html|pdf`).
+
 ---
 
 ## 2. Propuestas de Mejora Pendientes (8)
 
-> **Propuestas ya implementadas** (tachadas abajo) y migradas a la Sección 1: **1–19, 23, 24 y 28** — los Módulos 1, 2, 3 del registro original están completos, más los ítems 19 y 28 del Módulo 4/5. Quedan pendientes además cinco entradas históricas del Roadmap (Sección 3).
+> **Propuestas ya implementadas** (tachadas abajo) y migradas a la Sección 1: **1–19, 23, 24 y 28** — los Módulos 1, 2 y 3 del registro original están completos, más los ítems 19, 23 y 28 de los Módulos 4/5. Quedan pendientes cuatro entradas históricas del Roadmap (Sección 3): dashboard web, API REST de Moodle, multi-lenguaje y base compartida en red.
 
 ### Módulo 1: Compilación, Aislamiento y Entornos Seguros
 1. ~~**Soporte para Compilación Cruzada Multi-Arquitectura (x86_64, ARM64, RISC-V con QEMU)**~~ → **Implementada** (Sección 1, ítem 56).
@@ -158,8 +163,8 @@ Las funcionalidades se encuentran modularizadas por capas (`models/core/tools/pi
 - ~~Modo Live TDD / Watch para el estudiante (`ripley watch`).~~ → **Implementado** (Sección 1, ítem 70).
 - Arquitectura extensible multi-lenguaje (C++, Python, Rust, Java).
 - ~~Traductor pedagógico de errores de GCC a lenguaje natural.~~ → **Implementado** (Sección 1, ítem 68).
-- Exportación a PDF y HTML enriquecido.
+- ~~Exportación a PDF y HTML enriquecido.~~ → **Implementado** (Sección 1, ítem 74).
 - Firma criptográfica e inmutabilidad con GPG/Ed25519 → **Implementada para paquetes** (`.ripkg` firmables y verificación SHA-256 + GPG detached, ver [`src/ripley/pipeline/bundle.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/pipeline/bundle.py)); pendiente extender a informes docentes.
-- Sistema de plugins y hooks de ciclo de vida en `plugins/`.
+- ~~Sistema de plugins y hooks de ciclo de vida en `plugins/`.~~ → **Implementado** (Sección 1, ítem 73), incluye shims para git hooks.
 - Base de datos compartida PostgreSQL / SQLite en red.
 - ~~Flujo de trabajo con estados de auditoría docente.~~ → **Implementado** (Sección 1, ítem 72).
