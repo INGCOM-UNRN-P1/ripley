@@ -26,7 +26,35 @@ from ripley.core.linters import (
     MagicNumberLinter,
     NamingConventionLinter,
 )
-from ripley.teacher.mapping import MappingStore, SPECIAL_AUXILIARY, SPECIAL_IGNORE
+SPECIAL_AUXILIARY = "[AUXILIAR]"
+SPECIAL_IGNORE = "[IGNORAR]"
+
+
+class MappingStore:
+    def __init__(self, workspace_dir: str | Path, activity_slug: str) -> None:
+        self.mapping_file = Path(workspace_dir) / activity_slug / "mappings.json"
+        self.mappings: Dict[str, Any] = {}
+        if self.mapping_file.exists():
+            try:
+                self.mappings = json.loads(self.mapping_file.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+    def get_effective_mapping(self, student_slug: str, filename: str, available_exercises: List[str]) -> Optional[str]:
+        student_m = self.mappings.get("student_mappings", {}).get(student_slug, {})
+        if filename in student_m:
+            return student_m[filename]
+        global_m = self.mappings.get("global_mappings", {})
+        if filename in global_m:
+            return global_m[filename]
+        stem = Path(filename).stem.lower()
+        for ex in available_exercises:
+            if stem == ex.lower():
+                return ex
+        if len(available_exercises) == 1 and stem in ("main", "tp", "tarea", "entrega"):
+            return available_exercises[0]
+        return None
+
 from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 from ripley.core.p1_rules import P1RuleChecker
 from ripley.tools.property_testing import PropertyTestRunner

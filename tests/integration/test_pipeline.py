@@ -7,7 +7,6 @@ import pytest
 from ripley.config import RipleyConfig
 from ripley.teacher.evaluate import Evaluator
 from ripley.teacher.exporter import MoodleExporter
-from ripley.teacher.ingest import MoodleIngestor
 from ripley.tools.runner import DynamicTestRunner
 from ripley.tools.testcases import create_testcase_skeleton, TestCaseInfo
 
@@ -18,55 +17,44 @@ def test_complete_end_to_end_pipeline(tmp_path):
     from ripley.teacher.templates import init_templates
     init_templates(templates_dir)
 
-    # 1. Crear ZIP sintético de Moodle con 2 estudiantes
-    zip_path = tmp_path / "- (B6003) - 40- Programación I COM 1 - 2026-Entrega #1-1228009.zip"
-
-    with zipfile.ZipFile(zip_path, "w") as zf:
-        # Estudiante 1: Código C correcto en ISO-8859-1 y con carpeta anidada
-        zf.writestr(
-            "Yucra Agustin Daniel_1848964_assignsubmission_file/subfolder/ejercicio1.c",
-            """
-            #include <stdio.h>
-            int main(void)
+    # 1. Crear estructura de entrega directa para 2 estudiantes
+    activity_slug = "entrega-1_1228009"
+    yucra_dir = ws / activity_slug / "yucra-agustin-daniel_1848964" / "r1"
+    yucra_dir.mkdir(parents=True, exist_ok=True)
+    (yucra_dir / "ejercicio1.c").write_text(
+        """
+        #include <stdio.h>
+        int main(void)
+        {
+            int val = 0;
+            if (scanf("%d", &val) == 1)
             {
-                int val = 0;
-                if (scanf("%d", &val) == 1)
-                {
-                    printf("Resultado: %d\\n", val * 2);
-                }
-                return 0;
+                printf("Resultado: %d\\n", val * 2);
             }
-            """.encode("iso-8859-1"),
-        )
-        # Archivo ignorado
-        zf.writestr(
-            "Yucra Agustin Daniel_1848964_assignsubmission_file/documento.pdf",
-            b"%PDF-1.4 dummy",
-        )
+            return 0;
+        }
+        """,
+        encoding="utf-8",
+    )
 
-        # Estudiante 2: Código con error de sintaxis
-        zf.writestr(
-            "Perez Maria_223344_assignsubmission_file/ejercicio1.c",
-            """
-            #include <stdio.h>
-            int main(void)
-            {
-                syntax_error_here;
-                return 0;
-            }
-            """.encode("utf-8"),
-        )
-
-    # 2. Ingesta
-    ingestor = MoodleIngestor(workspace_dir=ws)
-    moodle_info, results_v1 = ingestor.process_zip(zip_path)
-    assert moodle_info.activity_slug == "entrega-1_1228009"
-    assert len(results_v1) == 2
+    perez_dir = ws / activity_slug / "perez-maria_223344" / "r1"
+    perez_dir.mkdir(parents=True, exist_ok=True)
+    (perez_dir / "ejercicio1.c").write_text(
+        """
+        #include <stdio.h>
+        int main(void)
+        {
+            syntax_error_here;
+            return 0;
+        }
+        """,
+        encoding="utf-8",
+    )
 
     # 3. Crear Casos de Prueba
     create_testcase_skeleton(
         workspace_dir=ws,
-        activity_slug=moodle_info.activity_slug,
+        activity_slug=activity_slug,
         exercise="ejercicio1",
         cases_count=2,
     )
@@ -83,7 +71,7 @@ def test_complete_end_to_end_pipeline(tmp_path):
     cfg.templates.ruta_plantillas = str(templates_dir)
     evaluator = Evaluator(config=cfg, workspace_dir=ws)
 
-    eval_results = evaluator.evaluate_activity(moodle_info.activity_slug, parallel=False)
+    eval_results = evaluator.evaluate_activity(activity_slug, parallel=False)
     assert len(eval_results) == 2
 
     yucra_res = next(r for r in eval_results if "yucra" in r.student_slug)
@@ -98,9 +86,9 @@ def test_complete_end_to_end_pipeline(tmp_path):
 
     # 5. Exportación
     exporter = MoodleExporter(workspace_dir=ws)
-    csv_file = exporter.export_grades_csv(moodle_info.activity_slug)
-    zip_file = exporter.export_feedback_zip(moodle_info.activity_slug)
-    dash_file = exporter.generate_dashboard(moodle_info.activity_slug)
+    csv_file = exporter.export_grades_csv(activity_slug)
+    zip_file = exporter.export_feedback_zip(activity_slug)
+    dash_file = exporter.generate_dashboard(activity_slug)
 
     assert csv_file.exists()
     assert zip_file.exists()

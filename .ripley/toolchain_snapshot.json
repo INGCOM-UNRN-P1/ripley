@@ -1,0 +1,10 @@
+{
+  "created_at": "2026-08-24T15:38:18",
+  "machine": "x86_64",
+  "kernel": "7.1.5-201.fc44.x86_64",
+  "compiler_path": "/usr/bin/gcc",
+  "compiler_version": "gcc (GCC) 16.1.1 20260515 (Red Hat 16.1.1-2)",
+  "compiler_target": "x86_64-redhat-linux",
+  "libc_version": "ldd (GNU libc) 2.43",
+  "flags_hash": "e2a6c79ffe2893307c8caa9cbd3f72085bf63a13b6284294b3e6f462cf6ca683"
+}

@@ -11,9 +11,6 @@ from rich.table import Table
 
 from ripley.cli._common import console
 from ripley.config import load_config
-from ripley.teacher.ingest import MoodleIngestor
-from ripley.teacher.mapping import InteractiveMapper
-from ripley.teacher.plagiarism import PlagiarismDetector
 from ripley.teacher.evaluate import Evaluator
 from ripley.teacher.exporter import MoodleExporter
 from ripley.teacher.templates import check_templates, init_templates, list_templates
@@ -61,87 +58,13 @@ def cmd_ingest(
         "-w",
         help="Directorio raíz del workspace donde se almacenarán las actividades.",
     ),
-    yes: bool = typer.Option(
-        False,
-        "--yes",
-        "-y",
-        help="Crear automáticamente la práctica en blanco si no existe, sin confirmación interactiva.",
-    ),
 ) -> None:
-    """Procesa e ingesta un archivo ZIP de entregas descargado de Moodle."""
-    ingestor = MoodleIngestor(workspace_dir=workspace)
-    try:
-        moodle_info, results = ingestor.process_zip(zip_path, dry_run=dry_run)
-    except Exception as e:
-        console.print(f"[bold red]Error durante la ingesta:[/bold red] {e}")
-        raise typer.Exit(code=1)
-
-    mode_str = "[bold yellow](DRY-RUN)[/bold yellow] " if dry_run else ""
+    """(Migrado a Dredd) Procesa e ingesta un archivo ZIP de entregas de Moodle."""
     console.print(
-        f"\n{mode_str}[bold green]Actividad procesada:[/bold green] {moodle_info.activity_name} (ID: {moodle_info.activity_id}) -> [cyan]{moodle_info.activity_slug}/[/cyan]\n"
+        "\n[bold yellow]⚠ El comando 'ingest' ha sido migrado al orquestador Dredd.[/bold yellow]"
     )
-
-    table = Table(title="Resumen de Entregas Procesadas")
-    table.add_column("Estudiante", style="bold")
-    table.add_column("Slug", style="dim")
-    table.add_column("Revisión", justify="center")
-    table.add_column("Fuentes .c/.h", justify="center")
-    table.add_column("Archivos Ignorados", justify="center")
-    table.add_column("Estado", style="bold")
-
-    for res in results:
-        status_str = (
-            f"[green]Nueva (r{res.version_created})[/green]"
-            if res.is_new_revision
-            else "[blue]Sin cambios[/blue]"
-        )
-        table.add_row(
-            res.student_name,
-            res.student_slug,
-            f"r{res.version_created}" if res.version_created else "-",
-            str(len(res.sources)),
-            str(len(res.ignored)),
-            status_str,
-        )
-
-    console.print(table)
-
-    # Verificación de existencia de práctica en ./practicas/
-    if not dry_run:
-        practice_dir = Path(workspace) / "practicas" / moodle_info.activity_slug
-        if not practice_dir.exists():
-            console.print(
-                f"\n[bold yellow]! No se encontró una práctica definida para '{moodle_info.activity_slug}' en './practicas/'.[/bold yellow]"
-            )
-            should_create = yes or typer.confirm(
-                "¿Deseás crear un enunciado en blanco con la configuración por defecto para esta práctica?",
-                default=True,
-            )
-            if should_create:
-                spec = PracticeSpec(
-                    name=moodle_info.activity_name,
-                    practice_id=moodle_info.activity_id,
-                    description=f"Práctica académica de C: {moodle_info.activity_name}.",
-                    exercises=[
-                        ExerciseTemplateSpec(
-                            slug="ejercicio1",
-                            title="Ejercicio 1",
-                            description="Consigna del Ejercicio 1.",
-                            cases_count=2,
-                        )
-                    ],
-                )
-                init_practice(
-                    spec=spec,
-                    base_dir=Path(workspace) / "practicas",
-                    force=False,
-                )
-                console.print(
-                    f"[bold green]✓ Enunciado en blanco, configuración por defecto y casos de prueba inicializados en '{practice_dir}'.[/bold green]\n"
-                )
-
-
-
+    console.print("  Para procesar entregas de Moodle, ejecutá:")
+    console.print(f"  [bold cyan]dredd moodle ingest {zip_path}[/bold cyan]\n")
 
 
 @template_app.command("init")
@@ -304,49 +227,15 @@ def cmd_testcase_check(
 @testcase_app.command("map")
 @app.command("map")
 def cmd_testcase_map(
-    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad (ej. entrega-1_1228009)."),
-    unmapped_only: bool = typer.Option(
-        False,
-        "--unmapped-only",
-        "-u",
-        help="Revisar únicamente los archivos que no pudieron ser conectados automáticamente.",
-    ),
-    all_files: bool = typer.Option(
-        False,
-        "--all",
-        help="Revisar todos los archivos (conectados y no conectados).",
-    ),
-    auto: bool = typer.Option(
-        False,
-        "--auto",
-        help="Aplica automáticamente las coincidencias heurísticas no ambiguas.",
-    ),
+    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad."),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
-    """Herramienta interactiva para revisar el mapeo de archivos fuente (.c) a testcases."""
-    activity = Path(activity).name or activity.strip("/\\")
-    # Descubrir ejercicios existentes
-    exercises = discover_testcases(workspace_dir=workspace, activity_slug=activity)
-    available_exercises = list(exercises.keys())
-
-    mapper = InteractiveMapper(
-        workspace_dir=workspace,
-        activity_slug=activity,
-        console=console,
+    """(Migrado a Dredd) Mapeo interactivo de archivos fuente a ejercicios."""
+    console.print(
+        "\n[bold yellow]⚠ El comando 'map' ha sido migrado al orquestador Dredd.[/bold yellow]"
     )
-
-    # Por defecto, si no se especifica --all, se revisan los no mapeados
-    review_unmapped = not all_files if not unmapped_only else True
-
-    try:
-        changes = mapper.run_interactive_session(
-            available_exercises=available_exercises,
-            unmapped_only=review_unmapped,
-            auto_apply=auto,
-        )
-    except (KeyboardInterrupt, EOFError):
-        console.print("\n[yellow]Sesión interactiva cancelada.[/yellow]")
-        return
+    console.print("  Para mapear archivos de una actividad, ejecutá:")
+    console.print(f"  [bold cyan]dredd map {activity}[/bold cyan]\n")
 
 
 @testcase_app.command("fuzz")
@@ -368,11 +257,9 @@ def cmd_testcase_fuzz(
     target_dir = practice_tests if practice_tests.parent.exists() else Path(workspace) / "tests" / activity / exercise
     fuzzer = Fuzzer()
 
-    # Si no se pasó solución pero existe en practicas/<activity>/ejercicios/<exercise>/solucion_modelo.c
     ref_path = Path(solution) if solution else Path(workspace) / "practicas" / activity / "ejercicios" / exercise / "solucion_modelo.c"
     ref_to_use = ref_path if ref_path.exists() else None
 
-    # Detectar el índice de inicio
     existing = list(target_dir.glob("caso*.in")) if target_dir.exists() else []
     start_idx = len(existing) + 1
 
@@ -404,50 +291,14 @@ def cmd_plagiarism(
         "-t",
         help="Umbral de similitud mínima para sospecha de plagio (0.0 a 1.0).",
     ),
-    output: Optional[str] = typer.Option(
-        None,
-        "--output",
-        "-o",
-        help="Archivo donde guardar el informe de plagio (por defecto <actividad>/plagiarism_report.md).",
-    ),
     workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
 ) -> None:
-    """Analiza la similitud estructural de código y sospechas de plagio entre entregas de la cohorte."""
-    activity = Path(activity).name or activity.strip("/\\")
-    act_dir = Path(workspace) / activity
-
-    if not act_dir.exists():
-        console.print(f"[bold red]Directorio de actividad no encontrado: '{act_dir}'[/bold red]")
-        raise typer.Exit(code=1)
-
-    console.print(f"\n[bold green]Analizando similitud de código para la actividad:[/bold green] [cyan]{activity}[/cyan] (Umbral: {int(threshold * 100)}%)\n")
-    detector = PlagiarismDetector(threshold=threshold)
-    matches = detector.analyze_activity(act_dir, threshold=threshold)
-
-    if not matches:
-        console.print(f"[bold green]✓ No se detectaron pares de estudiantes con similitud superior al {int(threshold * 100)}%.[/bold green]\n")
-    else:
-        table = Table(title=f"Sospechas de Similitud / Plagio ({activity})")
-        table.add_column("Estudiante A", style="bold")
-        table.add_column("Estudiante B", style="bold")
-        table.add_column("Similitud", justify="right", style="bold red")
-        table.add_column("Huellas Compartidas", justify="center")
-        table.add_column("Archivos", style="dim")
-
-        for m in matches:
-            table.add_row(
-                m.student_a,
-                m.student_b,
-                f"{m.similarity_pct:.1f}%",
-                str(m.shared_fingerprints_count),
-                ", ".join(m.common_files) or "-",
-            )
-
-        console.print(table)
-
-    report_content = detector.generate_report(activity, matches)
-    out_path = Path(output) if output else act_dir / "plagiarism_report.md"
-    out_path.write_text(report_content, encoding="utf-8")
+    """(Migrado a Dredd) Analiza similitud de código y sospechas de plagio entre entregas."""
+    console.print(
+        "\n[bold yellow]⚠ El comando 'plagiarism' ha sido migrado al orquestador Dredd.[/bold yellow]"
+    )
+    console.print("  Para auditar la cohorte de entregas con el algoritmo Winnowing, ejecutá:")
+    console.print(f"  [bold cyan]dredd plagiarism {activity} --threshold {threshold}[/bold cyan]\n")
     console.print(f"\n[bold cyan]Informe guardado en:[/bold cyan] {out_path}\n")
 
 
