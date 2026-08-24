@@ -1,4 +1,4 @@
-"""Layer boundary enforcement for the modularization plan (PLAN_MODULARIZACION.md).
+"""Layer boundary enforcement for the modularization plan (docs/arquitectura/modularizacion.md).
 
 Reglas de dirección de dependencias:
     models   -> (stdlib only)

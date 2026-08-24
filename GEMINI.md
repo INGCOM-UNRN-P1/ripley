@@ -13,7 +13,7 @@
   - `refactor(...)`: Reestructuración de código sin alterar comportamiento
   - `docs(...)`: Documentación
   - `chore(...)`: Tareas de mantenimiento y configuración
-- **Testing & QA:** Suite de pruebas con `pytest` y `pytest-mock` cubriendo unit tests e integration tests con 100% de coherencia frente a `spec.md`.
+- **Testing & QA:** Suite de pruebas con `pytest` y `pytest-mock` cubriendo unit tests e integration tests con 100% de coherencia frente a `docs/referencia/especificacion-original.md`.
 - **Estilo de Código Python:** PEP 8, tipado estricto con `typing`, modularidad con responsabilidades aisladas. Sin código muerto, sin `TODO` o `pass` temporales.
 - **Plantillas Jinja2:** Nombres de variables estrictamente en `snake_case`.
 

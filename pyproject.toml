@@ -2,7 +2,7 @@
 name = "ripley"
 version = "0.1.0"
 description = "CLI tool for batch processing, grading, versioning and evaluating Moodle C submissions"
-readme = "spec.md"
+readme = "docs/referencia/especificacion-original.md"
 requires-python = ">=3.11"
 dependencies = [
     "typer>=0.12.0",

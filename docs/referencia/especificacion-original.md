@@ -207,34 +207,34 @@ Suite completa de pruebas automatizadas con `pytest` y `pytest-mock` en `tests/`
 
 | Módulo | Responsabilidad Principal |
 | :--- | :--- |
-| [`src/ripley/cli.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/cli.py) | Punto de entrada y orquestación de subcomandos Typer y visualización Rich. |
-| [`src/ripley/ast_auditors.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ast_auditors.py) | Linters avanzados AST: punto flotante, IWYU, const, short-circuit, deep free, string NULL, shadowing, dangling stack, overengineering. |
-| [`src/ripley/memory_visualizer.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/memory_visualizer.py) | Visualizador de topología de estructuras dinámicas de datos en memoria (DOT/Mermaid). |
-| [`src/ripley/embedded.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/embedded.py) | Emulador y ejecutor bajo límites estrictos de memoria para sistemas embebidos. |
-| [`src/ripley/ingest.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/ingest.py) | Parseo de ZIPs de Moodle, descompresión, sanitización UTF-8 y aplanamiento. |
-| [`src/ripley/db.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/db.py) | Persistencia y modelos SQLite para estudiantes, revisiones y evaluaciones. |
-| [`src/ripley/config.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/config.py) | Carga, validación y modelos tipados de configuración TOML (`ripley.toml`). |
-| [`src/ripley/mapping.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/mapping.py) | Mapeo interactivo y heurístico de archivos `.c` a ejercicios y testcases. |
-| [`src/ripley/practice.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/practice.py) | Inicialización, gestión y sincronización de prácticas docentes en `./practicas/`. |
-| [`src/ripley/compiler.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/compiler.py) | Compilación con GCC, sanitizadores y límites de recursos Unix. |
-| [`src/ripley/runner.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/runner.py) | Ejecución dinámica de testcases, comparación regex/fuzzy y auditoría Valgrind. |
-| [`src/ripley/diagnostics.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/diagnostics.py) | Diagnóstico de Stack Overflow, Deadlocks de Stdin y Dangling Pointers. |
-| [`src/ripley/restrictions.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/restrictions.py) | Validador de restricciones del enunciado (blacklist/whitelist AST). |
-| [`src/ripley/sanitizers.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/sanitizers.py) | Analizador de UBSan (overflows, alineación), variables no asignadas y conversiones. |
-| [`src/ripley/fuzzing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/fuzzing.py) | Generación automática de casos de borde por fuzzing con solución modelo. |
-| [`src/ripley/plagiarism.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/plagiarism.py) | Detección de similitud y plagio con algoritmo Winnowing y similitud Jaccard. |
-| [`src/ripley/flowchart.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/flowchart.py) | Generador de diagramas de flujo tradicionales (ISO/ANSI 5807) en Mermaid y DOT. |
-| [`src/ripley/callgraph.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/callgraph.py) | Extracción de árboles de llamadas y análisis de alcanzabilidad de funciones. |
-| [`src/ripley/linters.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/linters.py) | Linters de números mágicos, código duplicado (copy-paste), convenciones y código muerto. |
-| [`src/ripley/doxygen.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/doxygen.py) | Auditor de completitud de documentación Doxygen en C. |
-| [`src/ripley/mocks.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/mocks.py) | Generador automático de arneses y stubs mock para pruebas unitarias en C. |
-| [`src/ripley/property_testing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/property_testing.py) | Framework de pruebas basadas en propiedades (Property-Based Testing) en C. |
-| [`src/ripley/instruction_counter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/instruction_counter.py) | Contador determinista de instrucciones CPU con Callgrind. |
-| [`src/ripley/semantic_diff.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/semantic_diff.py) | Diff semántico por AST para código fuente C. |
-| [`src/ripley/diffing.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/diffing.py) | Generación de diffs unificados y resúmenes semánticos entre revisiones. |
-| [`src/ripley/style.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/style.py) | Analizador estático de reglas de estilo configurables (Allman, K&R, indentación). |
-| [`src/ripley/security.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/security.py) | Escáner de llamadas al sistema peligrosas (`system`, `fork`, `exec`). |
-| [`src/ripley/templates.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/templates.py) | Gestor, inicializador y validador de plantillas Jinja2 en `snake_case`. |
-| [`src/ripley/reporter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/reporter.py) | Motor de renderizado Jinja2 para generar informes Markdown acumulativos. |
-| [`src/ripley/exporter.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/exporter.py) | Exportador de `moodle_grades.csv`, ZIP de retroalimentación y `dashboard.md`. |
-| [`src/ripley/evaluate.py`](file:///home/mrtin/dev/p1/ripley/src/ripley/evaluate.py) | Evaluador integral que orquesta compilación, diff, estilo, linter, tests y Valgrind. |
+| [`src/ripley/cli.py`](../../src/ripley/cli/) | Punto de entrada y orquestación de subcomandos Typer y visualización Rich. |
+| [`src/ripley/ast_auditors.py`](../../src/ripley/core/ast_auditors.py) | Linters avanzados AST: punto flotante, IWYU, const, short-circuit, deep free, string NULL, shadowing, dangling stack, overengineering. |
+| [`src/ripley/memory_visualizer.py`](../../src/ripley/core/memory_visualizer.py) | Visualizador de topología de estructuras dinámicas de datos en memoria (DOT/Mermaid). |
+| [`src/ripley/embedded.py`](../../src/ripley/tools/embedded.py) | Emulador y ejecutor bajo límites estrictos de memoria para sistemas embebidos. |
+| [`src/ripley/ingest.py`](../../src/ripley/teacher/ingest.py) | Parseo de ZIPs de Moodle, descompresión, sanitización UTF-8 y aplanamiento. |
+| [`src/ripley/db.py`](../../src/ripley/teacher/db.py) | Persistencia y modelos SQLite para estudiantes, revisiones y evaluaciones. |
+| [`src/ripley/config.py`](../../src/ripley/config.py) | Carga, validación y modelos tipados de configuración TOML (`ripley.toml`). |
+| [`src/ripley/mapping.py`](../../src/ripley/teacher/mapping.py) | Mapeo interactivo y heurístico de archivos `.c` a ejercicios y testcases. |
+| [`src/ripley/practice.py`](../../src/ripley/teacher/practice.py) | Inicialización, gestión y sincronización de prácticas docentes en `./practicas/`. |
+| [`src/ripley/compiler.py`](../../src/ripley/tools/compiler.py) | Compilación con GCC, sanitizadores y límites de recursos Unix. |
+| [`src/ripley/runner.py`](../../src/ripley/tools/runner.py) | Ejecución dinámica de testcases, comparación regex/fuzzy y auditoría Valgrind. |
+| [`src/ripley/diagnostics.py`](../../src/ripley/tools/diagnostics.py) | Diagnóstico de Stack Overflow, Deadlocks de Stdin y Dangling Pointers. |
+| [`src/ripley/restrictions.py`](../../src/ripley/core/restrictions.py) | Validador de restricciones del enunciado (blacklist/whitelist AST). |
+| [`src/ripley/sanitizers.py`](../../src/ripley/tools/sanitizers.py) | Analizador de UBSan (overflows, alineación), variables no asignadas y conversiones. |
+| [`src/ripley/fuzzing.py`](../../src/ripley/tools/fuzzing.py) | Generación automática de casos de borde por fuzzing con solución modelo. |
+| [`src/ripley/plagiarism.py`](../../src/ripley/teacher/plagiarism.py) | Detección de similitud y plagio con algoritmo Winnowing y similitud Jaccard. |
+| [`src/ripley/flowchart.py`](../../src/ripley/core/flowchart.py) | Generador de diagramas de flujo tradicionales (ISO/ANSI 5807) en Mermaid y DOT. |
+| [`src/ripley/callgraph.py`](../../src/ripley/core/callgraph.py) | Extracción de árboles de llamadas y análisis de alcanzabilidad de funciones. |
+| [`src/ripley/linters.py`](../../src/ripley/core/linters.py) | Linters de números mágicos, código duplicado (copy-paste), convenciones y código muerto. |
+| [`src/ripley/doxygen.py`](../../src/ripley/core/doxygen.py) | Auditor de completitud de documentación Doxygen en C. |
+| [`src/ripley/mocks.py`](../../src/ripley/core/mocks.py) | Generador automático de arneses y stubs mock para pruebas unitarias en C. |
+| [`src/ripley/property_testing.py`](../../src/ripley/tools/property_testing.py) | Framework de pruebas basadas en propiedades (Property-Based Testing) en C. |
+| [`src/ripley/instruction_counter.py`](../../src/ripley/tools/instruction_counter.py) | Contador determinista de instrucciones CPU con Callgrind. |
+| [`src/ripley/semantic_diff.py`](../../src/ripley/core/semantic_diff.py) | Diff semántico por AST para código fuente C. |
+| [`src/ripley/diffing.py`](../../src/ripley/core/diffing.py) | Generación de diffs unificados y resúmenes semánticos entre revisiones. |
+| [`src/ripley/style.py`](../../src/ripley/core/style.py) | Analizador estático de reglas de estilo configurables (Allman, K&R, indentación). |
+| [`src/ripley/security.py`](../../src/ripley/core/security.py) | Escáner de llamadas al sistema peligrosas (`system`, `fork`, `exec`). |
+| [`src/ripley/templates.py`](../../src/ripley/teacher/templates.py) | Gestor, inicializador y validador de plantillas Jinja2 en `snake_case`. |
+| [`src/ripley/reporter.py`](../../src/ripley/teacher/reporter.py) | Motor de renderizado Jinja2 para generar informes Markdown acumulativos. |
+| [`src/ripley/exporter.py`](../../src/ripley/teacher/exporter.py) | Exportador de `moodle_grades.csv`, ZIP de retroalimentación y `dashboard.md`. |
+| [`src/ripley/evaluate.py`](../../src/ripley/teacher/evaluate.py) | Evaluador integral que orquesta compilación, diff, estilo, linter, tests y Valgrind. |

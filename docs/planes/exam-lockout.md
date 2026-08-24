@@ -1,6 +1,6 @@
 # Plan — Modo Evaluación Presencial con Bloqueo de Red (Exam Lockout Mode)
 
-> Estado: PROPUESTA DE DISEÑO — propuesta #30 del registro (`mejoras.md`, Módulo 5).
+> Estado: PROPUESTA DE DISEÑO — propuesta #30 del registro (`docs/referencia/docs/referencia/mejoras.md`, Módulo 5).
 > Principio rector: **herramienta técnica local, abierta y auditable** para exámenes presenciales
 > de programación en C — no un sistema de vigilancia.
 
