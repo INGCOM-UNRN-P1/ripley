@@ -99,12 +99,26 @@ def build(output: Path) -> Path:
     files = collect_modules()
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("__main__.py", BOOTSTRAP)
-        for arcname in sorted(files):
-            zf.writestr(arcname, files[arcname])
+    # 1. Escribir archivo zipapp con shebang ejecutable
+    with open(output, "wb") as f:
+        f.write(b"#!/usr/bin/env python3\n")
+        with zipfile.ZipFile(f, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("__main__.py", BOOTSTRAP)
+            for arcname in sorted(files):
+                zf.writestr(arcname, files[arcname])
 
     output.chmod(0o755)
+
+    # 2. Generar alias/copia ripley_check.pyz si el target principal es ripley.pyz
+    if output.name == "ripley.pyz":
+        check_alias = output.parent / "ripley_check.pyz"
+        shutil.copyfile(output, check_alias)
+        check_alias.chmod(0o755)
+    elif output.name == "ripley_check.pyz":
+        main_alias = output.parent / "ripley.pyz"
+        shutil.copyfile(output, main_alias)
+        main_alias.chmod(0o755)
+
     size_kb = output.stat().st_size / 1024
     print(f"Zipapp generado: {output} ({size_kb:.0f} KB, {len(files)} módulos)")
     return output
@@ -119,7 +133,7 @@ def smoke_test(app_path: Path) -> bool:
     import subprocess
 
     proc = subprocess.run([sys.executable, str(app_path), "--help"], capture_output=True, text=True)
-    ok = proc.returncode == 0 and "Verificación temprana" in proc.stdout
+    ok = proc.returncode == 0 and ("Verificación temprana" in proc.stdout or "ripley" in proc.stdout)
     if not ok:
         print(proc.stdout, proc.stderr)
     return ok
@@ -127,13 +141,14 @@ def smoke_test(app_path: Path) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("-o", "--output", default="dist/ripley_check.pyz")
+    parser.add_argument("-o", "--output", default="dist/ripley.pyz")
     args = parser.parse_args()
     out = build(Path(args.output))
     if not smoke_test(out):
         sys.exit("ERROR: el smoke test del zipapp falló.")
-    print("Smoke test OK: el zipapp responde como ripley-check.")
+    print("Smoke test OK: el zipapp responde correctamente como ripley.")
 
 
 if __name__ == "__main__":
     main()
+

@@ -973,7 +973,7 @@ def cmd_make_audit(
 
 @app.command("watch")
 def cmd_watch(
-    paths: List[Path] = typer.Argument(["."], help="Archivos o directorios .c a vigilar."),
+    paths: Optional[List[Path]] = typer.Argument(None, help="Archivos o directorios .c a vigilar (por defecto: .)."),
     practica: Optional[str] = typer.Option(None, "--practica", "-p", help="Paquete .ripkg para flags oficiales y testcases públicos."),
     interval: float = typer.Option(1.0, "--interval", "-i", help="Segundos entre sondeos de cambios."),
 ) -> None:
@@ -981,7 +981,8 @@ def cmd_watch(
     from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
     from ripley.tools.watcher import WatchSession
 
-    session = WatchSession(paths, interval_sec=interval)
+    effective_paths = paths if paths else [Path(".")]
+    session = WatchSession(effective_paths, interval_sec=interval)
 
     # Cargar manifiesto una sola vez si hay práctica.
     manifest = None
