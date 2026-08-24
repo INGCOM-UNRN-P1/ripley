@@ -60,6 +60,7 @@ mock_app = typer.Typer(name="mock", help="Generador de arneses y mocks en C.", n
 
 checks_app = typer.Typer(name="checks", help="Catálogo unificado de verificaciones.", no_args_is_help=True)
 
+mock_app = mock_app
 app.add_typer(mock_app, name="mock")
 app.add_typer(checks_app, name="checks")
 
@@ -1136,3 +1137,63 @@ def cmd_memory_animate(
             paths.append(fp)
         ok, msg = export_gif(paths, gif)
         console.print(f"  {'[green]' + msg + '[/green]' if ok else '[yellow]' + msg + '[/yellow]'}")
+
+
+# ============================================================================
+# Glosario visual accesible de conceptos de bajo nivel
+# ============================================================================
+
+
+@app.command("glossary")
+def cmd_glossary(
+    concepts: Optional[List[str]] = typer.Argument(None, help="IDs de conceptos (vacío = todos)."),
+    theme_name: str = typer.Option("light", "--theme", "-t", help="Tema visual: dark | light | high-contrast | colorblind."),
+    large_text: bool = typer.Option(False, "--large-text", help="Escala tipográfica ampliada (baja visión)."),
+    output: Path = typer.Option("glosario.html", "--output", "-o", help="HTML autocontenido de salida."),
+    list_only: bool = typer.Option(False, "--list", "-l", help="Solo listar conceptos disponibles."),
+) -> None:
+    """Genera el glosario visual accesible como HTML autocontenido (sin recursos externos)."""
+    from ripley.core.glossary import get_entry, get_theme, render_glossary_html
+
+    if list_only:
+        from ripley.core.glossary import list_concepts
+
+        table = Table(title="Glosario Visual — conceptos disponibles")
+        table.add_column("ID", style="cyan")
+        table.add_column("Concepto")
+        table.add_column("Palabras clave", style="dim")
+        for e in list_concepts():
+            table.add_row(e.concept_id, e.title, ", ".join(e.keywords))
+        console.print(table)
+        return
+
+    try:
+        theme = get_theme(theme_name, large_text=large_text)
+    except KeyError as e:
+        console.print(f"[bold red]{e}[/bold red]")
+        raise typer.Exit(code=1)
+
+    if concepts:
+        faltan = [c for c in concepts if not _glossary_exists(c)]
+        if faltan:
+            console.print(f"[bold red]Conceptos inexistentes: {', '.join(faltan)}[/bold red]")
+            raise typer.Exit(code=1)
+        ids = list(concepts)
+    else:
+        from ripley.core.glossary import list_concepts
+
+        ids = [e.concept_id for e in list_concepts()]
+
+    html_doc = render_glossary_html(ids, theme)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html_doc, encoding="utf-8")
+    console.print(
+        f"\n[bold green]✓ Glosario generado:[/bold green] {output} "
+        f"({len(ids)} conceptos · tema {theme.name}{' · texto ampliado' if large_text else ''})"
+    )
+
+
+def _glossary_exists(concept_id: str) -> bool:
+    from ripley.core.glossary import list_concepts
+
+    return any(e.concept_id == concept_id for e in list_concepts())
