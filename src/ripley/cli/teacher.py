@@ -931,3 +931,35 @@ def cmd_audit_publish(
     console.print(f"[green]✓ Publicadas {len(eventos)} entregas:[/green]")
     for ev in eventos:
         console.print(f"  · {ev.alumno} → publicada")
+
+
+# ============================================================================
+# Exportación de informes a HTML enriquecido y PDF
+# ============================================================================
+
+
+@app.command("export-report")
+def cmd_export_report(
+    source_md: Path = typer.Argument(..., help="Informe Markdown generado por Ripley (.md)."),
+    format_: str = typer.Option("html", "--format", "-f", help="Formato de salida: html | pdf."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Archivo destino (default junto al .md)."),
+    title: str = typer.Option("", "--title", help="Título del documento (default: nombre del archivo)."),
+) -> None:
+    """Convierte informes Markdown a HTML enriquecido autocontenido o PDF (sin dependencias)."""
+    from ripley.teacher.report_export import export_report
+
+    if not source_md.exists():
+        console.print(f"[bold red]Informe no encontrado: {source_md}[/bold red]")
+        raise typer.Exit(code=1)
+    try:
+        out = export_report(
+            source_md,
+            fmt=format_,
+            out_path=output,
+            title=title or "Informe de Evaluación — Ripley",
+        )
+    except (ValueError, FileNotFoundError) as e:
+        console.print(f"[bold red]{e}[/bold red]")
+        raise typer.Exit(code=1)
+    size_kb = out.stat().st_size / 1024
+    console.print(f"\n[bold green]✓ Reporte exportado:[/bold green] {out} ({size_kb:.1f} KB, {format_.lower()})")
