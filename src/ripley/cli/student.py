@@ -1358,3 +1358,121 @@ def cmd_plugins_git_hook(
     else:
         console.print(f"[bold red]Acción inválida: {action} (install|uninstall|status)[/bold red]")
         raise typer.Exit(code=2)
+
+
+# ============================================================================
+# Comandos Universales Desacoplados (check y analyze)
+# ============================================================================
+
+
+@app.command("check")
+def cmd_check(
+    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a verificar."),
+    strict: bool = typer.Option(False, "--strict", help="Salir con código de error si se detectan advertencias."),
+    output_format: str = typer.Option("rich", "--format", help="Formato de salida: 'rich' (consola interactiva) o 'json'."),
+) -> None:
+    """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
+    from ripley.core.engine import analyze_target
+
+    if not target.exists():
+        console.print(f"[bold red]Ruta inexistente: {target}[/bold red]")
+        raise typer.Exit(code=1)
+
+    result = analyze_target(target)
+
+    if output_format.lower() == "json":
+        print(result.to_json())
+        if not result.compilation.get("success", False) or (strict and result.metrics.get("ast_findings_count", 0) > 0):
+            raise typer.Exit(code=1)
+        return
+
+    # Visualización Rich
+    console.print(f"\n[bold cyan]─── Verificación Ripley: {target.name} ───[/bold cyan]\n")
+
+    # 1. Compilación
+    comp = result.compilation
+    if comp.get("success"):
+        console.print("  [bold green]✓ Compilación GCC / Clang:[/bold green] Exitosa sin errores bloqueantes.")
+    else:
+        console.print("  [bold red]✗ Fallo de Compilación:[/bold red]")
+        if comp.get("human_summary"):
+            console.print(f"    [yellow]{comp['human_summary']}[/yellow]")
+        for d in comp.get("translated_diagnostics", []):
+            console.print(f"    · [bold]{d.get('file')}:{d.get('line')}[/bold] [{d.get('severity')}] {d.get('translated_message')}")
+            if d.get("suggestion"):
+                console.print(f"      [dim]💡 {d.get('suggestion')}[/dim]")
+        if comp.get("raw_stderr") and not comp.get("translated_diagnostics"):
+            console.print(f"    [dim]{comp['raw_stderr'][:400]}[/dim]")
+
+    # 2. Reglas AST y Calidad
+    findings = result.ast_findings
+    if findings:
+        table = Table(title="Hallazgos de Calidad, Reglas P1 y AST")
+        table.add_column("Archivo:Línea", style="cyan", justify="left")
+        table.add_column("Regla", style="bold")
+        table.add_column("Severidad", justify="center")
+        table.add_column("Diagnóstico y Sugerencia Pedagógica")
+
+        for f in findings:
+            sev = f.get("severity", "ADVERTENCIA")
+            color = "red" if sev == "ERROR" else ("yellow" if "WARN" in sev or "ADV" in sev else "blue")
+            msg = f"{f.get('message')}\n[dim]💡 {f.get('suggestion')}[/dim]" if f.get("suggestion") else f.get("message")
+            table.add_row(
+                f"{f.get('file')}:{f.get('line')}",
+                f.get("rule_id"),
+                f"[{color}]{sev}[/{color}]",
+                msg,
+            )
+        console.print("\n")
+        console.print(table)
+    else:
+        console.print("  [bold green]✓ Reglas de Estilo y AST:[/bold green] Sin observaciones.")
+
+    # 3. Pruebas y Memoria
+    tests = result.tests
+    if tests.get("total", 0) > 0:
+        passed = tests.get("passed", 0)
+        total = tests.get("total", 0)
+        color = "green" if passed == total else "red"
+        console.print(f"\n  [bold]Pruebas Funcionales:[/bold] [{color}]{passed}/{total} aprobadas[/{color}]")
+        for tc in tests.get("cases", []):
+            status = "[green]PASÓ[/green]" if tc.get("passed") else "[red]FALLÓ[/red]"
+            leak = " [bold red][Fuga de Memoria][/bold red]" if tc.get("memory_leak") else ""
+            console.print(f"    · {tc.get('name')}: {status}{leak}")
+            if not tc.get("passed") and tc.get("sanitizer_error"):
+                console.print(f"      [dim red]{tc.get('sanitizer_error')[:300]}[/dim red]")
+
+    # Veredicto final
+    has_errors = not comp.get("success", False) or result.metrics.get("ast_errors_count", 0) > 0 or tests.get("failed", 0) > 0
+    if has_errors:
+        console.print("\n[bold red]✗ Se encontraron errores o violaciones que impiden la entrega.[/bold red]\n")
+        raise typer.Exit(code=1)
+    elif strict and result.metrics.get("ast_findings_count", 0) > 0:
+        console.print("\n[bold yellow]⚠ Modo estricto: Existen advertencias pendientes de corrección.[/bold yellow]\n")
+        raise typer.Exit(code=1)
+    else:
+        console.print("\n[bold green]✓ Proyecto verificado con éxito y listo para entregar.[/bold green]\n")
+
+
+@app.command("analyze")
+def cmd_analyze(
+    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a analizar."),
+    format: str = typer.Option("json", "--format", help="Formato de salida ('json')."),
+) -> None:
+    """Análisis programático sin estado para orquestadores (dredd, CI/CD, scripts)."""
+    from ripley.core.engine import analyze_target
+
+    if not target.exists():
+        error_res = {
+            "version": "2.0.0",
+            "error": f"Target not found: {target}",
+            "compilation": {"success": False},
+        }
+        print(json.dumps(error_res, indent=2))
+        raise typer.Exit(code=1)
+
+    result = analyze_target(target)
+    print(result.to_json())
+    if not result.compilation.get("success", False):
+        raise typer.Exit(code=1)
+

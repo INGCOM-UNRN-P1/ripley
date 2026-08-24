@@ -194,7 +194,7 @@ def _format(template: str, match: re.Match) -> str:
         return ""
     try:
         return template.format(**match.groupdict())
-    except (KeyError, IndexError):
+    except (KeyError, IndexError, ValueError):
         return template
 
 

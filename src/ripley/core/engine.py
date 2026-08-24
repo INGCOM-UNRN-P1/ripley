@@ -1,0 +1,409 @@
+"""Ripley Core Engine: Pure stateless C analysis and verification.
+
+Executes AST linters, P1 rules, GCC sandboxed compilation, AddressSanitizer checks,
+and testcases against a target source file or directory.
+"""
+
+from dataclasses import asdict, dataclass, field
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+from typing import Any, Dict, List, Optional
+
+from ripley.core.ast_auditors import (
+    ConstCorrectnessLinter,
+    DanglingStackPointerLinter,
+    DeepFreeLinter,
+    FloatComparisonLinter,
+    IWYULinter,
+    ShortCircuitLinter,
+    StringNullPointerLinter,
+    VariableShadowingLinter,
+)
+from ripley.core.gcc_translator import translate_stderr, summarize_for_humans
+from ripley.core.linters import (
+    DeadCodeLinter,
+    InternalCloneLinter,
+    LinterObservation,
+    MagicNumberLinter,
+    NamingConventionLinter,
+)
+from ripley.core.p1_rules import P1RuleChecker
+
+
+@dataclass
+class CompilationResult:
+    success: bool
+    return_code: int
+    raw_stderr: str
+    translated_diagnostics: List[Dict[str, Any]] = field(default_factory=list)
+    human_summary: str = ""
+    binary_path: Optional[str] = None
+
+
+@dataclass
+class TestCaseResult:
+    name: str
+    passed: bool
+    input_data: str
+    expected_output: str
+    actual_output: str
+    timed_out: bool = False
+    sanitizer_error: Optional[str] = None
+    memory_leak: bool = False
+    return_code: int = 0
+
+
+@dataclass
+class AnalysisResult:
+    version: str = "2.0.0"
+    target: str = ""
+    is_directory: bool = False
+    c_files: List[str] = field(default_factory=list)
+    compilation: Dict[str, Any] = field(default_factory=dict)
+    tests: Dict[str, Any] = field(default_factory=dict)
+    ast_findings: List[Dict[str, Any]] = field(default_factory=list)
+    metrics: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    def to_json(self, indent: int = 2) -> str:
+        return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
+
+
+def find_c_sources(target: Path) -> List[Path]:
+    """Encuentra todos los archivos .c en el destino omitiendo carpetas ocultas y temporales."""
+    if target.is_file() and target.suffix == ".c":
+        return [target]
+    if target.is_dir():
+        return sorted([
+            p for p in target.glob("**/*.c")
+            if not any(part.startswith(".") for part in p.parts)
+            and "build" not in p.parts
+            and "dist" not in p.parts
+        ])
+    return []
+
+
+def run_ast_linters(c_files: List[Path]) -> List[Dict[str, Any]]:
+    """Aplica el catálogo de linters AST y reglas de cátedra P1 sobre cada archivo .c."""
+    findings = []
+    p1_checker = P1RuleChecker()
+    linters = [
+        FloatComparisonLinter(),
+        ConstCorrectnessLinter(),
+        DeepFreeLinter(),
+        DanglingStackPointerLinter(),
+        ShortCircuitLinter(),
+        StringNullPointerLinter(),
+        VariableShadowingLinter(),
+        IWYULinter(),
+        MagicNumberLinter(),
+        NamingConventionLinter(),
+        DeadCodeLinter(),
+    ]
+
+    for c_file in c_files:
+        try:
+            code = c_file.read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            findings.append({
+                "rule_id": "READ_ERROR",
+                "severity": "ERROR",
+                "file": c_file.name,
+                "line": 0,
+                "message": f"No se pudo leer el archivo: {e}",
+                "suggestion": "",
+            })
+            continue
+
+        # Reglas P1 (0xXXXXh)
+        for p in p1_checker.analyze(code, filename=c_file.name):
+            findings.append({
+                "rule_id": p.rule_code,
+                "severity": p.severity,
+                "file": c_file.name,
+                "line": p.line,
+                "message": f"{p.rule_code}: {p.message}",
+                "suggestion": p.suggestion,
+            })
+
+        # Linters de Calidad y AST
+        for linter in linters:
+            for obs in linter.analyze(code, filename=c_file.name):
+                findings.append({
+                    "rule_id": obs.linter_name,
+                    "severity": obs.severity,
+                    "file": c_file.name,
+                    "line": obs.line,
+                    "message": obs.message,
+                    "suggestion": obs.suggestion or "",
+                })
+
+        # Detector de código duplicado
+        for d in InternalCloneLinter().analyze(code, filename=c_file.name):
+            findings.append({
+                "rule_id": "COPY_PASTE_CLONE",
+                "severity": "ADVERTENCIA",
+                "file": c_file.name,
+                "line": d.line_a,
+                "message": d.description,
+                "suggestion": "Extraé la lógica común en una función auxiliar.",
+            })
+
+    return findings
+
+
+def compile_sources(
+    c_files: List[Path],
+    output_bin: Path,
+    include_dirs: Optional[List[Path]] = None,
+    extra_flags: Optional[List[str]] = None,
+    enable_asan: bool = True,
+) -> CompilationResult:
+    """Compila las fuentes C con GCC, instrumentando AddressSanitizer y capturando stderr."""
+    gcc = shutil.which("gcc")
+    if not gcc:
+        return CompilationResult(
+            success=False,
+            return_code=127,
+            raw_stderr="GCC no está instalado o no se encuentra en el PATH.",
+            human_summary="GCC no disponible en el sistema.",
+        )
+
+    cmd = [
+        gcc,
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-std=c11",
+        "-g3",
+        "-O0",
+    ]
+    if enable_asan:
+        cmd.extend(["-fsanitize=address,undefined", "-fno-omit-frame-pointer"])
+
+    if include_dirs:
+        for inc in include_dirs:
+            cmd.extend(["-I", str(inc)])
+
+    if extra_flags:
+        cmd.extend(extra_flags)
+
+    cmd.extend([str(f) for f in c_files])
+    cmd.extend(["-o", str(output_bin), "-lm"])
+
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        raw_stderr = proc.stderr or ""
+        success = proc.returncode == 0 and output_bin.exists()
+
+        # Si falló por falta de runtime de libasan, reintentar sin ASan
+        if not success and enable_asan and ("cannot find" in raw_stderr and "asan" in raw_stderr.lower()):
+            return compile_sources(
+                c_files,
+                output_bin,
+                include_dirs=include_dirs,
+                extra_flags=extra_flags,
+                enable_asan=False,
+            )
+
+        translated = translate_stderr(raw_stderr) if raw_stderr else []
+        summary = summarize_for_humans(translated) if translated else ""
+
+        translated_dicts = [
+            {
+                "file": d.file or "",
+                "line": d.line or 0,
+                "column": d.col or 0,
+                "severity": d.level or "error",
+                "title": d.title or "",
+                "raw_message": d.original,
+                "translated_message": d.explanation or d.title or "",
+                "suggestion": d.suggestion or "",
+            }
+            for d in translated
+        ]
+
+        return CompilationResult(
+            success=success,
+            return_code=proc.returncode,
+            raw_stderr=raw_stderr,
+            translated_diagnostics=translated_dicts,
+            human_summary=summary,
+            binary_path=str(output_bin) if success else None,
+        )
+    except subprocess.TimeoutExpired:
+        return CompilationResult(
+            success=False,
+            return_code=124,
+            raw_stderr="Tiempo de compilación excedido (20s).",
+            human_summary="La compilación tardó demasiado tiempo y fue abortada.",
+        )
+    except Exception as e:
+        return CompilationResult(
+            success=False,
+            return_code=1,
+            raw_stderr=str(e),
+            human_summary=f"Error al ejecutar GCC: {e}",
+        )
+
+
+def execute_testcases(
+    binary_path: Path,
+    test_dir: Path,
+    timeout_seconds: float = 3.0,
+) -> List[TestCaseResult]:
+    """Ejecuta los pares tests/caso_*.in contra el binario compilado."""
+    results = []
+    if not test_dir.is_dir() or not binary_path.exists():
+        return results
+
+    in_files = sorted(test_dir.glob("caso_*.in")) + sorted(test_dir.glob("*.in"))
+    in_files = list(dict.fromkeys(in_files))  # De-duplicate
+
+    for in_file in in_files:
+        base_name = in_file.stem
+        out_file = in_file.with_suffix(".out")
+        expected_output = out_file.read_text(encoding="utf-8", errors="replace") if out_file.exists() else ""
+
+        input_data = in_file.read_text(encoding="utf-8", errors="replace")
+        try:
+            proc = subprocess.run(
+                [str(binary_path)],
+                input=input_data,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+            )
+            actual_output = proc.stdout
+            stderr = proc.stderr or ""
+            passed = (actual_output.strip() == expected_output.strip()) if out_file.exists() else (proc.returncode == 0)
+
+            sanitizer_error = None
+            memory_leak = False
+            if "AddressSanitizer" in stderr or "LeakSanitizer" in stderr or "runtime error:" in stderr:
+                sanitizer_error = stderr
+                if "detected memory leaks" in stderr:
+                    memory_leak = True
+                passed = False
+
+            results.append(
+                TestCaseResult(
+                    name=base_name,
+                    passed=passed,
+                    input_data=input_data,
+                    expected_output=expected_output,
+                    actual_output=actual_output,
+                    timed_out=False,
+                    sanitizer_error=sanitizer_error,
+                    memory_leak=memory_leak,
+                    return_code=proc.returncode,
+                )
+            )
+        except subprocess.TimeoutExpired:
+            results.append(
+                TestCaseResult(
+                    name=base_name,
+                    passed=False,
+                    input_data=input_data,
+                    expected_output=expected_output,
+                    actual_output="",
+                    timed_out=True,
+                    sanitizer_error="Tiempo de ejecución excedido (bucle infinito o I/O bloqueante)",
+                    memory_leak=False,
+                    return_code=124,
+                )
+            )
+        except Exception as e:
+            results.append(
+                TestCaseResult(
+                    name=base_name,
+                    passed=False,
+                    input_data=input_data,
+                    expected_output=expected_output,
+                    actual_output="",
+                    timed_out=False,
+                    sanitizer_error=str(e),
+                    memory_leak=False,
+                    return_code=1,
+                )
+            )
+
+    return results
+
+
+def analyze_target(target_path: str | Path) -> AnalysisResult:
+    """Ejecuta el pipeline completo de análisis estático, compilación y pruebas sobre el objetivo."""
+    path = Path(target_path).resolve()
+    result = AnalysisResult(
+        target=str(path),
+        is_directory=path.is_dir(),
+    )
+
+    c_files = find_c_sources(path)
+    result.c_files = [str(f.relative_to(path) if path.is_dir() else f.name) for f in c_files]
+
+    if not c_files:
+        result.compilation = {
+            "success": False,
+            "error": "No se encontraron archivos fuentes C (.c) para analizar.",
+            "translated_diagnostics": [],
+        }
+        return result
+
+    # 1. Análisis Estático y AST Linters
+    ast_findings = run_ast_linters(c_files)
+    result.ast_findings = ast_findings
+
+    # 2. Compilación en sandbox temporal con AddressSanitizer
+    with tempfile.TemporaryDirectory(prefix="ripley_engine_") as td:
+        tmp_bin = Path(td) / "app.bin"
+        include_dirs = [path, path / "include", path / "src"] if path.is_dir() else [path.parent]
+        comp_res = compile_sources(c_files, tmp_bin, include_dirs=include_dirs, enable_asan=True)
+
+        result.compilation = {
+            "success": comp_res.success,
+            "return_code": comp_res.return_code,
+            "human_summary": comp_res.human_summary,
+            "translated_diagnostics": comp_res.translated_diagnostics,
+            "raw_stderr": comp_res.raw_stderr,
+        }
+
+        # 3. Testcases (si compila exitosamente)
+        test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
+        test_results = []
+        if comp_res.success:
+            test_results = execute_testcases(tmp_bin, test_dir)
+
+        passed_count = sum(1 for t in test_results if t.passed)
+        failed_count = len(test_results) - passed_count
+        result.tests = {
+            "total": len(test_results),
+            "passed": passed_count,
+            "failed": failed_count,
+            "cases": [asdict(t) for t in test_results],
+        }
+
+    # 4. Métricas básicas
+    total_lines = 0
+    for f in c_files:
+        try:
+            total_lines += len(f.read_text(encoding="utf-8", errors="replace").splitlines())
+        except Exception:
+            pass
+
+    result.metrics = {
+        "c_files_count": len(c_files),
+        "total_lines_of_code": total_lines,
+        "ast_findings_count": len(ast_findings),
+        "ast_errors_count": sum(1 for f in ast_findings if f.get("severity") == "ERROR"),
+        "ast_warnings_count": sum(1 for f in ast_findings if f.get("severity") in ("ADVERTENCIA", "WARN", "WARNING")),
+    }
+
+    return result

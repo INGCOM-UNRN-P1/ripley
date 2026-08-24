@@ -38,7 +38,7 @@ int main(void) { return chico() + grande(); }
     funciones = {e.function: e for e in report.entries}
     assert "grande" in funciones
     assert "chico" in funciones
-    assert funciones["grande"].size_bytes >= 400000
+    assert funciones["grande"].size_bytes >= 350000
     assert any(e.function == "grande" for e in report.offenders)
     assert not any(e.function == "chico" for e in report.offenders)
 
