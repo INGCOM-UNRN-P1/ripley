@@ -1544,7 +1544,7 @@ def cmd_check(
 
     # 3.b ub-sentinel: comportamiento indefinido (opcional)
     if strict_ub:
-        from ripley.core.ub_sentinel import auditar_ub
+        from ripley.tools.ub_sentinel import auditar_ub
 
         base_ub = target if target.is_dir() else target.parent
         fuentes_ub = [base_ub / rel for rel in result.c_files]

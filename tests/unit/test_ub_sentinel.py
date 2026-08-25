@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from ripley.core import ub_sentinel
-from ripley.core.ub_sentinel import (
+from ripley.tools import ub_sentinel
+from ripley.tools.ub_sentinel import (
     HallazgoUB,
     ReporteUB,
     _falta_runtime_sanitizers,
@@ -71,7 +71,7 @@ def test_nivel1_clasifica_overflow_y_division(tmp_path, monkeypatch):
 
     reporte = auditar_ub([fuente], [casos], nivel_maximo=1)
     categorias = {h.categoria for h in reporte.hallazgos}
-    assert f"{ub_sentinel.__name__}" == "ripley.core.ub_sentinel"  # sanidad
+    assert f"{ub_sentinel.__name__}" == "ripley.tools.ub_sentinel"  # sanidad de capa
     assert any("INTEGER_OVERFLOW" in c for c in categorias), categorias
     assert any("DIVISION_BY_ZERO" in c for c in categorias), categorias
     assert reporte.hay_errores
