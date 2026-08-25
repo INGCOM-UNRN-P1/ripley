@@ -37,7 +37,9 @@ jobs:
           test -x dist/ripley.pyz
           test -x dist/ripley_check.pyz
           cmp dist/ripley.pyz dist/ripley_check.pyz
-          ./dist/ripley.pyz doctor --help >/dev/null && echo "zipapp ejecutable OK"
+          # vía el venv de uv: el zipapp requiere typer/rich y el python del
+          # sistema del runner no las tiene
+          uv run python dist/ripley.pyz doctor --help >/dev/null && echo "zipapp ejecutable OK"
 
       - name: Calcular sumas SHA256
         working-directory: dist
