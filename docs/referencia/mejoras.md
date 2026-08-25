@@ -1,6 +1,6 @@
 # Ripley - Registro Modular de Funcionalidades y Mejoras
 
-> **Última revisión:** 2026-08-23 — `263` tests pasando, `3` omitidos por herramientas externas ausentes en el entorno (`pytest`, suite unitaria + integración).
+> **Última revisión:** 2026-08-23 — `252` tests pasando, `3` omitidos por herramientas externas ausentes en el entorno (`pytest`, suite unitaria + integración).
 
 ---
 
