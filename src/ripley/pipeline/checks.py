@@ -72,6 +72,43 @@ register(CheckSpec(
     runner=IWYULinter().analyze,
 ))
 
+# ---------------------------------------------------------------------------
+# c-antipatterns: vicios y malas prácticas específicas de C (nuevas.md §1.5)
+# ---------------------------------------------------------------------------
+from ripley.core.antipatterns import (
+    GodFunctionLinter,
+    LoopControlMutationLinter,
+    MallocCastLinter,
+    StrlenAllocationLinter,
+)
+
+_ANTIPATTERN_CHECKS = [
+    ("antipattern.malloc_cast",
+     "Cast innecesario del retorno de malloc/calloc/realloc",
+     "malloc_cast", "[Antipattern:MallocCast]", MallocCastLinter),
+    ("antipattern.strlen_sin_nulo",
+     "Reserva para cadena sin lugar al terminador nulo (strlen sin +1)",
+     "strlen_sin_nulo", "[Antipattern:StrlenNulo]", StrlenAllocationLinter),
+    ("antipattern.loop_control_mutation",
+     "Variable de control del for mutada dentro del cuerpo",
+     "loop_control_mutation", "[Antipattern:LoopControl]", LoopControlMutationLinter),
+    ("antipattern.god_function",
+     "Funciones monolíticas que violan la cohesión (god functions)",
+     "god_function", "[Antipattern:GodFunction]", GodFunctionLinter),
+]
+
+for _check_id, _title, _toggle, _prefix, _cls in _ANTIPATTERN_CHECKS:
+    register(CheckSpec(
+        check_id=_check_id,
+        title=_title,
+        layer="static",
+        scope="both",
+        config_section="antipatterns",
+        toggle=_toggle,
+        prefix=_prefix,
+        runner=_cls().analyze,
+    ))
+
 # Padding de structs (sección TOML propia con master enabled).
 register(CheckSpec(
     check_id="core.struct_padding",
