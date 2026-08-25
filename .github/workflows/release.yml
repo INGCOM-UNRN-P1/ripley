@@ -1,0 +1,66 @@
+name: Release
+
+# Publica el zipapp ripley.pyz como asset de un GitHub Release.
+# El entorno del alumno lo descarga de:
+#   https://github.com/martinvilu/ripley/releases/latest/download/ripley.pyz
+# (setup.ps1 y bin/update-env.sh de `entorno`, y tp.sh de plantilla-TP,
+# dependen de ese URL estable: no renombrar el artefacto).
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Compilar zipapp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+
+      # typer/rich del venv del proyecto: los necesita el smoke test del zipapp
+      - run: uv sync --extra dev
+
+      - name: Compilar zipapp (ripley.pyz + alias ripley_check.pyz)
+        run: uv run python scripts/build_zipapp.py -o dist/ripley.pyz
+
+      - name: Verificar artefactos
+        run: |
+          test -x dist/ripley.pyz
+          test -x dist/ripley_check.pyz
+          cmp dist/ripley.pyz dist/ripley_check.pyz
+          ./dist/ripley.pyz doctor --help >/dev/null && echo "zipapp ejecutable OK"
+
+      - name: Calcular sumas SHA256
+        working-directory: dist
+        run: sha256sum ripley.pyz ripley_check.pyz > SHA256SUMS
+
+      # Con tag: publica el GitHub Release con los assets adjuntos.
+      # Sin tag (workflow_dispatch): deja los artefactos disponibles en el run.
+      - name: Publicar GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/ripley.pyz
+            dist/ripley_check.pyz
+            dist/SHA256SUMS
+          generate_release_notes: true
+
+      - name: Subir artefactos del run (sin tag)
+        if: "!startsWith(github.ref, 'refs/tags/')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ripley-pyz
+          path: |
+            dist/ripley.pyz
+            dist/ripley_check.pyz
+            dist/SHA256SUMS

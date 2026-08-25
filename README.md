@@ -34,6 +34,15 @@ uv run python scripts/build_zipapp.py
 ./dist/ripley.pyz check src/ejercicio1.c
 ```
 
+#### Publicación de Releases (CI)
+
+El workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) publica el zipapp automáticamente:
+
+- **Disparo**: push de un tag `v*` (ej: `git tag v1.0.0 && git push origin v1.0.0`) o ejecución manual (`workflow_dispatch`).
+- **Pipeline**: compila `dist/ripley.pyz` (+ alias `ripley_check.pyz`) con `scripts/build_zipapp.py`, verifica que el zipapp sea ejecutable y responde, genera `SHA256SUMS`.
+- **Publicación**: con tag crea un GitHub Release con los tres assets y notas automáticas; sin tag deja los artefactos en el run.
+- **Consumo estable**: el entorno del alumno aprovisiona desde la URL fija `https://github.com/martinvilu/ripley/releases/latest/download/ripley.pyz` (usada por `entorno/bin/update-env.sh`, `setup.ps1` y `plantilla-TP/tp.sh`), por lo que el nombre del artefacto no debe cambiarse.
+
 ---
 
 ## 🛠️ Comandos Principales
