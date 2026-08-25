@@ -1137,6 +1137,45 @@ def cmd_watch(
 # ============================================================================
 
 
+@app.command("style")
+def cmd_style(
+    ruta: Path = typer.Argument(..., help="Archivo .c o directorio a auditar."),
+    max_score: float = typer.Option(7.0, "--min-score", help="Puntaje mínimo para aprobar (0-10)."),
+) -> None:
+    """c-style-guide: convenciones de estilo con explicación pedagógica del porqué."""
+    from ripley.core.style import StyleAnalyzer
+
+    if not ruta.exists():
+        console.print(f"[bold red]Ruta inexistente: {ruta}[/bold red]")
+        raise typer.Exit(code=1)
+
+    archivos = sorted(ruta.rglob("*.c")) if ruta.is_dir() else [ruta]
+    if not archivos:
+        console.print("[yellow]No se encontraron archivos .c[/yellow]")
+        raise typer.Exit(code=1)
+
+    analizador = StyleAnalyzer(load_config().style)
+    fallidos = 0
+    total_obs = 0
+    for archivo in archivos:
+        resultado = analizador.analyze_file(archivo)
+        color = "green" if resultado.passed else ("yellow" if resultado.score >= max_score - 2 else "red")
+        estado = "✓" if resultado.passed else f"score {resultado.score:.1f}/10"
+        console.print(f"\n[bold {color}]{archivo}[/bold {color}] — {estado}")
+        for obs in resultado.observaciones:
+            total_obs += 1
+            console.print(f"  L{obs.linea:<4} [{obs.regla}] {obs.mensaje}")
+        if not resultado.passed:
+            fallidos += 1
+
+    console.print(
+        f"\n[bold]Resumen:[/bold] {len(archivos) - fallidos}/{len(archivos)} archivos aprobados, "
+        f"{total_obs} observaciones de estilo."
+    )
+    if fallidos:
+        raise typer.Exit(code=1)
+
+
 @app.command("memory-animate")
 def cmd_memory_animate(
     events_file: Optional[str] = typer.Option(None, "--events", "-e", help="JSON con la lista de eventos de memoria."),
