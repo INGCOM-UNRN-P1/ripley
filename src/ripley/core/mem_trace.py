@@ -67,6 +67,10 @@ class MemoryTracer:
             r"^\s*(?:static\s+)?(?:const\s+)?(?:unsigned\s+)?(?:struct\s+)?"
             r"[A-Za-z_]\w*\s*\*+\s*([A-Za-z_]\w*)\s*=\s*(.+?)\s*;\s*$"
         )
+        self._decl_ptr = re.compile(
+            r"^\s*(?:static\s+)?(?:const\s+)?(?:unsigned\s+)?(?:struct\s+)?"
+            r"[A-Za-z_]\w*\s*\*+\s*([A-Za-z_]\w*)\s*;\s*$"
+        )
         self._assign_alloc = re.compile(
             r"^\s*([A-Za-z_]\w*)\s*=\s*((?:malloc|calloc|realloc)\s*\([^()]*)\)\s*;\s*$"
         )
@@ -106,13 +110,84 @@ class MemoryTracer:
 
     # -- API principal -------------------------------------------------------
     def extract_events(self, code: str) -> Tuple[List[dict], List[TraceRecord]]:
-        """Devuelve (eventos para MemoryAnimator, registros legibles para el reporte)."""
+        """Devuelve (eventos para MemoryAnimator, registros legibles para el reporte).
+
+        Además puebla ``self.violations`` con hallazgos estáticos de comportamiento
+        peligroso: *double-free* y *use-after-free* (incluyendo aliases: si ``q = p``
+        y luego ``free(p)``, usar ``q`` también es uso post-liberación).
+        """
         clean = strip_c_comments_and_strings(code)
         events: List[dict] = []
         records: List[TraceRecord] = []
         known_ptrs: set = set()
+        alias: Dict[str, str] = {}      # puntero -> raíz del bloque al que apunta
+        freed: Dict[str, int] = {}      # raíz -> línea donde se liberó
+        self.violations: List[TraceRecord] = []
+
+        def raiz(nombre: str) -> str:
+            vistos = set()
+            while nombre in alias and nombre not in vistos:
+                vistos.add(nombre)
+                nombre = alias[nombre]
+            return nombre
+
+        def colgantes(linea: str) -> List[str]:
+            nombres = set(re.findall(r"\b[A-Za-z_]\w*\b", linea))
+            return sorted(v for v in nombres if v in known_ptrs and raiz(v) in freed)
 
         for lineno, raw_line in enumerate(clean.splitlines(), start=1):
+            m = self._free_call.search(raw_line)
+            if m and ";" in raw_line:
+                var = m.group(1)
+                if var == "NULL":
+                    continue
+                r = raiz(var)
+                if r in freed:
+                    self.violations.append(
+                        TraceRecord(lineno, "double-free",
+                                    f"free({var}) ya liberado en línea {freed[r]}")
+                    )
+                    records.append(self.violations[-1])
+                    continue
+                freed[r] = lineno
+                events.append({"op": "free", "tag": var, "line": lineno})
+                records.append(TraceRecord(lineno, "free", f"free({var})"))
+                continue
+
+            # Declaración de puntero sin inicializar: queda registrado para
+            # que asignaciones posteriores se traten como puntero conocido.
+            m_decl = self._decl_ptr.match(raw_line)
+            if m_decl:
+                known_ptrs.add(m_decl.group(1))
+                continue
+
+            # Asignación simple sobre un puntero conocido (revive o propaga colgado)
+            m_asig = re.match(r"\s*([A-Za-z_]\w*)\s*=(?![=])\s*(.+);?", raw_line.strip() + "\n")
+            if m_asig and m_asig.group(1) in known_ptrs and not self._free_call.search(raw_line):
+                var, rhs = m_asig.group(1), m_asig.group(2)
+                for v in colgantes(rhs):
+                    self.violations.append(
+                        TraceRecord(lineno, "use-after-free",
+                                    f"{var} ← valor de '{v}' (bloque liberado en línea {freed[raiz(v)]})")
+                    )
+                    records.append(self.violations[-1])
+                alloc = self._alloc_call.search(rhs)
+                target = self._target_of(rhs)
+                if alloc:
+                    size, detail = self._parse_size(alloc.group(1), alloc.group(2))
+                    events.append({"op": "malloc", "tag": var, "size": size, "line": lineno})
+                    records.append(TraceRecord(lineno, "realloc-like", f"{var} ← {detail} ({size} B)"))
+                    alias.pop(var, None)
+                    if raiz(var) == var:
+                        freed.pop(var, None)
+                elif target == "NULL" or target.startswith("&") or target not in known_ptrs:
+                    alias.pop(var, None)
+                    if raiz(var) == var:
+                        freed.pop(var, None)
+                elif target in known_ptrs:
+                    alias[var] = raiz(target)
+                continue
+
             m = self._decl_alloc.match(raw_line)
             if m:
                 var, rhs = m.group(1), m.group(2)
@@ -121,30 +196,35 @@ class MemoryTracer:
                     size, detail = self._parse_size(alloc.group(1), alloc.group(2))
                     events.append({"op": "malloc", "tag": var, "size": size, "line": lineno})
                     records.append(TraceRecord(lineno, "malloc", f"{var} ← {detail} ({size} B)"))
+                    freed.pop(var, None)   # renace con memoria fresca
+                    alias.pop(var, None)
                 else:
                     target = self._target_of(rhs)
                     events.append({"op": "ptr", "var": var, "target": target, "line": lineno})
                     records.append(TraceRecord(lineno, "ptr", f"{var} → {target}"))
+                    for v in colgantes(rhs):
+                        self.violations.append(
+                            TraceRecord(lineno, "use-after-free",
+                                        f"{var} ← valor de '{v}' (bloque liberado en línea {freed[raiz(v)]})")
+                        )
+                        records.append(self.violations[-1])
+                    if target in known_ptrs and target != "NULL":
+                        alias[var] = raiz(target)
+                    else:
+                        alias.pop(var, None)
+                        if raiz(var) == var:
+                            freed.pop(var, None)  # ahora apunta a memoria válida
                 known_ptrs.add(var)
                 continue
 
-            m = self._assign_alloc.match(raw_line)
-            if m:
-                var, call_body = m.group(1), m.group(2)
-                alloc = self._alloc_call.search(call_body + ")")
-                if var in known_ptrs and alloc:
-                    size, detail = self._parse_size(alloc.group(1), alloc.group(2))
-                    events.append({"op": "malloc", "tag": var, "size": size, "line": lineno})
-                    records.append(TraceRecord(lineno, "realloc-like", f"{var} ← {detail} ({size} B)"))
-                continue
-
-            m = self._free_call.search(raw_line)
-            if m and ";" in raw_line:
-                var = m.group(1)
-                if var == "NULL":
-                    continue
-                events.append({"op": "free", "tag": var, "line": lineno})
-                records.append(TraceRecord(lineno, "free", f"free({var})"))
+            # Cualquier otra mención a un puntero colgante (printf, condición,
+            # desreferencia, retorno...) constituye uso post-liberación.
+            for v in colgantes(raw_line):
+                self.violations.append(
+                    TraceRecord(lineno, "use-after-free",
+                                f"uso de '{v}' después de free (línea {freed[raiz(v)]})")
+                )
+                records.append(self.violations[-1])
 
         return events, records
 
@@ -168,6 +248,7 @@ def fold_events(
 
     sim = HeapMemorySimulator(capacity=capacity)
     tag_offsets: Dict[str, Optional[int]] = {}
+    tags_liberados: set = set()
     for ev in events:
         if ev["op"] == "malloc":
             offset = sim.allocate(ev.get("size", DEFAULT_ALLOC_SIZE), tag=ev["tag"])
@@ -178,9 +259,16 @@ def fold_events(
                 )
             tag_offsets[ev["tag"]] = offset
         elif ev["op"] == "free":
-            offset = tag_offsets.get(ev["tag"])
+            tag = ev["tag"]
+            if tag in tags_liberados:
+                warnings.append(
+                    f"línea {ev.get('line', '?')}: double-free — free({tag}) sobre memoria ya liberada"
+                )
+                continue
+            offset = tag_offsets.get(tag)
             if offset is not None:
                 sim.free(offset)
+                tags_liberados.add(tag)
 
     return frames, warnings, sim.get_report()
 
@@ -275,9 +363,14 @@ def save_trace(
         raise FileNotFoundError(f"Archivo no encontrado: {path}")
 
     code = path.read_text(encoding="utf-8", errors="replace")
-    events, records = MemoryTracer().extract_events(code)
+    tracer = MemoryTracer()
+    events, records = tracer.extract_events(code)
     frames, warnings, report = fold_events(events, capacity=capacity)
     structs = DynamicMemoryVisualizer().extract_structs(code)
+
+    # Violaciones estáticas (use-after-free, double-free) al frente del reporte
+    for v in tracer.violations:
+        warnings.insert(0, f"línea {v.line}: {v.op} — {v.detail}")
 
     result = TraceResult(
         output=Path(output),

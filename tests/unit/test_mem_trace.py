@@ -108,7 +108,11 @@ def test_doble_free_genera_advertencia_y_frames_parciales(tmp_path):
 
     result = save_trace(src, tmp_path / "traza.html")
 
-    assert any("interrumpido" in w or "double free" in w.lower() for w in result.warnings)
+    assert any(
+        "interrumpido" in w or "double free" in w.lower() or "double-free" in w.lower()
+        for w in result.warnings
+    )
+    assert any(r.op == "double-free" for r in result.records)
     assert len(result.frames) < result.event_count
 
 
