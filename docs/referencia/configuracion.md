@@ -20,7 +20,7 @@
 | `[property_testing]` | enabled(false) / properties[idempotence, commutativity, sort_invariant] | | |
 | `[pure_functions]` | enabled(false) / functions[] | | nombres a auditar como puras/const |
 | `[padding]` | enabled | false | structs con padding enviados a I/O sin memset |
-| `[makefile]` | enabled(false), prefer_makefile(true), executable(make), target(all), timeout_segundos(30), expected_binary("") | | build modular estudiantil |
+| `[makefile]` | enabled(false), prefer_makefile(true), executable(make), target(all), timeout_segundos(30), expected_binary("") | build modular estudiantil. Circuito integral adicional vía CLI: `make-audit --full` y generador `make-integrate` |
 | `[graphics]` | enabled(false), screen(1280x720x24), settle_seconds(1.0), max_diff_pixels(100), display_base(90), capture/compare(import/compare) | | TPs SDL2/Raylib bajo Xvfb |
 | `[restrictions]` | enabled(false) / forbidden_constructs[] / required_constructs[] | | blacklist/whitelist del enunciado |
 | `[doxygen]` | enabled(false) + require_brief/params/return(true) | | |
