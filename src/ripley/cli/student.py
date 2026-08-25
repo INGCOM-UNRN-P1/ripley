@@ -1134,6 +1134,47 @@ def cmd_watch(
 
 
 # ============================================================================
+# c-harness: arneses de prueba con inyección de fallos de malloc
+# ============================================================================
+
+
+@app.command("harness")
+def cmd_harness(
+    spec_file: Path = typer.Argument(..., exists=True, dir_okay=False, help="spec.yaml del ejercicio."),
+    output_json: Optional[Path] = typer.Option(None, "--json", help="Escribir el reporte en un archivo JSON."),
+    workdir: Optional[Path] = typer.Option(None, "--workdir", help="Directorio para artefactos (por defecto, temporal)."),
+) -> None:
+    """c-harness: genera y corre el arnés de prueba con inyección de malloc NULL."""
+    import json as _json
+
+    from ripley.tools.harness import ejecutar_spec
+
+    informe = ejecutar_spec(spec_file, dir_trabajo=workdir)
+
+    color = "green" if informe["pass"] else "red"
+    console.print(f"\n[bold {color}]c-harness — {informe['funcion']}()[/bold {color}]: "
+                  f"{'PASS' if informe['pass'] else 'FAIL'}")
+    for caso in informe["casos"]:
+        marca = "[green]✓[/green]" if caso["ok"] else "[red]✗[/red]"
+        console.print(f"  {marca} caso {caso['indice']}: obtenido={caso['obtenido']!r} "
+                      f"esperado={caso['esperado']!r}")
+        if "fault_tolerance" in caso:
+            ft = caso["fault_tolerance"]
+            estilo = "green" if ft.startswith("sobrevivió") else "red"
+            console.print(f"      fault injection: [{estilo}]{ft}[/{estilo}]")
+    if "error_compilacion" in informe:
+        console.print(f"[red]error de compilación:[/red] {informe['error_compilacion'][:300]}")
+
+    if output_json:
+        output_json.write_text(_json.dumps(informe, indent=2, ensure_ascii=False),
+                               encoding="utf-8")
+        console.print(f"[dim]reporte JSON → {output_json}[/dim]")
+
+    if not informe["pass"]:
+        raise typer.Exit(code=1)
+
+
+# ============================================================================
 # Animaciones de memoria paso a paso
 # ============================================================================
 
