@@ -1467,6 +1467,9 @@ def cmd_check(
     output_format: str = typer.Option("rich", "--format", help="Formato de salida: 'rich' (consola interactiva) o 'json'."),
     bench: Optional[str] = typer.Option(None, "--bench", help="complexity-bench: cota esperada (O(1), O(n), O(n log n), O(n^2))."),
     bench_pattern: str = typer.Option("{n}\\n", "--bench-pattern", help="Entrada por tamaño; '{n}' se reemplaza por N."),
+    strict_ub: bool = typer.Option(False, "--strict-ub", help="ub-sentinel: auditoría de comportamiento indefinido tras compilar."),
+    ub_level: int = typer.Option(2, "--ub-level", min=1, max=4, help="Nivel máximo del pipeline ub-sentinel (1=sanitizers, 2=+clang-analyzer, 3=+Frama-C, 4=+TSan)."),
+    ub_timeout: int = typer.Option(30, "--ub-timeout", help="Timeout en segundos por testcase del ub-sentinel."),
 ) -> None:
     """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
     from ripley.core.engine import analyze_target
@@ -1538,6 +1541,26 @@ def cmd_check(
             console.print(f"    · {tc.get('name')}: {status}{leak}")
             if not tc.get("passed") and tc.get("sanitizer_error"):
                 console.print(f"      [dim red]{tc.get('sanitizer_error')[:300]}[/dim red]")
+
+    # 3.b ub-sentinel: comportamiento indefinido (opcional)
+    if strict_ub:
+        from ripley.core.ub_sentinel import auditar_ub
+
+        base_ub = target if target.is_dir() else target.parent
+        fuentes_ub = [base_ub / rel for rel in result.c_files]
+        casos = sorted((base_ub / "tests").glob("caso_*.in")) if (base_ub / "tests").is_dir() else []
+        reporte_ub = auditar_ub(fuentes_ub, casos, nivel_maximo=ub_level, timeout=ub_timeout)
+        console.print(f"\n[bold]ub-sentinel[/bold] — {reporte_ub.resumen()}")
+        for h in reporte_ub.hallazgos:
+            sev_color = "red" if h.severidad == "ERROR" else "yellow"
+            donde = f"{h.archivo}:{h.linea}" if h.linea else str(h.archivo)
+            console.print(f"  [{sev_color}]N{h.nivel}·{h.categoria}[/{sev_color}] {donde}: {h.mensaje}")
+            if h.sugerencia:
+                console.print(f"    [dim]💡 {h.sugerencia}[/dim]")
+        if not reporte_ub.hallazgos and not reporte_ub.omitidos:
+            console.print("  [green]✓ Sin comportamiento indefinido detectado.[/green]")
+        if reporte_ub.hay_errores:
+            result.metrics["ast_errors_count"] = result.metrics.get("ast_errors_count", 0) + len(reporte_ub.errores)
 
     # 4. complexity-bench: verificar cota asintótica exigida (opcional)
     if bench:
