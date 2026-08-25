@@ -40,8 +40,9 @@ def extract_c_functions(code: str) -> Dict[str, CFunctionAST]:
     functions: Dict[str, CFunctionAST] = {}
 
     # Regex para prototipo e inicio de función en C (debe estar seguido por { en la misma o siguiente línea)
+    # Acepta ambas convenciones del asterisco de retorno: "Lista *f()" y "Lista* f()".
     func_sig_regex = re.compile(
-        r"^[ \t]*(?P<ret>[a-zA-Z_][a-zA-Z0-9_* \t]+?)\s+(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?P<params>[^\)]*)\)\s*(?=[{]|\n[ \t]*[{])",
+        r"^[ \t]*(?P<ret>[a-zA-Z_][a-zA-Z0-9_* \t]+?)\s+\**(?:[ \t]*\*)*[ \t]*(?P<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?P<params>[^\)]*)\)\s*(?=[{]|\n[ \t]*[{])",
         re.MULTILINE,
     )
 

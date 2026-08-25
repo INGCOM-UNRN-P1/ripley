@@ -25,10 +25,14 @@ class DoxygenAuditor:
         require_brief: bool = True,
         require_params: bool = True,
         require_return: bool = True,
+        require_contracts: bool = True,
     ) -> None:
         self.require_brief = require_brief
         self.require_params = require_params
         self.require_return = require_return
+        # doc-auditor (nuevas.md §5.5): primitivas con punteros deben documentar
+        # precondiciones (@pre) y la semántica de los punteros de salida.
+        self.require_contracts = require_contracts
 
     def audit_file(self, file_path: Path | str) -> List[DoxygenObservation]:
         path = Path(file_path)
@@ -85,6 +89,15 @@ class DoxygenAuditor:
                     missing.append("@return")
 
 
+            # 4. doc-auditor: contratos en primitivas que reciben punteros
+            if self.require_contracts and self._es_primitiva_con_punteros(
+                fobj.return_type or "", fobj.params or ""
+            ):
+                if not re.search(r"(@pre|\\pre)", doc_text):
+                    missing.append("@pre (precondiciones sobre los punteros)")
+                if not re.search(r"(@post|\\post)", doc_text):
+                    missing.append("@post (estado esperado al salir)")
+
             if missing:
                 observations.append(
                     DoxygenObservation(
@@ -97,6 +110,18 @@ class DoxygenAuditor:
                 )
 
         return observations
+
+    @staticmethod
+    def _es_primitiva_con_punteros(return_type: str, params: str) -> bool:
+        """True si la firma recibe o devuelve punteros (candidata a contratos).
+
+        Se excluyen `main` y las funciones de prueba; el criterio es que al
+        menos un parámetro sea puntero, lo que implica precondiciones sobre
+        validez/no-NULL que deben quedar documentadas.
+        """
+        if "main" in params or not params.strip() or params.strip() == "void":
+            return False
+        return "*" in params
 
     def _extract_param_names(self, params_str: str) -> List[str]:
         names: List[str] = []
