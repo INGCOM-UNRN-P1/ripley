@@ -4,6 +4,7 @@ Este módulo vive en la zona estudiante: NO debe importar ripley.teacher ni
 dependencias del flujo docente (ver tests/unit/test_layer_boundaries.py).
 """
 
+import tempfile
 from pathlib import Path
 from typing import List, Optional
 
@@ -1464,6 +1465,8 @@ def cmd_check(
     target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a verificar."),
     strict: bool = typer.Option(False, "--strict", help="Salir con código de error si se detectan advertencias."),
     output_format: str = typer.Option("rich", "--format", help="Formato de salida: 'rich' (consola interactiva) o 'json'."),
+    bench: Optional[str] = typer.Option(None, "--bench", help="complexity-bench: cota esperada (O(1), O(n), O(n log n), O(n^2))."),
+    bench_pattern: str = typer.Option("{n}\\n", "--bench-pattern", help="Entrada por tamaño; '{n}' se reemplaza por N."),
 ) -> None:
     """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
     from ripley.core.engine import analyze_target
@@ -1535,6 +1538,30 @@ def cmd_check(
             console.print(f"    · {tc.get('name')}: {status}{leak}")
             if not tc.get("passed") and tc.get("sanitizer_error"):
                 console.print(f"      [dim red]{tc.get('sanitizer_error')[:300]}[/dim red]")
+
+    # 4. complexity-bench: verificar cota asintótica exigida (opcional)
+    if bench:
+        if not comp.get("success"):
+            console.print("[yellow]--bench omitido: el proyecto no compila.[/yellow]")
+        else:
+            from ripley.core.bench import compilar_optimizado, normalizar_cota, verificar_cota
+
+            base = target if target.is_dir() else target.parent
+            fuentes = [base / rel for rel in result.c_files]
+            bin_bench = Path(tempfile.mkdtemp(prefix="ripley_bench_")) / "bench.bin"
+            ok_compile, err = compilar_optimizado(fuentes, bin_bench, include_dirs=[base])
+            if not ok_compile:
+                console.print(f"[red]complexity-bench: no se pudo compilar optimizado:[/red] {err}")
+                raise typer.Exit(code=1)
+            ok_cota, resumen = verificar_cota(bin_bench, bench, patron_entrada=bench_pattern)
+            console.print(f"\n[bold]complexity-bench[/bold] ({normalizar_cota(bench)}): {resumen}")
+            if ok_cota is False:
+                console.print("[bold red]✗ El algoritmo excede la cota exigida por la consigna.[/bold red]")
+                raise typer.Exit(code=1)
+            if ok_cota is None:
+                console.print("[yellow]⚠ Medición inconclusa: no se penaliza esta vez.[/yellow]")
+            else:
+                console.print("[green]✓ La complejidad empírica respeta la cota exigida.[/green]")
 
     # Veredicto final
     has_errors = not comp.get("success", False) or result.metrics.get("ast_errors_count", 0) > 0 or tests.get("failed", 0) > 0
