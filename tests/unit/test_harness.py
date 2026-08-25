@@ -1,5 +1,6 @@
 """Pruebas de c-harness: codegen, fault injection y runner JSON."""
 
+import dataclasses
 import yaml
 
 from ripley.tools.harness import (
@@ -46,7 +47,7 @@ def test_codegen_incluye_wrapper_solo_con_fault(tmp_path):
     assert "0.5000" in con_fault          # rate sustituido
     assert "(unsigned long)7 | 1UL" or True
 
-    spec_sin = spec.model_copy(update={"fault_rate": 0.0})
+    spec_sin = dataclasses.replace(spec, fault_rate=0.0)
     sin_fault = generar_harness(spec_sin)
     assert "__wrap_malloc" not in sin_fault
 
