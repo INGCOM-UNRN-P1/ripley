@@ -283,7 +283,26 @@ def execute_testcases(
             )
             actual_output = proc.stdout
             stderr = proc.stderr or ""
-            passed = (actual_output.strip() == expected_output.strip()) if out_file.exists() else (proc.returncode == 0)
+            norm_actual = actual_output.strip()
+            norm_expected = expected_output.strip()
+            if not out_file.exists():
+                passed = (proc.returncode == 0)
+            elif norm_actual == norm_expected:
+                passed = True
+            elif norm_expected.startswith("REGEX:"):
+                pat = norm_expected[len("REGEX:"):].strip()
+                try:
+                    passed = bool(re.search(pat, actual_output, re.DOTALL | re.MULTILINE))
+                except re.error:
+                    passed = False
+            elif norm_expected.startswith("regex:"):
+                pat = norm_expected[len("regex:"):].strip()
+                try:
+                    passed = bool(re.search(pat, actual_output, re.DOTALL | re.MULTILINE))
+                except re.error:
+                    passed = False
+            else:
+                passed = False
 
             sanitizer_error = None
             memory_leak = False

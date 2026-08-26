@@ -589,12 +589,17 @@ class P1RuleChecker:
             r"^[ \t]*(?!const\b)(?:int|char|float|double|size_t)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*[^;]+)?;",
             re.MULTILINE,
         )
-        # Extraer variables que están fuera de funciones
+        # Extraer variables que están fuera de funciones y fuera de structs/unions/enums
         in_fn_ranges = [(f.start_line, f.start_line + f.raw_body.count("\n")) for f in functions.values()]
+        struct_ranges = [
+            (clean[: sm.start()].count("\n") + 1, clean[: sm.end()].count("\n") + 1)
+            for sm in re.finditer(r"\b(?:struct|union|enum)\b[^{};]*\{[^}]*\}", clean, re.DOTALL)
+        ]
         for m in global_var_regex.finditer(clean):
             line_num = clean[: m.start()].count("\n") + 1
             inside_any_fn = any(start <= line_num <= end for start, end in in_fn_ranges)
-            if not inside_any_fn:
+            inside_any_struct = any(start <= line_num <= end for start, end in struct_ranges)
+            if not inside_any_fn and not inside_any_struct:
                 observations.append(
                     P1RuleObservation(
                         rule_code="0x2004h",
