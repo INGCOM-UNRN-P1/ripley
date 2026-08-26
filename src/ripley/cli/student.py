@@ -973,12 +973,13 @@ def cmd_show_ripkg(
     if todos:
         enunciado = pistas = tests = checks = archivos = meta = True
     elif not any([enunciado, pistas, tests, checks, archivos, meta]):
-        # Default: mostrar todo lo pedagógico relevante
-        meta = True
-        checks = True
+        # Default: enunciado, pistas y casos de prueba
         enunciado = True
         pistas = True
         tests = True
+        meta = False
+        checks = False
+        archivos = False
 
     manifest = bundle.manifest
     meta_info = manifest.get("meta", {})

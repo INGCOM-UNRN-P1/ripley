@@ -28,16 +28,21 @@ def test_ripley_show_command(tmp_path: Path):
     ripkg_path = tmp_path / "punteros-tp1.ripkg"
     write_bundle(ripkg_path, manifest, payload)
 
-    # 2. Probar 'ripley show' por defecto
+    # 2. Probar 'ripley show' por defecto (enunciado, pistas y casos)
     res = runner.invoke(app, ["show", str(ripkg_path)])
     assert res.exit_code == 0
-    assert "punteros-tp1" in res.stdout
     assert "Practica 1: Punteros" in res.stdout
     assert "Pistas y Pautas" in res.stdout
     assert "caso_01" in res.stdout
-    assert "p1.naming" in res.stdout
+    assert "p1.naming" not in res.stdout
 
     # 3. Probar control granular de secciones
+    # Solo meta
+    res_m = runner.invoke(app, ["show", str(ripkg_path), "-m"])
+    assert res_m.exit_code == 0
+    assert "punteros-tp1" in res_m.stdout
+    assert "Practica 1: Punteros" not in res_m.stdout
+
     # Solo enunciado
     res_e = runner.invoke(app, ["show", str(ripkg_path), "-e"])
     assert res_e.exit_code == 0
