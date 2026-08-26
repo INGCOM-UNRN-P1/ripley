@@ -573,6 +573,36 @@ def cmd_practica_pack(
     console.print(f"  Firmado            : {'sí' if result.signed else 'no (unsigned=true)'}")
 
 
+@practica_app.command("show")
+def cmd_practica_show(
+    paquete: str = typer.Argument(..., help="Ruta al archivo .ripkg (o slug de la práctica)."),
+    enunciado: bool = typer.Option(False, "--enunciado", "-e", help="Mostrar el enunciado / consigna Markdown."),
+    pistas: bool = typer.Option(False, "--pistas", "-p", help="Mostrar las pistas progresivas / pautas."),
+    tests: bool = typer.Option(False, "--tests", "-t", help="Mostrar casos de prueba públicos del payload."),
+    checks: bool = typer.Option(False, "--checks", "-c", help="Mostrar checks y reglas habilitadas en el manifiesto."),
+    archivos: bool = typer.Option(False, "--archivos", "-f", help="Mostrar listado de archivos del payload e integridad SHA-256."),
+    meta: bool = typer.Option(False, "--meta", "-m", help="Mostrar metadatos del paquete (flags de compilador, versión, firma)."),
+    todos: bool = typer.Option(False, "--todos", "-a", help="Mostrar todas las secciones."),
+    verify_signature: bool = typer.Option(False, "--verify-signature", help="Verificar firma GPG del paquete."),
+    raw: bool = typer.Option(False, "--raw", help="Salida en texto plano sin formato Rich."),
+) -> None:
+    """Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un .ripkg."""
+    from ripley.cli.student import cmd_show_ripkg
+
+    cmd_show_ripkg(
+        paquete=paquete,
+        enunciado=enunciado,
+        pistas=pistas,
+        tests=tests,
+        checks=checks,
+        archivos=archivos,
+        meta=meta,
+        todos=todos,
+        verify_signature=verify_signature,
+        raw=raw,
+    )
+
+
 @practica_app.command("graphics-capture")
 def cmd_practica_graphics_capture(
     binary_path: Path = typer.Argument(..., help="Binario gráfico (SDL2/Raylib) a ejecutar."),
