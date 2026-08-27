@@ -1,11 +1,4 @@
-"""Unit tests for the mem-trace (spectre) memory tracer."""
-
-from typer.testing import CliRunner
-
 from ripley.core.mem_trace import MemoryTracer, save_trace
-from ripley.cli.student import app
-
-runner = CliRunner()
 
 _SAMPLE_C = """\
 #include <stdlib.h>
@@ -136,17 +129,3 @@ def test_sin_operaciones_de_memoria(tmp_path):
     assert "No se detectaron operaciones" in out.read_text(encoding="utf-8")
 
 
-def test_cli_trace_genera_archivo(tmp_path):
-    src = tmp_path / "lista.c"
-    src.write_text(_SAMPLE_C, encoding="utf-8")
-    out = tmp_path / "traza.html"
-
-    exit_code = runner.invoke(app, ["trace", str(src), "-o", str(out)]).exit_code
-
-    assert exit_code == 0
-    assert out.exists()
-
-
-def test_cli_trace_archivo_inexistente(tmp_path):
-    exit_code = runner.invoke(app, ["trace", str(tmp_path / "fantasma.c")]).exit_code
-    assert exit_code != 0

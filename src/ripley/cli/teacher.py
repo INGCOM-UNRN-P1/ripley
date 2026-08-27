@@ -42,29 +42,6 @@ app.add_typer(testcase_app, name="testcase")
 app.add_typer(practica_app, name="practica")
 
 
-@app.command("ingest")
-def cmd_ingest(
-    zip_path: str = typer.Argument(..., help="Ruta al archivo ZIP de Moodle."),
-    dry_run: bool = typer.Option(
-        False,
-        "--dry-run",
-        "-d",
-        help="Simula la extracción y sanitización sin escribir en disco.",
-    ),
-    workspace: str = typer.Option(
-        ".",
-        "--workspace",
-        "-w",
-        help="Directorio raíz del workspace donde se almacenarán las actividades.",
-    ),
-) -> None:
-    """(Migrado a Dredd) Procesa e ingesta un archivo ZIP de entregas de Moodle."""
-    console.print(
-        "\n[bold yellow]⚠ El comando 'ingest' ha sido migrado al orquestador Dredd.[/bold yellow]"
-    )
-    console.print("  Para procesar entregas de Moodle, ejecutá:")
-    console.print(f"  [bold cyan]dredd moodle ingest {zip_path}[/bold cyan]\n")
-
 
 @template_app.command("init")
 def cmd_template_init(
@@ -223,84 +200,6 @@ def cmd_testcase_check(
         raise typer.Exit(code=1)
 
 
-@testcase_app.command("map")
-@app.command("map")
-def cmd_testcase_map(
-    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad."),
-    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
-) -> None:
-    """(Migrado a Dredd) Mapeo interactivo de archivos fuente a ejercicios."""
-    console.print(
-        "\n[bold yellow]⚠ El comando 'map' ha sido migrado al orquestador Dredd.[/bold yellow]"
-    )
-    console.print("  Para mapear archivos de una actividad, ejecutá:")
-    console.print(f"  [bold cyan]dredd map {activity}[/bold cyan]\n")
-
-
-@testcase_app.command("fuzz")
-def cmd_testcase_fuzz(
-    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad (ej. entrega-1_1228009)."),
-    exercise: str = typer.Option(..., "--exercise", "-e", help="Nombre del ejercicio (ej. ejercicio1)."),
-    cases: int = typer.Option(4, "--cases", "-c", help="Cantidad de casos de borde a generar por fuzzing."),
-    solution: Optional[str] = typer.Option(
-        None,
-        "--solution",
-        "-s",
-        help="Ruta al código C o binario de solución de referencia docente para generar las salidas esperadas (.out).",
-    ),
-    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
-) -> None:
-    """Genera automáticamente casos de prueba de borde y entradas fuzzed."""
-    activity = Path(activity).name or activity.strip("/\\")
-    practice_tests = Path(workspace) / "practicas" / activity / "ejercicios" / exercise / "tests"
-    target_dir = practice_tests if practice_tests.parent.exists() else Path(workspace) / "tests" / activity / exercise
-    fuzzer = Fuzzer()
-
-    ref_path = Path(solution) if solution else Path(workspace) / "practicas" / activity / "ejercicios" / exercise / "solucion_modelo.c"
-    ref_to_use = ref_path if ref_path.exists() else None
-
-    existing = list(target_dir.glob("caso*.in")) if target_dir.exists() else []
-    start_idx = len(existing) + 1
-
-    try:
-        pairs = fuzzer.generate_testcases(
-            target_dir=target_dir,
-            cases_count=cases,
-            reference_source_or_binary=ref_to_use,
-            start_index=start_idx,
-        )
-        console.print(
-            f"\n[bold green]✓ Se generaron {len(pairs)} casos de prueba por fuzzing en '{target_dir}':[/bold green]\n"
-        )
-        for in_f, out_f in pairs:
-            console.print(f" - [cyan]{in_f.name}[/cyan] / [cyan]{out_f.name}[/cyan]")
-        if ref_to_use:
-            console.print(f"\n[green]Salidas esperadas (.out) calculadas automáticamente con la solución modelo: '{ref_to_use}'[/green]\n")
-    except Exception as e:
-        console.print(f"[bold red]Error durante el fuzzing de casos de prueba:[/bold red] {e}")
-        raise typer.Exit(code=1)
-
-
-@app.command("plagiarism")
-def cmd_plagiarism(
-    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a analizar."),
-    threshold: float = typer.Option(
-        0.70,
-        "--threshold",
-        "-t",
-        help="Umbral de similitud mínima para sospecha de plagio (0.0 a 1.0).",
-    ),
-    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
-) -> None:
-    """(Migrado a Dredd) Analiza similitud de código y sospechas de plagio entre entregas."""
-    console.print(
-        "\n[bold yellow]⚠ El comando 'plagiarism' ha sido migrado al orquestador Dredd.[/bold yellow]"
-    )
-    console.print("  Para auditar la cohorte de entregas con el algoritmo Winnowing, ejecutá:")
-    console.print(f"  [bold cyan]dredd plagiarism {activity} --threshold {threshold}[/bold cyan]\n")
-    console.print(f"\n[bold cyan]Informe guardado en:[/bold cyan] {out_path}\n")
-
-
 @app.command("evaluate")
 def cmd_evaluate(
     activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a evaluar (ej. entrega-1_1228009)."),
@@ -356,21 +255,7 @@ def cmd_evaluate(
     console.print(f"\n[bold green]✓ Evaluación finalizada exitosamente para {len(results)} estudiantes.[/bold green]\n")
 
     if check_plagiarism:
-        cmd_plagiarism(activity=activity, workspace=workspace)
-
-
-
-@app.command("export")
-def cmd_export(
-    activity: str = typer.Option(..., "--activity", "-a", help="Slug de la actividad a exportar (ej. entrega-1_1228009)."),
-    workspace: str = typer.Option(".", "--workspace", "-w", help="Directorio raíz del workspace."),
-) -> None:
-    """(Migrado a Dredd) Exporta las calificaciones para Moodle (CSV), el ZIP masivo y el dashboard."""
-    console.print(
-        "\n[bold yellow]⚠ El comando 'export' ha sido migrado al orquestador Dredd.[/bold yellow]"
-    )
-    console.print("  Para generar CSV, ZIP y Dashboard docente, ejecutá:")
-    console.print(f"  [bold cyan]dredd export {activity}[/bold cyan]\n")
+        console.print("\n[dim]Nota: Para auditar plagio con Winnowing, ejecutá 'dredd plagiarism <actividad>'.[/dim]\n")
 
 
 @practica_app.command("init")
@@ -806,20 +691,4 @@ def cmd_audit_publish(
         console.print(f"  · {ev.alumno} → publicada")
 
 
-# ============================================================================
-# Exportación de informes a HTML enriquecido y PDF
-# ============================================================================
-
-
-@app.command("export-report")
-def cmd_export_report(
-    source_md: Path = typer.Argument(..., help="Informe Markdown (.md)."),
-    format_: str = typer.Option("html", "--format", "-f", help="Formato de salida: html | pdf."),
-) -> None:
-    """(Migrado a Dredd) Convierte informes Markdown a HTML enriquecido autocontenido o PDF."""
-    console.print(
-        "\n[bold yellow]⚠ El comando 'export-report' ha sido migrado al orquestador Dredd.[/bold yellow]"
-    )
-    console.print("  Para exportar informes a HTML o PDF, ejecutá:")
-    console.print(f"  [bold cyan]dredd export-report {source_md} --format {format_}[/bold cyan]\n")
 
