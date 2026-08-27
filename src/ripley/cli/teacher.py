@@ -691,4 +691,55 @@ def cmd_audit_publish(
         console.print(f"  · {ev.alumno} → publicada")
 
 
+@app.command("explain")
+def cmd_explain(
+    rule_code: str = typer.Argument(..., help="Código de regla de cátedra (ej. 0x1001h, 0x0001h o 'all')."),
+) -> None:
+    """Explica una regla pedagógica de cátedra con ejemplos de código correcto vs. código incorrecto."""
+    from rich.panel import Panel
+    from rich.syntax import Syntax
+    from ripley.core.p1_rules import P1_RULES_CATALOG
+
+    if rule_code.lower() == "all":
+        table = Table(title="Catálogo de Reglas Pedagógicas P1 (0xXXXXh)")
+        table.add_column("Código", style="cyan")
+        table.add_column("Categoría")
+        table.add_column("Severidad", justify="center")
+        table.add_column("Título")
+        for code, rule in sorted(P1_RULES_CATALOG.items()):
+            sev_color = "red" if rule.severity == "ERROR" else ("yellow" if rule.severity == "ADVERTENCIA" else "blue")
+            table.add_row(code, rule.category, f"[{sev_color}]{rule.severity}[/{sev_color}]", rule.title)
+        console.print(table)
+        return
+
+    code_norm = rule_code.strip()
+    if not code_norm.startswith("0x"):
+        code_norm = f"0x{code_norm}"
+    if not code_norm.endswith("h"):
+        code_norm = f"{code_norm}h"
+
+    rule = P1_RULES_CATALOG.get(code_norm)
+    if not rule:
+        console.print(f"[bold red]Regla desconocida: '{rule_code}'[/bold red]")
+        console.print("[dim]Utilizá 'ripley explain all' para listar todas las reglas disponibles.[/dim]")
+        raise typer.Exit(code=1)
+
+    sev_color = "red" if rule.severity == "ERROR" else ("yellow" if rule.severity == "ADVERTENCIA" else "blue")
+    console.print(f"\n[bold cyan]📖 Regla P1 {rule.code}: {rule.title}[/bold cyan]")
+    console.print(f"  • [bold]Categoría:[/bold] {rule.category}")
+    console.print(f"  • [bold]Severidad:[/bold] [{sev_color}]{rule.severity}[/{sev_color}]")
+    console.print(f"  • [bold]Descripción:[/bold] {rule.description}\n")
+
+    if rule.rationale:
+        console.print(Panel(rule.rationale, title="💡 Justificación Pedagógica de Cátedra", border_style="cyan"))
+
+    inc_code = rule.incorrect_example or "/* Antipatrón o incumplimiento de la norma */"
+    cor_code = rule.correct_example or "/* Código estructurado según las pautas de cátedra */"
+
+    console.print(Panel(Syntax(inc_code, "c", theme="monokai", line_numbers=True), title="❌ Código Incorrecto (Antipatrón)", border_style="red"))
+    console.print(Panel(Syntax(cor_code, "c", theme="monokai", line_numbers=True), title="✅ Código Correcto (Refactorización sugerida)", border_style="green"))
+    console.print("")
+
+
+
 

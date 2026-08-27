@@ -91,8 +91,23 @@ def load_plugin_module(path: Path):
     return module
 
 
+def _scan_hooks_ast(py_path: Path) -> Tuple[str, ...]:
+    """Escanea los hooks definidos en el archivo mediante AST sin ejecutar código de nivel superior."""
+    try:
+        import ast
+        tree = ast.parse(py_path.read_text(encoding="utf-8"), filename=str(py_path))
+        hooks = [
+            node.name
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in HOOKS
+        ]
+        return tuple(hooks)
+    except Exception:
+        return HOOKS
+
+
 def discover_plugins(plugins_dir: Path | str) -> List[LoadedPlugin]:
-    """Descubre y precarga plugins ordenados por nombre de archivo."""
+    """Descubre plugins de forma lazy sin ejecutar sus módulos hasta el despacho."""
     d = Path(plugins_dir)
     if not d.is_dir():
         return []
@@ -100,11 +115,7 @@ def discover_plugins(plugins_dir: Path | str) -> List[LoadedPlugin]:
     for py in sorted(d.glob("*.py")):
         if py.name.startswith("_"):
             continue
-        try:
-            module = load_plugin_module(py)
-        except Exception as e:
-            raise PluginError(f"Error cargando plugin {py.name}: {e}") from e
-        hooks = tuple(h for h in HOOKS if callable(getattr(module, h, None)))
+        hooks = _scan_hooks_ast(py)
         loaded.append(LoadedPlugin(name=py.stem, path=py, hooks=hooks))
     return loaded
 
