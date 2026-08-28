@@ -5,7 +5,30 @@ from datetime import datetime
 from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional
-import tomli_w
+try:
+    import tomli_w
+except ImportError:
+    class _TomliWFallback:
+        @staticmethod
+        def dumps(d: dict) -> str:
+            lines = []
+            for section, vals in d.items():
+                if isinstance(vals, dict):
+                    lines.append(f"[{section}]")
+                    for k, v in vals.items():
+                        if isinstance(v, bool):
+                            lines.append(f"{k} = {'true' if v else 'false'}")
+                        elif isinstance(v, (int, float)):
+                            lines.append(f"{k} = {v}")
+                        elif isinstance(v, str):
+                            lines.append(f'{k} = "{v}"')
+                        elif isinstance(v, list):
+                            items = ", ".join(f'"{x}"' if isinstance(x, str) else str(x) for x in v)
+                            lines.append(f"{k} = [{items}]")
+                    lines.append("")
+            return "\n".join(lines)
+    tomli_w = _TomliWFallback()
+
 from slugify import slugify
 
 from ripley.config import RipleyConfig, load_config

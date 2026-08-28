@@ -14,7 +14,10 @@ def test_p1_rules_syntax_and_nomenclature():
     }
     """
     obs = checker.analyze(code_multi_decl)
-    assert any(o.rule_code == "0x0002h" for o in obs)
+    obs_0002 = [o for o in obs if o.rule_code == "0x0002h"]
+    assert len(obs_0002) > 0
+    assert "\n" not in obs_0002[0].suggestion
+    assert r"\n" in obs_0002[0].suggestion
 
     # 2. 0x0004h: Binary operators spacing
     code_spacing = """

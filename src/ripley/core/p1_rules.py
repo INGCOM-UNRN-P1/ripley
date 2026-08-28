@@ -23,6 +23,13 @@ class P1Rule:
 
 P1_RULES_CATALOG: Dict[str, P1Rule] = {
     # 0x00XXh: Sintaxis Básica y Nomenclatura
+    "0x0000h": P1Rule(
+        code="0x0000h",
+        category="Sintaxis y Nomenclatura",
+        title="La claridad y prolijidad son de máxima importancia",
+        description="Escribir código limpio, legible y auto-explicativo con estructura consistente.",
+        severity="ESTILO",
+    ),
     "0x0001h": P1Rule(
         code="0x0001h",
         category="Sintaxis y Nomenclatura",
@@ -30,7 +37,6 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Los nombres de variables deben reflejar con precisión su propósito (identificadores < 5 letras a mejorar, y 1 letra requiere revisión manual salvo i, j, k).",
         severity="ESTILO",
     ),
-
     "0x0002h": P1Rule(
         code="0x0002h",
         category="Sintaxis y Nomenclatura",
@@ -87,6 +93,21 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Limitar la longitud de línea a un máximo de 79 caracteres para evitar desplazamiento horizontal.",
         severity="ESTILO",
     ),
+    "0x000Ah": P1Rule(
+        code="0x000Ah",
+        category="Sintaxis y Nomenclatura",
+        title="Escribí comentarios que expliquen el 'porqué', no el 'qué'",
+        description="Los comentarios deben justificar decisiones de diseño complejas y no repetir lo evidente.",
+        severity="ESTILO",
+    ),
+    "0x000Bh": P1Rule(
+        code="0x000Bh",
+        category="Sintaxis y Nomenclatura",
+        title="Las llaves deben ubicarse en líneas independientes según el estilo Allman",
+        description="Ubicar las llaves de apertura y cierre en líneas separadas alineadas con la instrucción de control.",
+        severity="ESTILO",
+    ),
+
     # 0x10XXh: Estructuras de Control y Lazos
     "0x1001h": P1Rule(
         code="0x1001h",
@@ -107,6 +128,13 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         category="Estructuras de Control",
         title="Utilizá for para conteo definido y while para lazos lógicos",
         description="No forzar lecturas interactivas o condiciones indefinidas dentro del encabezado for.",
+        severity="ESTILO",
+    ),
+    "0x1004h": P1Rule(
+        code="0x1004h",
+        category="Estructuras de Control",
+        title="Las condiciones complejas deben ser simplificadas o comentadas",
+        description="Dividir expresiones booleanas complejas con variables intermedias explicativas.",
         severity="ESTILO",
     ),
     "0x1005h": P1Rule(
@@ -137,6 +165,7 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Incluir siempre default: al final de un bloque switch para manejar estados no previstos.",
         severity="ADVERTENCIA",
     ),
+
     # 0x20XXh: Funciones y Modularización
     "0x2001h": P1Rule(
         code="0x2001h",
@@ -173,12 +202,33 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Evitar funciones extensas (>50 líneas) que realicen múltiples tareas disímiles.",
         severity="ESTILO",
     ),
+    "0x2006h": P1Rule(
+        code="0x2006h",
+        category="Funciones y Modularización",
+        title="Una aserción por cada función de prueba",
+        description="Modularizar las pruebas unitarias enfocando cada test en un caso atómico.",
+        severity="ESTILO",
+    ),
+    "0x2007h": P1Rule(
+        code="0x2007h",
+        category="Funciones y Modularización",
+        title="Mantené el alcance de las variables al mínimo posible",
+        description="Declarar las variables en el bloque más interno donde sean utilizadas.",
+        severity="ESTILO",
+    ),
     "0x2008h": P1Rule(
         code="0x2008h",
         category="Funciones y Modularización",
         title="Los valores de retorno deben definirse como constantes o enum",
         description="Reemplazar códigos de retorno numéricos mágicos por constantes descriptivas o enum.",
         severity="ESTILO",
+    ),
+    "0x2009h": P1Rule(
+        code="0x2009h",
+        category="Funciones y Modularización",
+        title="Los ejercicios deben ser resueltos mediante funciones",
+        description="No colocar toda la lógica del problema dentro de la función main().",
+        severity="ADVERTENCIA",
     ),
     "0x200Ah": P1Rule(
         code="0x200Ah",
@@ -187,6 +237,7 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Los identificadores de función deben estar en snake_case.",
         severity="ESTILO",
     ),
+
     # 0x30XXh: Punteros y Gestión de Memoria
     "0x3001h": P1Rule(
         code="0x3001h",
@@ -223,6 +274,13 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Evitar punteros triples o niveles de indirección innecesariamente complejos.",
         severity="ADVERTENCIA",
     ),
+    "0x3006h": P1Rule(
+        code="0x3006h",
+        category="Punteros y Memoria",
+        title="Documentá la propiedad de los recursos al utilizar punteros",
+        description="Indicar explícitamente en el contrato qué módulo es responsable de liberar la memoria.",
+        severity="ESTILO",
+    ),
     "0x3007h": P1Rule(
         code="0x3007h",
         category="Punteros y Memoria",
@@ -237,6 +295,20 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Usar explícitamente NULL en lugar del literal 0 para punteros.",
         severity="ESTILO",
     ),
+    "0x3009h": P1Rule(
+        code="0x3009h",
+        category="Punteros y Memoria",
+        title="Documentá explícitamente los casos en que una función puede retornar NULL",
+        description="Aclarar en la documentación si el retorno NULL indica error o fin de iteración.",
+        severity="ESTILO",
+    ),
+    "0x300Ah": P1Rule(
+        code="0x300Ah",
+        category="Punteros y Memoria",
+        title="Utilizá cast explícito al convertir tipos de punteros",
+        description="Evitar casteos implícitos incompatibles entre diferentes tipos de datos.",
+        severity="ADVERTENCIA",
+    ),
     "0x300Bh": P1Rule(
         code="0x300Bh",
         category="Punteros y Memoria",
@@ -244,11 +316,25 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Evitar tamaños fijos calculados a mano en malloc/calloc.",
         severity="ADVERTENCIA",
     ),
+    "0x300Ch": P1Rule(
+        code="0x300Ch",
+        category="Punteros y Memoria",
+        title="Verificá siempre los límites de los arreglos antes de acceder a sus elementos",
+        description="Validar índices de arreglos para evitar desbordamientos de búfer (out-of-bounds).",
+        severity="ERROR",
+    ),
     "0x300Dh": P1Rule(
         code="0x300Dh",
         category="Punteros y Memoria",
         title="Utilizá enum en lugar de números mágicos",
         description="Definir enumeraciones descriptivas para estados y constantes de dominio.",
+        severity="ESTILO",
+    ),
+    "0x300Eh": P1Rule(
+        code="0x300Eh",
+        category="Punteros y Memoria",
+        title="Documentá el comportamiento de las funciones ante punteros nulos",
+        description="Especificar si una función tolera parámetros NULL o aborta con aserción.",
         severity="ESTILO",
     ),
     "0x300Fh": P1Rule(
@@ -265,6 +351,28 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Utilizar size_t en lugar de int con signo para longitudes e iteradores de arreglos.",
         severity="ESTILO",
     ),
+    "0x3011h": P1Rule(
+        code="0x3011h",
+        category="Punteros y Memoria",
+        title="Si una función recibe un puntero genérico de solo lectura, usar const void*",
+        description="Firmar funciones con const void* cuando no se modifiquen los bytes leídos.",
+        severity="ESTILO",
+    ),
+    "0x0035h": P1Rule(
+        code="0x0035h",
+        category="Punteros y Memoria",
+        title="Diseñá los Tipos de Datos Abstractos utilizando punteros opacos",
+        description="Ocultar los detalles de implementación de structs en archivos .h mediante punteros incompletos.",
+        severity="ESTILO",
+    ),
+    "0x0036h": P1Rule(
+        code="0x0036h",
+        category="Punteros y Memoria",
+        title="Asigná NULL al puntero tras liberar un recurso opaco",
+        description="Asignar NULL al puntero en el cliente tras destruir un TDA para prevenir accesos inválidos.",
+        severity="ADVERTENCIA",
+    ),
+
     # 0x40XXh: Gestión de Archivos y Errores
     "0x4001h": P1Rule(
         code="0x4001h",
@@ -287,6 +395,21 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Diagnosticar fallos de archivos mediante perror o strerror(errno).",
         severity="ESTILO",
     ),
+    "0x4004h": P1Rule(
+        code="0x4004h",
+        category="Archivos y Errores",
+        title="Asegurá la simetría de recursos al abrir y cerrar archivos",
+        description="Abrir y cerrar descriptores de archivos dentro del mismo nivel de abstracción funcional.",
+        severity="ADVERTENCIA",
+    ),
+    "0x4005h": P1Rule(
+        code="0x4005h",
+        category="Archivos y Errores",
+        title="Evitá offsets fijos codificados a mano sin validar dimensiones",
+        description="Comprobar el tamaño real del archivo antes de posicionar punteros con fseek.",
+        severity="ADVERTENCIA",
+    ),
+
     # 0x50XXh: Compilación y Buenas Prácticas
     "0x5001h": P1Rule(
         code="0x5001h",
@@ -294,6 +417,13 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         title="Arreglos estáticos con tamaño fijo en compilación (prohibido VLA)",
         description="Los arreglos de longitud variable (int arr[n]) están prohibidos; usar constantes o malloc.",
         severity="ERROR",
+    ),
+    "0x5002h": P1Rule(
+        code="0x5002h",
+        category="Buenas Prácticas",
+        title="Desarrollá y compilá siempre con todas las advertencias activadas",
+        description="Compilar con -Wall -Wextra -Werror -pedantic para detectar anomalías tempranas.",
+        severity="ADVERTENCIA",
     ),
     "0x5003h": P1Rule(
         code="0x5003h",
@@ -308,6 +438,13 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         title="Todas las operaciones con cadenas deben ser seguras",
         description="Utilizar snprintf o strncpy en lugar de strcpy/strcat sin límite de tamaño.",
         severity="ADVERTENCIA",
+    ),
+    "0x5005h": P1Rule(
+        code="0x5005h",
+        category="Buenas Prácticas",
+        title="Organizá la estructura de tus archivos .c de forma estándar",
+        description="Estructurar los archivos con includes, defines, typedefs, prototipos y funciones.",
+        severity="ESTILO",
     ),
     "0x5006h": P1Rule(
         code="0x5006h",
@@ -416,7 +553,7 @@ class P1RuleChecker:
                     severity=P1_RULES_CATALOG["0x0002h"].severity,
                     title=P1_RULES_CATALOG["0x0002h"].title,
                     message="Múltiples declaraciones de variables en la misma línea.",
-                    suggestion="Declarar cada variable en su propia línea (ej. `int a;\nint b;`).",
+                    suggestion="Declarar cada variable en su propia línea (ej. `int a;\\nint b;`).",
                 )
             )
 
