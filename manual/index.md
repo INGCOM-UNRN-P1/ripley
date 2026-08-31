@@ -175,3 +175,56 @@ check-ripley:
 ````
 
 Ejecutá `make check-ripley` antes de cada commit para asegurar que tu código conserve el estado de aprobación.
+
+---
+
+(manual-ripley-arquitectura)=
+## 7. Arquitectura Interna y Mecanismo Técnico
+
+La herramienta **`ripley`** implementa un motor de alta precisión basado en:
+
+- **Tecnología Núcleo:** `Python Microkernel Architecture + Pluggy Dynamic Plugin System + Multi-Format Reporter (Rich, JSON, MD)`.
+- **Aislamiento y Determinismo:** Diseñada para operar sin efectos colaterales en entornos de integración continua (CI), terminales de estudiantes y servidores docentes headless.
+- **Manejo de Errores Pedagógico:** Todo fallo de sintaxis, memoria o lógica se traduce en una acción prescriptiva concreta con su respectiva justificación técnica.
+
+---
+
+(manual-ripley-ecosistema)=
+## 8. Integración y Conexión con el Ecosistema
+
+````{note}
+Ninguna herramienta opera de forma aislada. **`ripley`** forma parte del pipeline integral de evaluación, verificación y enseñanza de la cátedra.
+````
+
+### Diagrama de Flujo e Interoperabilidad
+
+````{mermaid}
+graph TD
+    SRC[Código C del Estudiante] --> RIP[Ripley: Microkernel de Cátedra]
+    GAF[Gaff: Estilo 0x00XXh] --> RIP
+    SPK[Spunkmeyer: Antipatrones 0x10XXh] --> RIP
+    MOT[Motoko: Modularidad 0x20XXh] --> RIP
+    KND[Kaneda: Seguridad 0x30XXh] --> RIP
+    ZHO[Zhora: Macros 0x40XXh] --> RIP
+    RIP -->|Evaluación Unificada| DRD[Dredd: Autograding Masivo]
+    RIP -->|Reporte Pedagógico| TERM[Terminal del Estudiante]
+````
+
+### Matriz de Intercambio de Datos
+
+| Canal | Herramientas Conectadas | Tipo de Datos Transferidos |
+| :--- | :--- | :--- |
+| **Entradas (Inputs)** | - `Código C de entregas de estudiantes` | Código fuente, AST, binarios, testcases, contratos |
+| **Salidas (Outputs)** | - `dredd (orquestación masiva)`
+- `Estudiante (diagnósticos en terminal)` | Informes Markdown, diagnósticos Rich, JSON, actas |
+| **Sincronización** | `gaff`, `spunkmeyer`, `kaneda`, `zhora`, `motoko`, `wierzbowski`, `dredd` | Validación cruzada, flags compartidos y autofix |
+
+### Pipeline de Integración Recomendado
+
+Podés encadenar `ripley` con otras herramientas del ecosistema en una única línea de comando:
+
+````{code-block} bash
+# Pipeline de integración típico
+ripley check src/ include/ --md reporte_auditoria.md
+````
+
