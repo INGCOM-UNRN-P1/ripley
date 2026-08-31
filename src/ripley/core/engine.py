@@ -126,6 +126,8 @@ def run_ast_linters(c_files: List[Path]) -> List[Dict[str, Any]]:
         for p in p1_checker.analyze(code, filename=c_file.name):
             findings.append({
                 "rule_id": p.rule_code,
+                "rule_code": p.rule_code,
+                "rule_name": getattr(p, "title", p.rule_code),
                 "severity": p.severity,
                 "file": c_file.name,
                 "line": p.line,
@@ -138,6 +140,8 @@ def run_ast_linters(c_files: List[Path]) -> List[Dict[str, Any]]:
             for obs in linter.analyze(code, filename=c_file.name):
                 findings.append({
                     "rule_id": obs.linter_name,
+                    "rule_code": obs.linter_name,
+                    "rule_name": obs.linter_name,
                     "severity": obs.severity,
                     "file": c_file.name,
                     "line": obs.line,
@@ -149,6 +153,8 @@ def run_ast_linters(c_files: List[Path]) -> List[Dict[str, Any]]:
         for d in InternalCloneLinter().analyze(code, filename=c_file.name):
             findings.append({
                 "rule_id": "COPY_PASTE_CLONE",
+                "rule_code": "COPY_PASTE_CLONE",
+                "rule_name": "Código Duplicado",
                 "severity": "ADVERTENCIA",
                 "file": c_file.name,
                 "line": d.line_a,
@@ -386,19 +392,64 @@ def analyze_target(target_path: str | Path) -> AnalysisResult:
         include_dirs = [path, path / "include", path / "src"] if path.is_dir() else [path.parent]
         comp_res = compile_sources(c_files, tmp_bin, include_dirs=include_dirs, enable_asan=True)
 
-        result.compilation = {
-            "success": comp_res.success,
-            "return_code": comp_res.return_code,
-            "human_summary": comp_res.human_summary,
-            "translated_diagnostics": comp_res.translated_diagnostics,
-            "raw_stderr": comp_res.raw_stderr,
-        }
+        # Si falló la compilación conjunta por colisión de main() o hay múltiples archivos con main()
+        files_with_main = []
+        for f in c_files:
+            try:
+                txt = f.read_text(encoding="utf-8", errors="replace")
+                if re.search(r'\b(?:int|void)\s+main\s*\(', txt):
+                    files_with_main.append(f)
+            except Exception:
+                pass
 
-        # 3. Testcases (si compila exitosamente)
-        test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
-        test_results = []
-        if comp_res.success:
-            test_results = execute_testcases(tmp_bin, test_dir)
+        if len(files_with_main) > 1 or (not comp_res.success and ("multiple definition of `main'" in comp_res.raw_stderr or "multiple definition of 'main'" in comp_res.raw_stderr)):
+            file_compilations = {}
+            all_diags = []
+            all_stderrs = []
+            all_ok = True
+            all_test_results = []
+
+            for idx, c_f in enumerate(c_files):
+                sub_bin = Path(td) / f"bin_{idx}"
+                sub_res = compile_sources([c_f], sub_bin, include_dirs=include_dirs, enable_asan=True)
+                file_compilations[c_f.name] = {
+                    "success": sub_res.success,
+                    "return_code": sub_res.return_code,
+                    "raw_stderr": sub_res.raw_stderr,
+                    "translated_diagnostics": sub_res.translated_diagnostics,
+                }
+                if not sub_res.success:
+                    all_ok = False
+                    all_stderrs.append(f"[{c_f.name}]:\n{sub_res.raw_stderr}")
+                all_diags.extend(sub_res.translated_diagnostics)
+
+                if sub_res.success:
+                    test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
+                    all_test_results.extend(execute_testcases(sub_bin, test_dir))
+
+            result.compilation = {
+                "success": all_ok,
+                "return_code": 0 if all_ok else 1,
+                "human_summary": "Compilación aislada de múltiples ejercicios completada." if all_ok else "Errores en compilación aislada.",
+                "translated_diagnostics": all_diags,
+                "raw_stderr": "\n\n".join(all_stderrs),
+                "files": file_compilations,
+            }
+            test_results = all_test_results
+        else:
+            result.compilation = {
+                "success": comp_res.success,
+                "return_code": comp_res.return_code,
+                "human_summary": comp_res.human_summary,
+                "translated_diagnostics": comp_res.translated_diagnostics,
+                "raw_stderr": comp_res.raw_stderr,
+            }
+
+            # 3. Testcases (si compila exitosamente)
+            test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
+            test_results = []
+            if comp_res.success:
+                test_results = execute_testcases(tmp_bin, test_dir)
 
         passed_count = sum(1 for t in test_results if t.passed)
         failed_count = len(test_results) - passed_count
