@@ -626,17 +626,45 @@ def cmd_plugins_git_hook(
 # ============================================================================
 
 
+def generar_seccion_markdown(result) -> str:
+    """Genera sección de auditoría estática, reglas P1 y compilación de Ripley para Dredd."""
+    lines = ["## Evaluación Pedagógica Integral (Ripley)\n"]
+    comp_ok = result.compilation.get("success", False)
+    estado_comp = "✓ Compilación Exitosa" if comp_ok else "❌ Falló Compilación"
+    lines.append(f"- **Compilación GCC:** {estado_comp}")
+    lines.append(f"- **Hallazgos de estilo y AST:** {len(result.ast_findings)}")
+    tests_tot = result.tests.get("total", 0)
+    if tests_tot > 0:
+        lines.append(f"- **Pruebas automáticas:** {result.tests.get('passed', 0)}/{tests_tot} pasadas")
+    lines.append("")
+
+    if not result.ast_findings and comp_ok:
+        lines.append("> [!TIP]\n> **Excelente Calidad:** El código cumple con todas las reglas P1 y estándares arquitectónicos sin observaciones.\n")
+    elif result.ast_findings:
+        lines.append("> [!WARNING]\n> **Observaciones Pedagógicas y Reglas P1:**\n")
+        lines.append("| Ubicación | Regla | Severidad | Mensaje / Sugerencia |")
+        lines.append("| :--- | :---: | :---: | :--- |")
+        for f in result.ast_findings:
+            loc = f"`{Path(f.get('file', '')).name}:{f.get('line', '')}`"
+            sug = f" — *Sugerencia:* {f.get('suggestion')}" if f.get("suggestion") else ""
+            lines.append(f"| {loc} | `{f.get('rule_id')}` | **{f.get('severity', 'WARN')}** | {f.get('message')}{sug} |")
+        lines.append("")
+    return "\n".join(lines)
+
+
 @app.command("check")
 def cmd_check(
     target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a verificar."),
     strict: bool = typer.Option(False, "--strict", help="Salir con código de error si se detectan advertencias."),
-    output_format: str = typer.Option("rich", "--format", help="Formato de salida: 'rich' (consola interactiva) o 'json'."),
+    output_format: str = typer.Option("rich", "--format", help="Formato de salida: 'rich' (consola interactiva), 'json' o 'sarif'."),
+    socratic: bool = typer.Option(False, "--socratic", "-s", help="Modo tutor socrático: muestra pistas conceptuales progresivas en vez de soluciones directas."),
     bench: Optional[str] = typer.Option(None, "--bench", help="complexity-bench: cota esperada (O(1), O(n), O(n log n), O(n^2))."),
     bench_pattern: str = typer.Option("{n}\\n", "--bench-pattern", help="Entrada por tamaño; '{n}' se reemplaza por N."),
     strict_ub: bool = typer.Option(False, "--strict-ub", help="ub-sentinel: auditoría de comportamiento indefinido tras compilar."),
     ub_level: int = typer.Option(2, "--ub-level", min=1, max=4, help="Nivel máximo del pipeline ub-sentinel (1=sanitizers, 2=+clang-analyzer, 3=+Frama-C, 4=+TSan)."),
     ub_timeout: int = typer.Option(30, "--ub-timeout", help="Timeout en segundos por testcase del ub-sentinel."),
     html: Optional[Path] = typer.Option(None, "--html", help="Generar informe interactivo HTML con badges de cátedra."),
+    output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", "-o", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
 ) -> None:
     """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
     from ripley.core.engine import analyze_target
@@ -646,6 +674,21 @@ def cmd_check(
         raise typer.Exit(code=1)
 
     result = analyze_target(target)
+
+    if output_md:
+        md_text = generar_seccion_markdown(result)
+        output_md.parent.mkdir(parents=True, exist_ok=True)
+        output_md.write_text(md_text, encoding="utf-8")
+        console.print(f"[green]✓ Sección Markdown generada en:[/green] [cyan]{output_md}[/cyan]")
+        raise typer.Exit(code=0 if result.compilation.get("success", False) else 1)
+
+    if output_format.lower() == "sarif":
+        from ripley.core.sarif import exportar_sarif
+        sarif_data = exportar_sarif(result)
+        print(json.dumps(sarif_data, indent=2, ensure_ascii=False))
+        if strict and (not result.compilation.get("success", False) or result.metrics.get("ast_findings_count", 0) > 0):
+            raise typer.Exit(code=1)
+        return
 
     if output_format.lower() == "json":
         print(result.to_json())
@@ -885,6 +928,126 @@ def cmd_analyze(
     print(result.to_json())
     if not result.compilation.get("success", False):
         raise typer.Exit(code=1)
+
+
+@app.command("report")
+def cmd_report(
+    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a verificar."),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Ruta de destino del archivo Markdown."),
+) -> None:
+    """Genera directamente la sección de reporte Markdown de RIPLEY para Dredd."""
+    from ripley.core.engine import analyze_target
+    if not target.exists():
+        console.print(f"[bold red]Ruta inexistente: {target}[/bold red]")
+        raise typer.Exit(code=1)
+    result = analyze_target(target)
+    md_content = generar_seccion_markdown(result)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(md_content, encoding="utf-8")
+        console.print(f"[green]✓ Reporte Markdown generado en:[/green] [cyan]{output}[/cyan]")
+    else:
+        print(md_content)
+
+
+@app.command("badge")
+def cmd_badge(
+    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a evaluar."),
+    output: Path = typer.Option(Path("ripley_badge.svg"), "--output", "-o", help="Ruta de destino del archivo SVG."),
+    label: str = typer.Option("ripley", "--label", "-l", help="Etiqueta izquierda del badge SVG."),
+) -> None:
+    """Genera un badge SVG con la calificación pedagógica del estudiante."""
+    from ripley.core.engine import analyze_target
+    from ripley.core.badge import calcular_puntaje_calidad, generar_badge_svg
+
+    if not target.exists():
+        console.print(f"[bold red]Ruta inexistente: {target}[/bold red]")
+        raise typer.Exit(code=1)
+
+    result = analyze_target(target)
+    score = calcular_puntaje_calidad(result)
+    svg_content = generar_badge_svg(score, label=label)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(svg_content, encoding="utf-8")
+    console.print(f"[bold green]✓ Badge SVG generado:[/bold green] [cyan]{output}[/cyan] (Puntaje: [yellow]{score}/10[/yellow])")
+
+
+@app.command("lsp")
+def cmd_lsp() -> None:
+    """Inicia el servidor Language Server Protocol (LSP) de Ripley en stdio."""
+    from ripley.core.lsp_server import run_lsp_server_stdio
+    run_lsp_server_stdio()
+
+
+@app.command("watch")
+def cmd_watch(
+    sources: List[Path] = typer.Argument(..., help="Archivos .c/.h a monitorear continuamente."),
+    interval: float = typer.Option(1.5, "--interval", "-i", help="Intervalo de sondeo en segundos."),
+) -> None:
+    """Monitorea modificaciones en archivos fuente y re-ejecuta auditorías automáticamente."""
+    import time
+    from ripley.core.watcher import ejecutar_ciclo_watch, obtener_mtimes
+
+    valid_sources = [Path(s) for s in sources if Path(s).exists()]
+    if not valid_sources:
+        console.print("[bold red]No se encontraron archivos válidos para monitorear.[/bold red]")
+        raise typer.Exit(code=1)
+
+    mtimes = obtener_mtimes(valid_sources)
+    ejecutar_ciclo_watch(valid_sources, console=console)
+
+    try:
+        while True:
+            time.sleep(interval)
+            nuevos_mtimes = obtener_mtimes(valid_sources)
+            if nuevos_mtimes != mtimes:
+                mtimes = nuevos_mtimes
+                ejecutar_ciclo_watch(valid_sources, console=console)
+    except KeyboardInterrupt:
+        console.print("\n[dim]Watcher detenido por el usuario.[/dim]")
+
+
+@app.command("fix-interactive")
+def cmd_fix_interactive(
+    source: Path = typer.Argument(..., help="Archivo .c a corregir interactivamente."),
+    auto_apply: bool = typer.Option(True, "--auto", "-y", help="Aplicar correcciones sin confirmación manual."),
+) -> None:
+    """Aplica auto-correcciones pedagógicas para vicios comunes de C."""
+    from ripley.core.autofix import aplicar_autofix_interactivo
+
+    if not source.exists():
+        console.print(f"[bold red]Archivo no encontrado: {source}[/bold red]")
+        raise typer.Exit(code=1)
+
+    aplicar_autofix_interactivo(source, auto_apply=auto_apply, console=console)
+
+
+@app.command("style-check")
+def cmd_style_check(
+    sources: List[Path] = typer.Argument(..., help="Archivos .c/.h a auditar contra el estándar de cátedra."),
+) -> None:
+    """Verifica la conformidad del código con el estándar estilístico oficial de la cátedra."""
+    from ripley.core.style_compliance import auditar_conformidad_estilo
+
+    valid_sources = [Path(s) for s in sources if Path(s).exists()]
+    if not valid_sources:
+        console.print("[bold red]No se encontraron archivos válidos para auditar.[/bold red]")
+        raise typer.Exit(code=1)
+
+    auditar_conformidad_estilo(valid_sources, console=console)
+
+
+@app.command("history")
+def cmd_history(
+    target: Path = typer.Argument(Path("."), help="Directorio raíz del proyecto estudiantil."),
+) -> None:
+    """Muestra el historial de evolución de corrección de errores del alumno."""
+    from ripley.core.history import mostrar_historial_progreso
+
+    mostrar_historial_progreso(target, console=console)
+
+
 
 
 
