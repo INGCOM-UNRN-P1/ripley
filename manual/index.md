@@ -349,3 +349,12 @@ Podés encadenar `ripley` con otras herramientas del ecosistema en una única l�
 ripley check src/ include/ --md reporte_auditoria.md
 ````
 
+---
+
+(manual-ripley-seccion-plugins)=
+## 9. Extensión, Desarrollo de Plugins y API Python
+
+Para crear tus propias reglas, conectores de evaluación o integrar `ripley` programáticamente en pipelines de CI/CD:
+
+- 👉 **Consultá la guía completa:** [Guía de Extensión y Creación de Plugins](plugins.md)
+
