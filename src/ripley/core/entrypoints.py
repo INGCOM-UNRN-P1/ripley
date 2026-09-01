@@ -45,13 +45,13 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
     "headers_audit": {
         "tool": "wierzbowski",
         "cli_cmd": "wierzbowski",
-        "cli_subcmd": "audit",
+        "cli_subcmd": "check",
         "description": "Auditoría de inclusión de encabezados y dependencias directas (IWYU).",
     },
     "macro_security": {
         "tool": "zhora",
         "cli_cmd": "zhora",
-        "cli_subcmd": "audit",
+        "cli_subcmd": "check",
         "description": "Auditoría de seguridad y paréntesis en macros y directivas del preprocesador.",
     },
     "padding": {
@@ -63,19 +63,19 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
     "tda_encapsulation": {
         "tool": "motoko",
         "cli_cmd": "motoko",
-        "cli_subcmd": "audit",
+        "cli_subcmd": "check",
         "description": "Verificación de opacidad y encapsulamiento de Tipos de Datos Abstractos (TDA).",
     },
     "portability": {
-        "tool": "dietrich",
-        "cli_cmd": "dietrich",
-        "cli_subcmd": "audit",
+        "tool": "crowe",
+        "cli_cmd": "crowe",
+        "cli_subcmd": "check",
         "description": "Detección de asunciones de arquitectura y portabilidad (ancho de tipos, endianness).",
     },
     "callgraph": {
         "tool": "giger",
         "cli_cmd": "giger",
-        "cli_subcmd": "audit",
+        "cli_subcmd": "check",
         "description": "Callgraph, Control Flow Graph (CFG), ciclos de recursión y funciones no invocadas.",
     },
     "formal_contracts": {
@@ -165,6 +165,11 @@ class SatellitePluginAdapter:
             self.tool_name = cat_info.get("tool", self.name)
         if not self.cli_command:
             self.cli_command = cat_info.get("cli_cmd", self.tool_name)
+
+        if not self.is_available or self.execution_mode == "unavailable":
+            self.is_available = False
+            self.execution_mode = "unavailable"
+            return
 
         self._resolve_availability()
 
@@ -291,6 +296,44 @@ class SatellitePluginAdapter:
                 str(workspace / "tests") if (workspace / "tests").is_dir() else str(workspace)
             )
             args = [cmd, "check", str(bin_path), str(test_dir), "--json"]
+        elif self.name in ("callgraph", "formal_contracts") and workspace.is_dir():
+            c_files = manifest_config.get("c_files")
+            if not c_files:
+                c_files = list(workspace.glob("*.c")) + list(workspace.glob("src/*.c"))
+            if not c_files:
+                return {"ok": True, "observaciones": [], "issues": []}
+
+            cat = SATELLITE_CATALOG.get(self.name, {})
+            subcmd = cat.get("cli_subcmd", "check")
+            all_obs = []
+            all_ok = True
+            for cf in c_files:
+                proc = subprocess.run(
+                    [cmd, subcmd, str(cf), "--json"],
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                )
+                if proc.stdout:
+                    try:
+                        data = json.loads(proc.stdout.strip())
+                        raw_obs = (
+                            data.get("observaciones")
+                            or data.get("issues")
+                            or data.get("diagnosticos")
+                            or []
+                        )
+                        all_obs.extend([normalize_finding(o, self.name) for o in raw_obs])
+                        if not data.get("ok", data.get("exito", True)):
+                            all_ok = False
+                    except Exception:
+                        pass
+            return {
+                "ok": all_ok,
+                "passed": all_ok,
+                "observaciones": all_obs,
+                "issues": all_obs,
+            }
         else:
             cat = SATELLITE_CATALOG.get(self.name, {})
             subcmd = cat.get("cli_subcmd", "check")

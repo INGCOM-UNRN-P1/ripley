@@ -24,6 +24,12 @@ from ripley.core.ast_auditors import (
     StringNullPointerLinter,
     VariableShadowingLinter,
 )
+from ripley.core.entrypoints import (
+    discover_entrypoint_plugins,
+    get_satellite_plugin,
+    SatellitePluginAdapter,
+    SATELLITE_CATALOG,
+)
 from ripley.core.gcc_translator import translate_stderr, summarize_for_humans
 from ripley.core.linters import (
     DeadCodeLinter,
@@ -38,8 +44,8 @@ from ripley.core.p1_rules import P1RuleChecker
 @dataclass
 class CompilationResult:
     success: bool
-    return_code: int
-    raw_stderr: str
+    return_code: int = 0
+    raw_stderr: str = ""
     translated_diagnostics: List[Dict[str, Any]] = field(default_factory=list)
     human_summary: str = ""
     binary_path: Optional[str] = None
@@ -49,9 +55,9 @@ class CompilationResult:
 class TestCaseResult:
     name: str
     passed: bool
-    input_data: str
-    expected_output: str
-    actual_output: str
+    input_data: str = ""
+    expected_output: str = ""
+    actual_output: str = ""
     timed_out: bool = False
     sanitizer_error: Optional[str] = None
     memory_leak: bool = False
@@ -68,6 +74,7 @@ class AnalysisResult:
     tests: Dict[str, Any] = field(default_factory=dict)
     ast_findings: List[Dict[str, Any]] = field(default_factory=list)
     metrics: Dict[str, Any] = field(default_factory=dict)
+    passed: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -90,10 +97,29 @@ def find_c_sources(target: Path) -> List[Path]:
     return []
 
 
+def normalize_rule_code(code: str) -> str:
+    """Normaliza identificadores de reglas para desduplicación jerárquica entre analizadores."""
+    c = str(code).strip().lower()
+    mapping = {
+        "0x300ah": "0x300ah",
+        "cast_malloc": "0x300ah",
+        "spk_malloc_cast": "0x300ah",
+        "0x300dh": "0x300dh",
+        "gets_prohibited": "0x300dh",
+        "kan001": "0x300dh",
+        "0x000bh": "0x000bh",
+        "brace_style": "0x000bh",
+        "0x1001h": "0x1001h",
+        "require_braces": "0x1001h",
+    }
+    return mapping.get(c, c)
+
+
 def run_ast_linters(
     c_files: List[Path],
     target_path: Optional[Path] = None,
     include_plugins: bool = True,
+    strict: bool = False,
 ) -> List[Dict[str, Any]]:
     """Aplica el catálogo de linters AST, reglas de cátedra P1 y plugins satélites sobre cada archivo .c."""
     findings: List[Dict[str, Any]] = []
@@ -113,7 +139,7 @@ def run_ast_linters(
     allowed_filenames = {f.name for f in c_files}
     has_style_plugin = False
 
-    # 1. Ejecución de plugins satélites desacoplados (ripley.plugins)
+    # 1. Ejecución de plugins satélites desacoplados (ripley.plugins y catálogo)
     if include_plugins:
         try:
             from ripley.core.entrypoints import discover_entrypoint_plugins
@@ -123,7 +149,8 @@ def run_ast_linters(
 
         static_plugins = {
             "style", "antipatterns", "security", "headers_audit",
-            "portability", "abi_audit", "macro_security", "tda_encapsulation"
+            "macro_security", "padding", "tda_encapsulation",
+            "portability", "callgraph", "formal_contracts", "abi_audit"
         }
 
         for p in discovered:
@@ -133,7 +160,7 @@ def run_ast_linters(
                 has_style_plugin = True
 
             try:
-                res = p.execute(workspace, {})
+                res = p.execute(workspace, {}, strict=strict)
                 raw_obs = res.get("observaciones") or res.get("issues") or []
                 for obs in raw_obs:
                     raw_f = str(obs.get("archivo") or obs.get("file") or obs.get("location") or "")
@@ -158,7 +185,7 @@ def run_ast_linters(
                     msg = str(obs.get("mensaje") or obs.get("message") or "")
                     sug = str(obs.get("sugerencia") or obs.get("suggestion") or "")
 
-                    norm_code = rule_code.lower()
+                    norm_code = normalize_rule_code(rule_code)
                     key = (f_name, line, norm_code)
                     if key in seen_keys:
                         continue
@@ -187,7 +214,7 @@ def run_ast_linters(
             except Exception:
                 pass
 
-    # 2. Linters AST internos y reglas P1
+    # 2. Linters AST internos y reglas P1 (con desduplicación jerárquica)
     p1_checker = P1RuleChecker()
     linters = [
         FloatComparisonLinter(),
@@ -233,7 +260,7 @@ def run_ast_linters(
 
         # Reglas P1 (0xXXXXh)
         for p in p1_checker.analyze(code, filename=c_file.name):
-            norm_code = p.rule_code.lower()
+            norm_code = normalize_rule_code(p.rule_code)
             key = (c_file.name, p.line, norm_code)
             if key in seen_keys:
                 continue
@@ -263,7 +290,7 @@ def run_ast_linters(
         # Linters de Calidad y AST
         for linter in linters:
             for obs in linter.analyze(code, filename=c_file.name):
-                norm_code = obs.linter_name.lower()
+                norm_code = normalize_rule_code(obs.linter_name)
                 key = (c_file.name, obs.line, norm_code)
                 if key in seen_keys:
                     continue
@@ -517,8 +544,26 @@ def execute_testcases(
     return results
 
 
-def analyze_target(target_path: str | Path) -> AnalysisResult:
-    """Ejecuta el pipeline completo de análisis estático, compilación y pruebas sobre el objetivo."""
+def _fill_metrics(result: AnalysisResult, c_files: List[Path], ast_findings: List[Dict[str, Any]]) -> None:
+    """Calcula y asigna las métricas del análisis estático."""
+    total_lines = 0
+    for f in c_files:
+        try:
+            total_lines += len(f.read_text(encoding="utf-8", errors="replace").splitlines())
+        except Exception:
+            pass
+
+    result.metrics = {
+        "c_files_count": len(c_files),
+        "total_lines_of_code": total_lines,
+        "ast_findings_count": len(ast_findings),
+        "ast_errors_count": sum(1 for f in ast_findings if f.get("severity") == "ERROR"),
+        "ast_warnings_count": sum(1 for f in ast_findings if f.get("severity") in ("ADVERTENCIA", "WARN", "WARNING")),
+    }
+
+
+def analyze_target(target_path: str | Path, strict: bool = False) -> AnalysisResult:
+    """Ejecuta el pipeline completo de análisis estático, compilación y pruebas delegando en plugins satélites."""
     path = Path(target_path).resolve()
     result = AnalysisResult(
         target=str(path),
@@ -534,19 +579,47 @@ def analyze_target(target_path: str | Path) -> AnalysisResult:
             "error": "No se encontraron archivos fuentes C (.c) para analizar.",
             "translated_diagnostics": [],
         }
+        result.passed = False
         return result
 
-    # 1. Análisis Estático y AST Linters
-    ast_findings = run_ast_linters(c_files, target_path=path)
+    # 1. Auditoría Estática (Plugins satélites + reglas P1 + desduplicación)
+    ast_findings = run_ast_linters(c_files, target_path=path, strict=strict)
     result.ast_findings = ast_findings
 
-    # 2. Compilación en sandbox temporal con AddressSanitizer
+    # 2. Compilación: delegada exclusivamente en el plugin compiler (daedalus)
+    compiler_plugin = get_satellite_plugin("compiler")
+    if not compiler_plugin.is_available:
+        missing_res = compiler_plugin.execute(path, strict=strict)
+        missing_obs = missing_res.get("observaciones", [])
+        result.compilation = {
+            "success": False,
+            "return_code": 127,
+            "human_summary": "Plugin de compilación 'daedalus' no disponible.",
+            "translated_diagnostics": missing_obs,
+            "raw_stderr": "Plugin 'daedalus' no disponible en el entorno ni en PATH.",
+        }
+        result.ast_findings.extend(missing_obs)
+        result.passed = False
+        _fill_metrics(result, c_files, result.ast_findings)
+        return result
+
     with tempfile.TemporaryDirectory(prefix="ripley_engine_") as td:
         tmp_bin = Path(td) / "app.bin"
-        include_dirs = [path, path / "include", path / "src"] if path.is_dir() else [path.parent]
-        comp_res = compile_sources(c_files, tmp_bin, include_dirs=include_dirs, enable_asan=True)
+        comp_exec = compiler_plugin.execute(
+            path,
+            manifest_config={
+                "c_files": c_files,
+                "output_bin": tmp_bin,
+                "timeout": 20.0,
+            },
+            strict=strict,
+        )
+        comp_ok = bool(comp_exec.get("success", comp_exec.get("ok", False)))
+        bin_path = comp_exec.get("binary_path") or (tmp_bin if tmp_bin.exists() else None)
+        raw_stderr = comp_exec.get("raw_stderr", "")
+        diags = comp_exec.get("translated_diagnostics", [])
 
-        # Si falló la compilación conjunta por colisión de main() o hay múltiples archivos con main()
+        # Detección de múltiples archivos con main()
         files_with_main = []
         for f in c_files:
             try:
@@ -556,30 +629,41 @@ def analyze_target(target_path: str | Path) -> AnalysisResult:
             except Exception:
                 pass
 
-        if len(files_with_main) > 1 or (not comp_res.success and ("multiple definition of `main'" in comp_res.raw_stderr or "multiple definition of 'main'" in comp_res.raw_stderr)):
+        active_bins: List[Path] = []
+        if len(files_with_main) > 1 or (not comp_ok and ("multiple definition of `main'" in raw_stderr or "multiple definition of 'main'" in raw_stderr)):
             file_compilations = {}
             all_diags = []
             all_stderrs = []
             all_ok = True
-            all_test_results = []
 
             for idx, c_f in enumerate(c_files):
                 sub_bin = Path(td) / f"bin_{idx}"
-                sub_res = compile_sources([c_f], sub_bin, include_dirs=include_dirs, enable_asan=True)
-                file_compilations[c_f.name] = {
-                    "success": sub_res.success,
-                    "return_code": sub_res.return_code,
-                    "raw_stderr": sub_res.raw_stderr,
-                    "translated_diagnostics": sub_res.translated_diagnostics,
-                }
-                if not sub_res.success:
-                    all_ok = False
-                    all_stderrs.append(f"[{c_f.name}]:\n{sub_res.raw_stderr}")
-                all_diags.extend(sub_res.translated_diagnostics)
+                sub_exec = compiler_plugin.execute(
+                    c_f,
+                    manifest_config={
+                        "c_files": [c_f],
+                        "output_bin": sub_bin,
+                        "timeout": 20.0,
+                    },
+                    strict=strict,
+                )
+                sub_ok = bool(sub_exec.get("success", sub_exec.get("ok", False)))
+                sub_bin_path = sub_exec.get("binary_path") or (sub_bin if sub_bin.exists() else None)
+                sub_stderr = sub_exec.get("raw_stderr", "")
+                sub_diags = sub_exec.get("translated_diagnostics", [])
 
-                if sub_res.success:
-                    test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
-                    all_test_results.extend(execute_testcases(sub_bin, test_dir))
+                file_compilations[c_f.name] = {
+                    "success": sub_ok,
+                    "return_code": sub_exec.get("return_code", 0 if sub_ok else 1),
+                    "raw_stderr": sub_stderr,
+                    "translated_diagnostics": sub_diags,
+                }
+                if not sub_ok:
+                    all_ok = False
+                    all_stderrs.append(f"[{c_f.name}]:\n{sub_stderr}")
+                all_diags.extend(sub_diags)
+                if sub_ok and sub_bin_path and Path(sub_bin_path).exists():
+                    active_bins.append(Path(sub_bin_path))
 
             result.compilation = {
                 "success": all_ok,
@@ -589,45 +673,91 @@ def analyze_target(target_path: str | Path) -> AnalysisResult:
                 "raw_stderr": "\n\n".join(all_stderrs),
                 "files": file_compilations,
             }
-            test_results = all_test_results
         else:
             result.compilation = {
-                "success": comp_res.success,
-                "return_code": comp_res.return_code,
-                "human_summary": comp_res.human_summary,
-                "translated_diagnostics": comp_res.translated_diagnostics,
-                "raw_stderr": comp_res.raw_stderr,
+                "success": comp_ok,
+                "return_code": comp_exec.get("return_code", 0 if comp_ok else 1),
+                "human_summary": comp_exec.get("human_summary", "Compilación exitosa." if comp_ok else "Falló la compilación."),
+                "translated_diagnostics": diags,
+                "raw_stderr": raw_stderr,
+                "binary_path": str(bin_path) if bin_path else None,
             }
+            if comp_ok and bin_path and Path(bin_path).exists():
+                active_bins.append(Path(bin_path))
 
-            # 3. Testcases (si compila exitosamente)
-            test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
-            test_results = []
-            if comp_res.success:
-                test_results = execute_testcases(tmp_bin, test_dir)
+        # 3. Sandbox y Pruebas: delegadas exclusivamente en el plugin sandbox (nostromo)
+        test_dir = path / "tests" if path.is_dir() else path.parent / "tests"
+        in_files = []
+        if test_dir.is_dir():
+            in_files = sorted(test_dir.glob("caso_*.in")) + sorted(test_dir.glob("*.in"))
+            in_files = list(dict.fromkeys(in_files))
 
-        passed_count = sum(1 for t in test_results if t.passed)
-        failed_count = len(test_results) - passed_count
-        result.tests = {
-            "total": len(test_results),
-            "passed": passed_count,
-            "failed": failed_count,
-            "cases": [asdict(t) for t in test_results],
-        }
+        all_test_cases = []
+        if in_files:
+            sandbox_plugin = get_satellite_plugin("sandbox")
+            if not sandbox_plugin.is_available:
+                missing_sb = sandbox_plugin.execute(path, strict=strict)
+                obs_sb = missing_sb.get("observaciones", [])
+                result.tests = {
+                    "total": len(in_files),
+                    "passed": 0,
+                    "failed": 0,
+                    "omitted": len(in_files),
+                    "skipped": len(in_files),
+                    "cases": [],
+                    "warning": "Plugin de sandbox 'nostromo' no disponible. Pruebas omitidas.",
+                }
+                result.ast_findings.extend(obs_sb)
+                if strict:
+                    result.passed = False
+            elif active_bins:
+                for b_path in active_bins:
+                    sb_res = sandbox_plugin.execute(
+                        path,
+                        manifest_config={
+                            "binary_path": str(b_path),
+                            "test_dir": str(test_dir),
+                            "timeout": 3.0,
+                        },
+                        strict=strict,
+                    )
+                    raw_cases = sb_res.get("cases") or sb_res.get("casos") or sb_res.get("resultados") or []
+                    for c in raw_cases:
+                        all_test_cases.append({
+                            "name": c.get("name") or c.get("nombre") or "caso",
+                            "passed": bool(c.get("passed", c.get("paso", False))),
+                            "input_data": str(c.get("input_data", c.get("stdout_esperado", ""))),
+                            "expected_output": str(c.get("expected_output", c.get("stdout_esperado", ""))),
+                            "actual_output": str(c.get("actual_output", c.get("stdout_obtenido", ""))),
+                            "timed_out": bool(c.get("timed_out", c.get("error_tipo") == "TIMEOUT")),
+                            "sanitizer_error": c.get("sanitizer_error", c.get("stderr_obtenido") if not c.get("paso", True) else None),
+                            "memory_leak": bool(c.get("memory_leak", "leak" in str(c.get("stderr_obtenido", "")).lower())),
+                            "return_code": int(c.get("return_code", c.get("codigo_retorno", 0))),
+                        })
+                p_count = sum(1 for tc in all_test_cases if tc["passed"])
+                f_count = len(all_test_cases) - p_count
+                result.tests = {
+                    "total": len(all_test_cases),
+                    "passed": p_count,
+                    "failed": f_count,
+                    "cases": all_test_cases,
+                }
+        else:
+            result.tests = {"total": 0, "passed": 0, "failed": 0, "cases": []}
 
-    # 4. Métricas básicas
-    total_lines = 0
-    for f in c_files:
-        try:
-            total_lines += len(f.read_text(encoding="utf-8", errors="replace").splitlines())
-        except Exception:
-            pass
+    # 4. Métricas y estado global
+    _fill_metrics(result, c_files, result.ast_findings)
 
-    result.metrics = {
-        "c_files_count": len(c_files),
-        "total_lines_of_code": total_lines,
-        "ast_findings_count": len(ast_findings),
-        "ast_errors_count": sum(1 for f in ast_findings if f.get("severity") == "ERROR"),
-        "ast_warnings_count": sum(1 for f in ast_findings if f.get("severity") in ("ADVERTENCIA", "WARN", "WARNING")),
-    }
+    comp_ok_final = result.compilation.get("success", False)
+    tests_failed = result.tests.get("failed", 0)
+    has_blocking_errors = any(f.get("severity") == "ERROR" for f in result.ast_findings)
+    if not comp_ok_final or tests_failed > 0 or has_blocking_errors:
+        result.passed = False
+
+    if strict:
+        has_missing = any(f.get("rule_code", "").startswith("MISSING_TOOL_") for f in result.ast_findings)
+        has_plugin_err = any(f.get("rule_code", "").startswith("PLUGIN_ERROR_") for f in result.ast_findings)
+        if has_missing or has_plugin_err:
+            result.passed = False
 
     return result
