@@ -63,25 +63,27 @@ class StyleAnalyzer:
         is_allman = self.config.brace_style.lower() in ("allman", "bsd", "break")
         is_kr = self.config.brace_style.lower() in ("k&r", "attach")
 
-        # 1. Delegar en GAFF (motor oficial de estilo de cátedra)
+        # 1. Delegar en GAFF mediante modo EXCLUSIÓN (filosofía institucional de cátedra)
         try:
             from gaff.core.linter import analizar_archivo
 
-            reglas_gaff: Set[str] = set()
-            if is_allman:
-                reglas_gaff.add("0x000Bh")
-            if self.config.require_braces:
-                reglas_gaff.add("0x1001h")
-            if self.config.spacing_keywords:
-                reglas_gaff.add("0x0004h")
-            if self.config.spacing_operators:
-                reglas_gaff.add("0x0003h")
-            if self.config.indent_style == "spaces" or self.config.no_trailing_whitespace:
-                reglas_gaff.add("0x0005h")
-            if self.config.max_blank_lines:
-                reglas_gaff.add("0x000Dh")
+            reglas_excluidas: Set[str] = set()
+            if not is_allman:
+                reglas_excluidas.add("0x000Bh")
+                reglas_excluidas.add("0x0009h")
+            if not self.config.require_braces:
+                reglas_excluidas.add("0x1001h")
+                reglas_excluidas.add("0x0008h")
+            if not self.config.spacing_keywords:
+                reglas_excluidas.add("0x0004h")
+            if not self.config.spacing_operators:
+                reglas_excluidas.add("0x0003h")
+            if self.config.indent_style != "spaces" and not self.config.no_trailing_whitespace:
+                reglas_excluidas.add("0x0005h")
+            if not self.config.max_blank_lines:
+                reglas_excluidas.add("0x000Dh")
 
-            violaciones_gaff = analizar_archivo(path, reglas_habilitadas=reglas_gaff)
+            violaciones_gaff = analizar_archivo(path, reglas_excluidas=reglas_excluidas)
 
             for v in violaciones_gaff:
                 cod = str(v.codigo)
