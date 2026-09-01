@@ -84,3 +84,23 @@ def test_style_analyzer_indentation_spaces_vs_tabs():
     code_with_tab = "int main()\n{\n\treturn 0;\n}\n"
     res = analyzer.analyze_code("tab.c", code_with_tab)
     assert any(o.regla == "indent_style" for o in res.observaciones)
+
+
+def test_style_analyzer_delegates_to_gaff(monkeypatch):
+    import gaff.core.linter as gaff_linter
+
+    called = False
+
+    def fake_analizar_archivo(path, reglas_excluidas=None):
+        nonlocal called
+        called = True
+        return []
+
+    monkeypatch.setattr(gaff_linter, "analizar_archivo", fake_analizar_archivo)
+
+    cfg = StyleConfig(brace_style="allman")
+    analyzer = StyleAnalyzer(cfg)
+    res = analyzer.analyze_code("dummy.c", "int main(void) { return 0; }\n")
+    assert called is True
+    assert res.passed is True
+

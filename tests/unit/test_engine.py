@@ -92,3 +92,106 @@ int main(void) {
     assert "KAN001" in rule_codes
     assert "0x300Dh" in rule_codes or "0x5006h" in rule_codes
 
+
+def test_engine_delegates_to_daedalus_and_nostromo(tmp_path: Path):
+    src = tmp_path / "echo.c"
+    src.write_text(
+        """#include <stdio.h>
+int main(void) {
+    char s[64];
+    if (fgets(s, sizeof(s), stdin)) {
+        fputs(s, stdout);
+    }
+    return 0;
+}
+""",
+        encoding="utf-8",
+    )
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir()
+    (tests_dir / "caso_1.in").write_text("hola mundo\n", encoding="utf-8")
+    (tests_dir / "caso_1.out").write_text("hola mundo\n", encoding="utf-8")
+
+    result = analyze_target(tmp_path)
+    assert result.compilation.get("success") is True
+    assert result.tests.get("total") == 1
+    assert result.tests.get("passed") == 1
+    assert result.tests.get("failed") == 0
+    assert result.passed is True
+
+
+def test_engine_hierarchical_deduplication(tmp_path: Path):
+    src = tmp_path / "dedup.c"
+    src.write_text(
+        """#include <stdlib.h>
+int main(void) {
+    int *p = (int *)malloc(sizeof(int) * 4);
+    free(p);
+    return 0;
+}
+""",
+        encoding="utf-8",
+    )
+    result = analyze_target(src)
+    # Verificar que para la línea de malloc no se repita el reporte con códigos equivalentes
+    malloc_findings = [
+        f for f in result.ast_findings
+        if f.get("line") == 3 and f.get("rule_code") in ("0x300Ah", "cast_malloc", "spk_malloc_cast")
+    ]
+    assert len(malloc_findings) <= 1
+
+
+def test_engine_strict_mode(tmp_path: Path, monkeypatch):
+    src = tmp_path / "ok.c"
+    src.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+
+    # En modo normal, código limpio pasa
+    res_normal = analyze_target(src, strict=False)
+    assert res_normal.compilation.get("success") is True
+
+    # Simular una herramienta ausente requerida bajo strict
+    from ripley.core.entrypoints import SatellitePluginAdapter
+    import ripley.core.engine as eng
+
+    real_get_plugin = eng.get_satellite_plugin
+
+    def fake_get_plugin(name):
+        if name == "sandbox":
+            return SatellitePluginAdapter(name="sandbox", is_available=False, execution_mode="unavailable")
+        return real_get_plugin(name)
+
+    monkeypatch.setattr(eng, "get_satellite_plugin", fake_get_plugin)
+
+    # Crear carpeta tests para forzar la consulta al sandbox
+    tests_dir = tmp_path / "tests"
+    tests_dir.mkdir(exist_ok=True)
+    (tests_dir / "caso_1.in").write_text("1\n")
+    (tests_dir / "caso_1.out").write_text("1\n")
+
+    res_strict = analyze_target(tmp_path, strict=True)
+    assert res_strict.passed is False
+    assert any(f.get("rule_code") == "MISSING_TOOL_NOSTROMO" for f in res_strict.ast_findings)
+    assert res_strict.tests.get("omitted") == 1
+
+
+def test_engine_missing_compiler(tmp_path: Path, monkeypatch):
+    src = tmp_path / "test.c"
+    src.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+
+    from ripley.core.entrypoints import SatellitePluginAdapter
+    import ripley.core.engine as eng
+
+    fake_comp = SatellitePluginAdapter(
+        name="compiler",
+        tool_name="daedalus",
+        is_available=False,
+        execution_mode="unavailable",
+    )
+    monkeypatch.setattr(eng, "get_satellite_plugin", lambda name: fake_comp if name == "compiler" else eng.get_satellite_plugin(name))
+
+    res = analyze_target(src, strict=False)
+    assert res.compilation.get("success") is False
+    assert res.passed is False
+    assert any("MISSING_TOOL_DAEDALUS" in f.get("rule_code", "") for f in res.ast_findings)
+
+
