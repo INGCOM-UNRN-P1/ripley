@@ -68,3 +68,27 @@ int main(void) {
     parsed = json.loads(cli_res.output)
     assert parsed.get("version") == "2.0.0"
     assert parsed.get("compilation", {}).get("success") is True
+
+
+def test_engine_integrates_satellite_plugins(tmp_path: Path):
+    src = tmp_path / "sample.c"
+    src.write_text(
+        """#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    int *p = (int *)malloc(sizeof(int) * 10);
+    char buf[10];
+    gets(buf);
+    return 0;
+}
+""",
+        encoding="utf-8",
+    )
+    result = analyze_target(src)
+    findings = result.ast_findings
+    rule_codes = {f.get("rule_code") for f in findings}
+    assert "0x300Ah" in rule_codes
+    assert "KAN001" in rule_codes
+    assert "0x300Dh" in rule_codes or "0x5006h" in rule_codes
+

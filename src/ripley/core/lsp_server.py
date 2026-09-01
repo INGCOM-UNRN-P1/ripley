@@ -12,12 +12,19 @@ from ripley.core.engine import analyze_target, run_ast_linters
 
 def diagnostico_to_lsp(diag: Dict[str, Any]) -> Dict[str, Any]:
     """Convierte un hallazgo de Ripley en un objeto Diagnostic de LSP."""
-    line = max(0, int(diag.get("linea", 1)) - 1)
-    col = max(0, int(diag.get("columna", 1)) - 1)
-    severidad_raw = str(diag.get("severidad", "warning")).lower()
+    line = max(0, int(diag.get("linea", diag.get("line", 1))) - 1)
+    col = max(0, int(diag.get("columna", diag.get("column", 1))) - 1)
+    severidad_raw = str(diag.get("severidad", diag.get("severity", "warning"))).lower()
     
     # LSP DiagnosticSeverity: 1=Error, 2=Warning, 3=Information, 4=Hint
     severity = 1 if severidad_raw in ("error", "fatal", "bloqueante") else 2
+    code = str(diag.get("codigo") or diag.get("rule_code") or diag.get("rule_id", "0x0000h"))
+    mensaje = str(diag.get("mensaje") or diag.get("message", ""))
+    sugerencia = str(diag.get("sugerencia") or diag.get("suggestion", ""))
+
+    msg_formatted = f"[{code}] {mensaje}"
+    if sugerencia:
+        msg_formatted += f" — {sugerencia}"
 
     return {
         "range": {
@@ -25,9 +32,9 @@ def diagnostico_to_lsp(diag: Dict[str, Any]) -> Dict[str, Any]:
             "end": {"line": line, "character": col + 10},
         },
         "severity": severity,
-        "code": diag.get("codigo", "0x0000h"),
+        "code": code,
         "source": "Ripley Linter",
-        "message": f"[{diag.get('codigo', '0x0000h')}] {diag.get('mensaje', '')} — {diag.get('sugerencia', '')}".strip(),
+        "message": msg_formatted.strip(),
     }
 
 
