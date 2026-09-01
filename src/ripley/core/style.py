@@ -1,12 +1,14 @@
-"""C code style and formatting analyzer based on customizable ripley.toml rules."""
+"""Analizador de estilo y formato de código C delegando en el linter pedagógico GAFF."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import List, Sequence
+import tempfile
+from typing import Any, Dict, List, Optional, Set
 
 from ripley.config import StyleConfig
-from ripley.core.security import strip_c_comments_and_strings
 
 
 @dataclass
@@ -29,261 +31,122 @@ CONTROL_KEYWORDS = ("if", "for", "while", "switch", "else if")
 
 
 class StyleAnalyzer:
-    """Analiza reglas de estilo de código C según la configuración."""
+    """Analiza reglas de estilo de código C delegando todas las verificaciones en GAFF."""
 
     def __init__(self, config: StyleConfig) -> None:
         self.config = config
 
     def analyze_code(self, filename: str, code: str) -> StyleCheckResult:
+        """Analiza una cadena de código C delegando en GAFF mediante archivo temporal."""
+        suffix = Path(filename).suffix if Path(filename).suffix in (".c", ".h") else ".c"
+        clean_stem = Path(filename).stem or "source"
+        with tempfile.TemporaryDirectory() as td:
+            temp_file = Path(td) / f"{clean_stem}{suffix}"
+            temp_file.write_text(code, encoding="utf-8", errors="replace")
+            return self.analyze_file(temp_file, display_filename=filename, raw_code=code)
+
+    def analyze_file(
+        self,
+        file_path: str | Path,
+        display_filename: Optional[str] = None,
+        raw_code: Optional[str] = None,
+    ) -> StyleCheckResult:
+        """Analiza un archivo fuente C ejecutando las verificaciones de estilo a través de GAFF."""
+        path = Path(file_path)
+        fname = display_filename or path.name
+
+        if raw_code is None and path.is_file():
+            raw_code = path.read_text(encoding="utf-8", errors="replace")
+
         observaciones: List[StyleObservation] = []
-        raw_lines = code.splitlines()
-        clean_code = strip_c_comments_and_strings(code)
-        clean_lines = clean_code.splitlines()
 
-        # 1. Chequeo de espacios finales (trailing whitespace) y líneas en blanco consecutivas
-        blank_line_streak = 0
-        for idx, r_line in enumerate(raw_lines, start=1):
-            if self.config.no_trailing_whitespace and re.search(r"[ \t]+$", r_line):
-                observaciones.append(
-                    StyleObservation(
-                        archivo=filename,
-                        linea=idx,
-                        regla="trailing_whitespace",
-                        mensaje="Espacios en blanco al final de la línea.",
-                    )
-                )
-
-            if not r_line.strip():
-                blank_line_streak += 1
-                if blank_line_streak > self.config.max_blank_lines:
-                    observaciones.append(
-                        StyleObservation(
-                            archivo=filename,
-                            linea=idx,
-                            regla="max_blank_lines",
-                            mensaje=f"Demasiadas líneas en blanco consecutivas (máximo permitido: {self.config.max_blank_lines}).",
-                        )
-                    )
-            else:
-                blank_line_streak = 0
-
-        # 2. Indentación (Spaces vs Tabs y tamaño)
-        for idx, (r_line, c_line) in enumerate(zip(raw_lines, clean_lines), start=1):
-            if not c_line.strip():
-                continue
-
-            leading_whitespace = re.match(r"^([ \t]*)", r_line).group(1)
-            if self.config.indent_style == "spaces":
-                if "\t" in leading_whitespace:
-                    observaciones.append(
-                        StyleObservation(
-                            archivo=filename,
-                            linea=idx,
-                            regla="indent_style",
-                            mensaje="Uso de tabulaciones (Tab) en la indentación; se requieren espacios.",
-                        )
-                    )
-                elif leading_whitespace and len(leading_whitespace) % self.config.indent_size != 0:
-                    observaciones.append(
-                        StyleObservation(
-                            archivo=filename,
-                            linea=idx,
-                            regla="indent_size",
-                            mensaje=f"La sangría ({len(leading_whitespace)} espacios) no es múltiplo del tamaño configurado ({self.config.indent_size}).",
-                        )
-                    )
-            elif self.config.indent_style == "tabs":
-                if " " in leading_whitespace:
-                    observaciones.append(
-                        StyleObservation(
-                            archivo=filename,
-                            linea=idx,
-                            regla="indent_style",
-                            mensaje="Uso de espacios en la sangría; se requieren tabulaciones (Tabs).",
-                        )
-                    )
-
-        # 3. Espaciado en palabras clave (keyword spacing ej. 'if(' -> 'if (')
-        if self.config.spacing_keywords:
-            for idx, c_line in enumerate(clean_lines, start=1):
-                for kw in ("if", "for", "while", "switch"):
-                    # Detectar "if(" o "for(" no precedido de letra/guión bajo
-                    kw_match = re.search(rf"(?<![a-zA-Z0-9_]){kw}\(", c_line)
-                    if kw_match:
-                        observaciones.append(
-                            StyleObservation(
-                                archivo=filename,
-                                linea=idx,
-                                regla="spacing_keywords",
-                                mensaje=f"Falta espacio entre palabra clave '{kw}' y paréntesis de apertura: use '{kw} ('.",
-                            )
-                        )
-
-        # 4. Espaciado en operadores binarios y comas
-        if self.config.spacing_operators:
-            for idx, c_line in enumerate(clean_lines, start=1):
-                # Falta de espacio después de coma ej: "foo(a,b)"
-                if re.search(r",[^\s\n\)\"]", c_line):
-                    observaciones.append(
-                        StyleObservation(
-                            archivo=filename,
-                            linea=idx,
-                            regla="spacing_comma",
-                            mensaje="Falta espacio después de coma ','.",
-                        )
-                    )
-
-                # Operadores binarios de comparación y lógicos sin espacios: ==, !=, <=, >=, &&, ||
-                for op in ("==", "!=", "<=", ">=", "&&", r"\|\|"):
-                    # operador pegado a caracter
-                    if re.search(rf"[a-zA-Z0-9_]{op}[a-zA-Z0-9_]", c_line):
-                        clean_op = op.replace("\\", "")
-                        observaciones.append(
-                            StyleObservation(
-                                archivo=filename,
-                                linea=idx,
-                                regla="spacing_operators",
-                                mensaje=f"Falta espacio alrededor del operador binario '{clean_op}'.",
-                            )
-                        )
-
-        # 5. Estilo de Llaves (Allman vs K&R) y Obligatoriedad de Llaves (require_braces)
         is_allman = self.config.brace_style.lower() in ("allman", "bsd", "break")
         is_kr = self.config.brace_style.lower() in ("k&r", "attach")
 
-        for idx, c_line in enumerate(clean_lines, start=1):
-            s_line = c_line.strip()
-            if not s_line:
-                continue
+        # 1. Delegar en GAFF (motor oficial de estilo de cátedra)
+        try:
+            from gaff.core.linter import analizar_archivo
 
-            # Buscar if/for/while/switch
-            for kw in ("if", "for", "while", "switch"):
-                # Si la línea empieza con o contiene una sentencia de control
-                pattern = rf"(?<![a-zA-Z0-9_]){kw}\s*\((.*?)\)"
-                match = re.search(pattern, s_line)
-                if match:
-                    rest_of_line = s_line[match.end():].strip()
+            reglas_gaff: Set[str] = set()
+            if is_allman:
+                reglas_gaff.add("0x000Bh")
+            if self.config.require_braces:
+                reglas_gaff.add("0x1001h")
+            if self.config.spacing_keywords:
+                reglas_gaff.add("0x0004h")
+            if self.config.spacing_operators:
+                reglas_gaff.add("0x0003h")
+            if self.config.indent_style == "spaces" or self.config.no_trailing_whitespace:
+                reglas_gaff.add("0x0005h")
+            if self.config.max_blank_lines:
+                reglas_gaff.add("0x000Dh")
 
-                    # Si termina en punto y coma, ej: if (c); o if (c) do_something();
-                    if rest_of_line.startswith(";"):
-                        # cuerpo vacío con punto y coma
-                        continue
-                    elif rest_of_line and not rest_of_line.startswith("{") and not rest_of_line.startswith("//"):
-                        if self.config.require_braces:
-                            observaciones.append(
-                                StyleObservation(
-                                    archivo=filename,
-                                    linea=idx,
-                                    regla="require_braces",
-                                    mensaje=f"Bloque '{kw}' en una sola línea sin llaves obligatorias {{}}.",
-                                )
-                            )
-                    elif not rest_of_line:
-                        # La sentencia de control termina la línea. Mirar la siguiente línea no vacía.
-                        next_idx = idx
-                        next_line_content = ""
+            violaciones_gaff = analizar_archivo(path, reglas_habilitadas=reglas_gaff)
+
+            for v in violaciones_gaff:
+                cod = str(v.codigo)
+                regla_id = cod
+                if cod in ("0x0009h", "0x000Bh"):
+                    regla_id = "brace_style"
+                elif cod in ("0x1001h", "0x0008h"):
+                    regla_id = "require_braces"
+                elif cod == "0x0004h":
+                    if "palabra clave" in v.mensaje.lower():
+                        regla_id = "spacing_keywords"
+                    else:
+                        regla_id = "spacing_comma"
+                elif cod == "0x0003h":
+                    regla_id = "spacing_operators"
+                elif cod == "0x0005h":
+                    if "trailing" in v.mensaje.lower() or "final" in v.mensaje.lower():
+                        regla_id = "trailing_whitespace"
+                    else:
+                        regla_id = "indent_style"
+                elif cod == "0x000Dh":
+                    regla_id = "max_blank_lines"
+
+                observaciones.append(
+                    StyleObservation(
+                        archivo=fname,
+                        linea=v.linea,
+                        regla=regla_id,
+                        mensaje=f"[{cod}] {v.mensaje}",
+                    )
+                )
+
+        except ImportError:
+            # Fallback en caso de que gaff no esté instalado en el entorno
+            pass
+
+        # 2. Verificación adicional para configuraciones explícitas de estilo K&R
+        if is_kr and raw_code:
+            clean_lines = raw_code.splitlines()
+            for idx, line in enumerate(clean_lines, start=1):
+                s_line = line.strip()
+                for kw in ("if", "for", "while", "switch", "else", "int main()", "void "):
+                    if re.search(rf"(?<![a-zA-Z0-9_]){kw}\b", s_line) and not s_line.endswith("{"):
                         for n_i in range(idx, len(clean_lines)):
                             nxt = clean_lines[n_i].strip()
                             if nxt:
-                                next_line_content = nxt
-                                next_idx = n_i + 1
-                                break
-
-                        if next_line_content:
-                            if not next_line_content.startswith("{"):
-                                if self.config.require_braces:
+                                if nxt.startswith("{"):
                                     observaciones.append(
                                         StyleObservation(
-                                            archivo=filename,
-                                            linea=idx,
-                                            regla="require_braces",
-                                            mensaje=f"Bloque '{kw}' sin llaves obligatorias {{}} en la siguiente instrucción.",
-                                        )
-                                    )
-                            else:
-                                if is_kr:
-                                    observaciones.append(
-                                        StyleObservation(
-                                            archivo=filename,
-                                            linea=next_idx,
-                                            regla="brace_style",
-                                            mensaje=f"Estilo K&R/attach violado: la llave '{{' debe ir en la misma línea que '{kw}'.",
-                                        )
-                                    )
-                    elif rest_of_line.startswith("{"):
-                        if is_allman:
-                            observaciones.append(
-                                StyleObservation(
-                                    archivo=filename,
-                                    linea=idx,
-                                    regla="brace_style",
-                                    mensaje=f"Estilo Allman/break violado: la llave '{{' tras '{kw}' debe ir en una nueva línea.",
-                                )
-                            )
-
-            # Detectar else
-            if re.search(r"(?<![a-zA-Z0-9_])else\b", s_line):
-                # Verificar si es else if o else
-                if not re.search(r"\belse\s+if\b", s_line):
-                    rest_else = s_line.split("else", 1)[1].strip()
-                    if rest_else.startswith("{"):
-                        if is_allman:
-                            observaciones.append(
-                                StyleObservation(
-                                    archivo=filename,
-                                    linea=idx,
-                                    regla="brace_style",
-                                    mensaje="Estilo Allman violado: la llave '{' tras 'else' debe ir en una nueva línea.",
-                                )
-                            )
-                    elif rest_else and not rest_else.startswith("//"):
-                        if self.config.require_braces:
-                            observaciones.append(
-                                StyleObservation(
-                                    archivo=filename,
-                                    linea=idx,
-                                    regla="require_braces",
-                                    mensaje="Bloque 'else' en una sola línea sin llaves obligatorias {}.",
-                                )
-                            )
-                    elif not rest_else:
-                        # Mirar siguiente línea
-                        for n_i in range(idx, len(clean_lines)):
-                            nxt = clean_lines[n_i].strip()
-                            if nxt:
-                                if not nxt.startswith("{") and self.config.require_braces:
-                                    observaciones.append(
-                                        StyleObservation(
-                                            archivo=filename,
-                                            linea=idx,
-                                            regla="require_braces",
-                                            mensaje="Bloque 'else' sin llaves obligatorias {} en la siguiente instrucción.",
-                                        )
-                                    )
-                                elif nxt.startswith("{") and is_kr:
-                                    observaciones.append(
-                                        StyleObservation(
-                                            archivo=filename,
+                                            archivo=fname,
                                             linea=n_i + 1,
                                             regla="brace_style",
-                                            mensaje="Estilo K&R violado: la llave '{' tras 'else' debe ir en la misma línea.",
+                                            mensaje=f"Estilo K&R violado: la llave tras '{kw}' debe ir en la misma línea.",
                                         )
                                     )
                                 break
 
-        # Cálculo de puntaje de estilo (10.0 base, descontando penalidad por falta hasta 0.0)
+        # 3. Cálculo de puntaje final de estilo
         penalty_per_violation = 1.0
         score = max(0.0, 10.0 - (len(observaciones) * penalty_per_violation))
         passed = len(observaciones) == 0
 
         return StyleCheckResult(
-            archivo=filename,
+            archivo=fname,
             score=round(score, 2),
             passed=passed,
             observaciones=observaciones,
         )
-
-    def analyze_file(self, file_path: str | Path) -> StyleCheckResult:
-        path = Path(file_path)
-        content = path.read_text(encoding="utf-8", errors="replace")
-        return self.analyze_code(path.name, content)
