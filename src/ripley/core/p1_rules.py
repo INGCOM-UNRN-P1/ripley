@@ -107,6 +107,13 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         description="Ubicar las llaves de apertura y cierre en líneas separadas alineadas con la instrucción de control.",
         severity="ESTILO",
     ),
+    "0x0037h": P1Rule(
+        code="0x0037h",
+        category="Sintaxis y Nomenclatura",
+        title="Evitá identificadores genéricos con sufijo numérico (numero1, num_1, etc.)",
+        description="Los identificadores genéricos seguidos de un número (como 'numero1', 'num_1', 'var1', 'dato1') denotan una elección pobre de nombres.",
+        severity="ADVERTENCIA",
+    ),
 
     # 0x10XXh: Estructuras de Control y Lazos
     "0x1001h": P1Rule(
