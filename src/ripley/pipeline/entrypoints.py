@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
-from ripley.core.entrypoints import DiscoveredPlugin, discover_entrypoint_plugins
+from ripley.core.entrypoints import (
+    DiscoveredPlugin,
+    SatellitePluginAdapter,
+    discover_entrypoint_plugins,
+    get_satellite_plugin,
+)
 
-__all__ = ["DiscoveredPlugin", "discover_entrypoint_plugins"]
+__all__ = [
+    "DiscoveredPlugin",
+    "SatellitePluginAdapter",
+    "discover_entrypoint_plugins",
+    "get_satellite_plugin",
+]
 
