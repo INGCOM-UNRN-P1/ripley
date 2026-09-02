@@ -100,6 +100,8 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
         raw_obs.get("rule_name")
         or raw_obs.get("titulo")
         or raw_obs.get("title")
+        or (f"Violación de Encapsulamiento TDA: {raw_obs['tda']}" if "tda" in raw_obs else None)
+        or (f"Violación de Encapsulamiento TDA: {raw_obs['tda_name']}" if "tda_name" in raw_obs else None)
         or raw_obs.get("symbol")
         or rule_code
     )
@@ -259,6 +261,7 @@ class SatellitePluginAdapter:
             res.get("observaciones")
             or res.get("issues")
             or res.get("diagnosticos")
+            or res.get("violations")
             or []
         )
         norm_obs = [normalize_finding(o, self.name) for o in raw_obs]
@@ -357,11 +360,12 @@ class SatellitePluginAdapter:
             data.get("observaciones")
             or data.get("issues")
             or data.get("diagnosticos")
+            or data.get("violations")
             or []
         )
         norm_obs = [normalize_finding(o, self.name) for o in raw_obs]
 
-        ok_val = data.get("ok", data.get("exito", proc.returncode == 0))
+        ok_val = bool(data.get("ok", data.get("exito", data.get("passed", proc.returncode == 0))))
         return {
             "ok": ok_val,
             "passed": ok_val,
@@ -370,7 +374,7 @@ class SatellitePluginAdapter:
             "raw_stdout": stdout,
             "raw_stderr": proc.stderr,
             "return_code": proc.returncode,
-            **{k: v for k, v in data.items() if k not in ("observaciones", "issues", "diagnosticos")},
+            **{k: v for k, v in data.items() if k not in ("observaciones", "issues", "diagnosticos", "violations")},
         }
 
     def _handle_missing_tool(self, workspace: Path, strict: bool = False) -> Dict[str, Any]:
