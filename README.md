@@ -4,11 +4,34 @@ Motor de análisis estático, reglas de cátedra P1 (0xXXXXh), compilación sand
 
 ---
 
-## 🎯 Rol en el Ecosistema
+## 🎯 Alcance
 
-- **`ripley` (Motor & CLI)**: Análisis estático determinista y sin estado (`ripley check`, `ripley analyze`), traducción de errores de GCC en lenguaje llano, auditoría de AST, reglas de estilo, contratos ACSL, sandbox de ejecución y soporte TDD.
-- **Distribución Estudiantil**: Empaquetado autónomo en un único archivo ejecutable sin dependencias externas pesadas (`ripley.pyz`).
-- **Orquestación Masiva**: La gestión de lotes masivos de Moodle, sincronización de repositorios de GitHub Classroom, generación de Pull Requests y detección de plagio a nivel cohorte es delegada al orquestador docente **`dredd`**.
+### Qué cubre
+- Microkernel central y orquestador pedagógico de análisis estático y reglas de cátedra de Programación 1 (`0xXXXXh`).
+- Publicación y diagnóstico en vivo mediante servidor Language Server Protocol (`ripley lsp`) para VS Code, Neovim y otros editores.
+- Modo pedagógico socrático (`--socratic`) que entrega pistas graduales sin revelar la solución directa.
+- Modo observador en vivo (`ripley watch`) para desarrollo guiado por pruebas (TDD).
+- Generación de reportes unificados en consola Rich, formato Markdown y SARIF v2.1.0 estándar.
+- Delegación del 100% de verificaciones y análisis profundos en plugins satélites especializados (`SatellitePluginAdapter`).
+
+### Qué no cubre (Límites y Delegación)
+- Implementación monolítica de análisis específicos (delega en `gaff`, `spunkmeyer`, `kaneda`, `wierzbowski`, `zhora`, `brett`, `motoko`, etc.).
+- Compilación directa de código (delega en `daedalus`).
+- Ejecución en sandbox (delega en `nostromo`).
+- Calificación masiva de entregas de cursos (delega en `dredd`).
+
+---
+
+## 📋 Requisitos
+
+### Requisitos de Sistema y Entorno
+- Multiplataforma (Linux, Windows con MSYS2/WSL, macOS). Python >= 3.10.
+
+### Dependencias Externas y Binarios
+- `gcc`, y herramientas satélites en PATH o virtualenv (`daedalus`, `nostromo`).
+
+### Integración en el Ecosistema
+- CLI `ripley` y `ripley-check`. Empaquetable como zipapp autónomo (`ripley.pyz`). Subcomando `ripley doctor`.
 
 ---
 
@@ -41,7 +64,7 @@ El workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) pub
 - **Disparo**: push de un tag `v*` (ej: `git tag v1.0.0 && git push origin v1.0.0`) o ejecución manual (`workflow_dispatch`).
 - **Pipeline**: compila `dist/ripley.pyz` (+ alias `ripley_check.pyz`) con `scripts/build_zipapp.py`, verifica que el zipapp sea ejecutable y responde, genera `SHA256SUMS`.
 - **Publicación**: con tag crea un GitHub Release con los tres assets y notas automáticas; sin tag deja los artefactos en el run.
-- **Consumo estable**: el entorno del alumno aprovisiona desde la URL fija `https://github.com/martinvilu/ripley/releases/latest/download/ripley.pyz` (usada por `entorno/bin/update-env.sh`, `setup.ps1` y `plantilla-TP/tp.sh`), por lo que el nombre del artefacto no debe cambiarse.
+- **Consumo estable**: el entorno del alumno aprovisiona desde la URL fija `https://github.com/ingcom-unrn-p1/ripley/releases/latest/download/ripley.pyz` (usada por `entorno/bin/update-env.sh`, `setup.ps1` y `plantilla-TP/tp.sh`), por lo que el nombre del artefacto no debe cambiarse.
 
 ---
 
