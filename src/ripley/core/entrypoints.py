@@ -87,6 +87,52 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
 }
 
 
+def extract_raw_observations(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extrae la lista de observaciones/violaciones/antipatrones/vulnerabilidades de la salida de un plugin."""
+    raw_obs: List[Dict[str, Any]] = []
+    keys = (
+        "observaciones",
+        "issues",
+        "diagnosticos",
+        "violations",
+        "violaciones",
+        "antipatrones",
+        "vulnerabilidades",
+        "hallazgos",
+        "findings",
+        "auditorias",
+        "structs",
+    )
+    for k in keys:
+        v = data.get(k)
+        if isinstance(v, list):
+            for item in v:
+                if isinstance(item, dict):
+                    raw_obs.append(item)
+
+    if "archivos" in data and isinstance(data["archivos"], list):
+        for arch in data["archivos"]:
+            if isinstance(arch, dict):
+                for subk in ("violaciones", "observaciones", "issues", "violations", "antipatrones", "vulnerabilidades"):
+                    subv = arch.get(subk)
+                    if isinstance(subv, list):
+                        for item in subv:
+                            if isinstance(item, dict):
+                                raw_obs.append(item)
+
+    if "files" in data and isinstance(data["files"], list):
+        for f in data["files"]:
+            if isinstance(f, dict):
+                for subk in ("violaciones", "observaciones", "issues", "violations", "antipatrones", "vulnerabilidades"):
+                    subv = f.get(subk)
+                    if isinstance(subv, list):
+                        for item in subv:
+                            if isinstance(item, dict):
+                                raw_obs.append(item)
+
+    return raw_obs
+
+
 def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, Any]:
     """Adapta cualquier observación devuelta por plugins (RAM o CLI) al esquema canónico de Ripley."""
     rule_code = str(
@@ -94,12 +140,14 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
         or raw_obs.get("codigo")
         or raw_obs.get("code")
         or raw_obs.get("rule_id")
+        or raw_obs.get("alias")
         or source_plugin
     )
     rule_name = str(
         raw_obs.get("rule_name")
         or raw_obs.get("titulo")
         or raw_obs.get("title")
+        or raw_obs.get("nombre")
         or (f"Violación de Encapsulamiento TDA: {raw_obs['tda']}" if "tda" in raw_obs else None)
         or (f"Violación de Encapsulamiento TDA: {raw_obs['tda_name']}" if "tda_name" in raw_obs else None)
         or raw_obs.get("symbol")
@@ -122,7 +170,7 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
     f_name = Path(raw_file).name if raw_file else ""
     line = int(raw_obs.get("line") or raw_obs.get("linea") or 0)
     col = int(raw_obs.get("column") or raw_obs.get("columna") or 0)
-    msg = str(raw_obs.get("message") or raw_obs.get("mensaje") or "")
+    msg = str(raw_obs.get("message") or raw_obs.get("mensaje") or raw_obs.get("explicacion") or "")
     sug = str(raw_obs.get("suggestion") or raw_obs.get("sugerencia") or "")
 
     return {
@@ -257,13 +305,7 @@ class SatellitePluginAdapter:
         if not isinstance(res, dict):
             res = {"ok": True, "observaciones": []}
 
-        raw_obs = (
-            res.get("observaciones")
-            or res.get("issues")
-            or res.get("diagnosticos")
-            or res.get("violations")
-            or []
-        )
+        raw_obs = extract_raw_observations(res)
         norm_obs = [normalize_finding(o, self.name) for o in raw_obs]
         res["observaciones"] = norm_obs
         res["issues"] = norm_obs
@@ -320,12 +362,7 @@ class SatellitePluginAdapter:
                 if proc.stdout:
                     try:
                         data = json.loads(proc.stdout.strip())
-                        raw_obs = (
-                            data.get("observaciones")
-                            or data.get("issues")
-                            or data.get("diagnosticos")
-                            or []
-                        )
+                        raw_obs = extract_raw_observations(data)
                         all_obs.extend([normalize_finding(o, self.name) for o in raw_obs])
                         if not data.get("ok", data.get("exito", True)):
                             all_ok = False
@@ -356,13 +393,7 @@ class SatellitePluginAdapter:
             return {"ok": True, "observaciones": [], "issues": []}
 
         data = json.loads(stdout)
-        raw_obs = (
-            data.get("observaciones")
-            or data.get("issues")
-            or data.get("diagnosticos")
-            or data.get("violations")
-            or []
-        )
+        raw_obs = extract_raw_observations(data)
         norm_obs = [normalize_finding(o, self.name) for o in raw_obs]
 
         ok_val = bool(data.get("ok", data.get("exito", data.get("passed", proc.returncode == 0))))
