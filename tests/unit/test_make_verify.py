@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from ripley.tools.makefile import (
+from ripley.core.makefile import (
     MakefileAnalyzer,
     render_ripley_mk,
     suggest_sources,

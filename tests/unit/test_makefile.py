@@ -4,7 +4,7 @@ import shutil
 
 import pytest
 
-from ripley.tools.makefile import MakefileAnalyzer, make_build
+from ripley.core.makefile import MakefileAnalyzer, make_build
 
 
 def _gcc_make() -> bool:

@@ -3,7 +3,7 @@
 from pathlib import Path
 import subprocess
 
-from ripley.tools.compiler import Compiler
+from ripley.core.compiler import Compiler
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
 
 

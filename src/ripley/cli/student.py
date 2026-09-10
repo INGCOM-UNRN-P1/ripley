@@ -360,7 +360,7 @@ def cmd_watch(
 ) -> None:
     """Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir)."""
     from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
-    from ripley.tools.watcher import WatchSession
+    from ripley.core.watcher import WatchSession
 
     effective_paths = paths if paths else [Path(".")]
     session = WatchSession(effective_paths, interval_sec=interval)
@@ -388,7 +388,7 @@ def cmd_watch(
 
         compiler_cfg = (manifest or {}).get("compiler", {})
         from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
-        from ripley.tools.compiler import Compiler
+        from ripley.core.compiler import Compiler
 
         binary = Path(".ripley_watch_bin")
         compiler = Compiler(
@@ -412,8 +412,8 @@ def cmd_watch(
         fallos = 0
         if bundle_payload:
             from ripley.config import LimitsConfig as _L
-            from ripley.tools.runner import DynamicTestRunner
-            from ripley.tools.testcases import TestCaseInfo
+            from ripley.core.runner import DynamicTestRunner
+            from ripley.core.testcases import TestCaseInfo
             import tempfile
 
             runner = DynamicTestRunner(_L(timeout_segundos=5))
@@ -537,7 +537,7 @@ def cmd_plugins_dispatch(
         import tempfile
 
         from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
-        from ripley.tools.compiler import Compiler
+        from ripley.core.compiler import Compiler
 
         compiler = Compiler(
             CompilerConfig(executable="gcc", flags=["-std=c11", "-Wall"]),
@@ -754,7 +754,7 @@ def cmd_check(
 
     # 3.b ub-sentinel: comportamiento indefinido (opcional)
     if strict_ub:
-        from ripley.tools.ub_sentinel import auditar_ub
+        from ripley.core.ub_sentinel import auditar_ub
 
         base_ub = target if target.is_dir() else target.parent
         fuentes_ub = [base_ub / rel for rel in result.c_files]

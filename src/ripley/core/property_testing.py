@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 from typing import List, Optional, Tuple
 
-from ripley.tools.compiler import Compiler
+from ripley.core.compiler import Compiler
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
 
 

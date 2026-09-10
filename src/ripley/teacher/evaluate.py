@@ -14,7 +14,7 @@ from ripley.pipeline.checks import *  # noqa: F401,F403  (registra el catálogo)
 from ripley.pipeline.registry import iter_uniform_static
 
 from ripley.core.callgraph import CallGraphGenerator
-from ripley.tools.compiler import CompilationResult, Compiler
+from ripley.core.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.teacher.db import DatabaseManager
 from ripley.core.diffing import generate_unified_diff
@@ -57,11 +57,11 @@ class MappingStore:
 
 from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 from ripley.core.p1_rules import P1RuleChecker
-from ripley.tools.property_testing import PropertyTestRunner
-from ripley.tools.pure_functions import PureFunctionAnalyzer
+from ripley.core.property_testing import PropertyTestRunner
+from ripley.core.pure_functions import PureFunctionAnalyzer
 from ripley.teacher.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
 from ripley.core.restrictions import CodeRestrictionsValidator
-from ripley.tools.runner import (
+from ripley.core.runner import (
     CppcheckResult,
     CppcheckRunner,
     CustomToolResult,
@@ -74,7 +74,7 @@ from ripley.tools.runner import (
 from ripley.core.security import SecurityScanner
 from ripley.core.semantic_diff import extract_c_functions
 from ripley.core.style import StyleCheckResult, StyleAnalyzer
-from ripley.tools.testcases import discover_testcases
+from ripley.core.testcases import discover_testcases
 
 
 @dataclass

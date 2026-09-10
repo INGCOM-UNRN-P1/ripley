@@ -1,6 +1,6 @@
 """Unit tests for testcase management module."""
 
-from ripley.tools.testcases import (
+from ripley.core.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
     discover_testcases,

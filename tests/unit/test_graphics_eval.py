@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from ripley.config import GraphicsConfig
-from ripley.tools.graphics_eval import (
+from ripley.core.graphics_eval import (
     GraphicsEvaluator,
     compare_images,
     pick_display,
@@ -105,7 +105,7 @@ def test_root_capture_pipeline_self_compare(tmp_path):
         import subprocess
         import time
 
-        from ripley.tools.graphics_eval import pick_display
+        from ripley.core.graphics_eval import pick_display
 
         n = pick_display(self.cfg.display_base)
         display = f":{n}"

@@ -2,7 +2,7 @@
 
 import shutil
 
-from ripley.formal_contracts import FormalContractAnalyzer
+from ripley.core.formal_contracts import FormalContractAnalyzer
 
 
 def test_extracts_complete_contracts():

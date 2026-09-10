@@ -20,8 +20,7 @@ from ripley.teacher.practice import (
     list_practices,
     sync_practice_testcases,
 )
-from ripley.tools.fuzzing import Fuzzer
-from ripley.tools.testcases import (
+from ripley.core.testcases import (
     check_testcases_integrity,
     create_testcase_skeleton,
     discover_testcases,
@@ -499,7 +498,7 @@ def cmd_practica_graphics_capture(
     import shlex
 
     from ripley.config import load_config
-    from ripley.tools.graphics_eval import GraphicsEvaluator
+    from ripley.core.graphics_eval import GraphicsEvaluator
 
     cfg = load_config().graphics
     evaluator = GraphicsEvaluator(cfg)
@@ -537,7 +536,7 @@ def cmd_practica_graphics_eval(
     import shlex
 
     from ripley.config import load_config
-    from ripley.tools.graphics_eval import GraphicsEvaluator
+    from ripley.core.graphics_eval import GraphicsEvaluator
 
     cfg = load_config().graphics
     if not cfg.enabled:

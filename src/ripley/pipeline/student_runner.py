@@ -18,10 +18,10 @@ from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
 import ripley.pipeline.checks  # noqa: F401  (pobla el registro)
 from ripley.pipeline.plugins import HOOKS, PluginContext, PluginManager
 from ripley.pipeline.registry import all_checks, get, is_runnable, iter_uniform_static
-from ripley.tools.compiler import Compiler
-from ripley.tools.makefile import make_build
-from ripley.tools.runner import DynamicTestRunner
-from ripley.tools.testcases import TestCaseInfo
+from ripley.core.compiler import Compiler
+from ripley.core.makefile import make_build
+from ripley.core.runner import DynamicTestRunner
+from ripley.core.testcases import TestCaseInfo
 
 
 @dataclass

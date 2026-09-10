@@ -3,7 +3,7 @@
 import time
 from pathlib import Path
 
-from ripley.tools.watcher import (
+from ripley.core.watcher import (
     ChangeSet,
     WatchSession,
     collect_source_files,

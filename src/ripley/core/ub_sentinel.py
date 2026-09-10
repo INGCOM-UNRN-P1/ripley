@@ -27,8 +27,8 @@ from typing import List, Optional, Sequence
 
 from ripley.core.engine import compile_sources
 from ripley.core.security import strip_c_comments_and_strings
-from ripley.tools.formal_contracts import FormalContractAnalyzer
-from ripley.tools.sanitizers import SanitizerAnalyzer
+from ripley.core.formal_contracts import FormalContractAnalyzer
+from ripley.core.sanitizers import SanitizerAnalyzer
 
 FLAGS_UB_N1 = ["-fsanitize=undefined,address,leak", "-fno-sanitize-recover=all", "-ftrapv"]
 FLAGS_TSAN = ["-fsanitize=thread"]

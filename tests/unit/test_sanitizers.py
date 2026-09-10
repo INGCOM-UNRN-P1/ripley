@@ -1,6 +1,6 @@
 """Unit tests for UBSan and Uninitialized variable analyzer."""
 
-from ripley.tools.sanitizers import SanitizerAnalyzer
+from ripley.core.sanitizers import SanitizerAnalyzer
 
 
 def test_parse_compiler_uninitialized_warnings():

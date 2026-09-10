@@ -1,6 +1,6 @@
 """Unit tests for specialized diagnostics (Stack Overflow, Stdin Deadlock, Dangling Pointers)."""
 
-from ripley.tools.diagnostics import (
+from ripley.core.diagnostics import (
     DiagnosisType,
     detect_static_dangling_pointers,
     diagnose_runtime_crash,

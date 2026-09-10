@@ -20,15 +20,14 @@ import pytest
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "ripley"
 
-STUDENT_ZONES = ["models", "core", "tools", "pipeline"]
+STUDENT_ZONES = ["models", "core", "pipeline"]
 FORBIDDEN_IN_STUDENT = ("ripley.teacher",)
 FORBIDDEN_TEACHER_DEPS = ("jinja2", "slugify", "tomli_w")
 
 LAYER_RULES = {
-    "core": ("ripley.tools", "ripley.teacher", "ripley.pipeline"),
-    "tools": ("ripley.teacher", "ripley.pipeline"),
+    "core": ("ripley.teacher", "ripley.pipeline"),
     "pipeline": ("ripley.teacher",),
-    "models": ("ripley.core", "ripley.tools", "ripley.pipeline", "ripley.teacher"),
+    "models": ("ripley.core", "ripley.pipeline", "ripley.teacher"),
 }
 
 

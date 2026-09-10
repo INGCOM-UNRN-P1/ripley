@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 from typing import List, Optional
 
-from ripley.tools.compiler import CompilationResult, Compiler
+from ripley.core.compiler import CompilationResult, Compiler
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
 
 

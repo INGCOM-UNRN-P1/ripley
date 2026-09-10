@@ -32,7 +32,7 @@ except ImportError:
 from slugify import slugify
 
 from ripley.config import RipleyConfig, load_config
-from ripley.tools.testcases import create_testcase_skeleton
+from ripley.core.testcases import create_testcase_skeleton
 
 
 @dataclass

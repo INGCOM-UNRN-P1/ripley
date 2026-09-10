@@ -10,10 +10,10 @@ import subprocess
 import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
-from ripley.tools.compiler import set_process_limits
+from ripley.core.compiler import set_process_limits
 from ripley.config import CustomToolConfig, CppcheckConfig, LimitsConfig, RubricConfig, ValgrindConfig
-from ripley.tools.diagnostics import DiagnosisType, diagnose_runtime_crash
-from ripley.tools.testcases import TestCaseInfo
+from ripley.core.diagnostics import DiagnosisType, diagnose_runtime_crash
+from ripley.core.testcases import TestCaseInfo
 
 
 @dataclass
