@@ -665,13 +665,17 @@ def cmd_check(
     ub_timeout: int = typer.Option(30, "--ub-timeout", help="Timeout en segundos por testcase del ub-sentinel."),
     html: Optional[Path] = typer.Option(None, "--html", help="Generar informe interactivo HTML con badges de cátedra."),
     output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", "-o", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
+    profile: str = typer.Option("strict", "--profile", "-p", help="Perfil de rigurosidad: 'strict', 'relaxed' o 'exam'."),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Modo silencioso sin volcado a consola (para pre-commit hooks)."),
+    exit_zero: bool = typer.Option(False, "--exit-zero", help="Forzar código de salida 0 incluso ante advertencias o fallas."),
 ) -> None:
     """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
     from ripley.core.engine import analyze_target
 
     if not target.exists():
-        console.print(f"[bold red]Ruta inexistente: {target}[/bold red]")
-        raise typer.Exit(code=1)
+        if not quiet:
+            console.print(f"[bold red]Ruta inexistente: {target}[/bold red]")
+        raise typer.Exit(code=0 if exit_zero else 1)
 
     result = analyze_target(target)
 
@@ -679,8 +683,9 @@ def cmd_check(
         md_text = generar_seccion_markdown(result)
         output_md.parent.mkdir(parents=True, exist_ok=True)
         output_md.write_text(md_text, encoding="utf-8")
-        console.print(f"[green]✓ Sección Markdown generada en:[/green] [cyan]{output_md}[/cyan]")
-        raise typer.Exit(code=0 if result.compilation.get("success", False) else 1)
+        if not quiet:
+            console.print(f"[green]✓ Sección Markdown generada en:[/green] [cyan]{output_md}[/cyan]")
+        raise typer.Exit(code=0 if (exit_zero or result.compilation.get("success", False)) else 1)
 
     if output_format.lower() == "sarif":
         from ripley.core.sarif import exportar_sarif
@@ -696,105 +701,107 @@ def cmd_check(
             raise typer.Exit(code=1)
         return
 
-    # Visualización Rich
-    console.print(f"\n[bold cyan]─── Verificación Ripley: {target.name} ───[/bold cyan]\n")
-
-    # 1. Compilación
     comp = result.compilation
-    if comp.get("success"):
-        console.print("  [bold green]✓ Compilación GCC / Clang:[/bold green] Exitosa sin errores bloqueantes.")
-    else:
-        console.print("  [bold red]✗ Fallo de Compilación:[/bold red]")
-        if comp.get("human_summary"):
-            console.print(f"    [yellow]{comp['human_summary']}[/yellow]")
-        for d in comp.get("translated_diagnostics", []):
-            console.print(f"    · [bold]{d.get('file')}:{d.get('line')}[/bold] [{d.get('severity')}] {d.get('translated_message')}")
-            if d.get("suggestion"):
-                console.print(f"      [dim]💡 {d.get('suggestion')}[/dim]")
-        if comp.get("raw_stderr") and not comp.get("translated_diagnostics"):
-            console.print(f"    [dim]{comp['raw_stderr'][:400]}[/dim]")
-
-    # 2. Reglas AST y Calidad
     findings = result.ast_findings
-    if findings:
-        table = Table(title="Hallazgos de Calidad, Reglas P1 y AST")
-        table.add_column("Archivo:Línea", style="cyan", justify="left")
-        table.add_column("Regla", style="bold")
-        table.add_column("Severidad", justify="center")
-        table.add_column("Diagnóstico y Sugerencia Pedagógica")
-
-        for f in findings:
-            sev = f.get("severity", "ADVERTENCIA")
-            color = "red" if sev == "ERROR" else ("yellow" if "WARN" in sev or "ADV" in sev else "blue")
-            msg = f"{f.get('message')}\n[dim]💡 {f.get('suggestion')}[/dim]" if f.get("suggestion") else f.get("message")
-            table.add_row(
-                f"{f.get('file')}:{f.get('line')}",
-                f.get("rule_id"),
-                f"[{color}]{sev}[/{color}]",
-                msg,
-            )
-        console.print("\n")
-        console.print(table)
-    else:
-        console.print("  [bold green]✓ Reglas de Estilo y AST:[/bold green] Sin observaciones.")
-
-    # 3. Pruebas y Memoria
     tests = result.tests
-    if tests.get("total", 0) > 0:
-        passed = tests.get("passed", 0)
-        total = tests.get("total", 0)
-        color = "green" if passed == total else "red"
-        console.print(f"\n  [bold]Pruebas Funcionales:[/bold] [{color}]{passed}/{total} aprobadas[/{color}]")
-        for tc in tests.get("cases", []):
-            status = "[green]PASÓ[/green]" if tc.get("passed") else "[red]FALLÓ[/red]"
-            leak = " [bold red][Fuga de Memoria][/bold red]" if tc.get("memory_leak") else ""
-            console.print(f"    · {tc.get('name')}: {status}{leak}")
-            if not tc.get("passed") and tc.get("sanitizer_error"):
-                console.print(f"      [dim red]{tc.get('sanitizer_error')[:300]}[/dim red]")
 
-    # 3.b ub-sentinel: comportamiento indefinido (opcional)
-    if strict_ub:
-        from ripley.core.ub_sentinel import auditar_ub
+    # Visualización Rich
+    if not quiet:
+        console.print(f"\n[bold cyan]─── Verificación Ripley: {target.name} ───[/bold cyan]\n")
 
-        base_ub = target if target.is_dir() else target.parent
-        fuentes_ub = [base_ub / rel for rel in result.c_files]
-        casos = sorted((base_ub / "tests").glob("caso_*.in")) if (base_ub / "tests").is_dir() else []
-        reporte_ub = auditar_ub(fuentes_ub, casos, nivel_maximo=ub_level, timeout=ub_timeout)
-        console.print(f"\n[bold]ub-sentinel[/bold] — {reporte_ub.resumen()}")
-        for h in reporte_ub.hallazgos:
-            sev_color = "red" if h.severidad == "ERROR" else "yellow"
-            donde = f"{h.archivo}:{h.linea}" if h.linea else str(h.archivo)
-            console.print(f"  [{sev_color}]N{h.nivel}·{h.categoria}[/{sev_color}] {donde}: {h.mensaje}")
-            if h.sugerencia:
-                console.print(f"    [dim]💡 {h.sugerencia}[/dim]")
-        if not reporte_ub.hallazgos and not reporte_ub.omitidos:
-            console.print("  [green]✓ Sin comportamiento indefinido detectado.[/green]")
-        if reporte_ub.hay_errores:
-            result.metrics["ast_errors_count"] = result.metrics.get("ast_errors_count", 0) + len(reporte_ub.errores)
-
-    # 4. complexity-bench: verificar cota asintótica exigida (opcional)
-    if bench:
-        if not comp.get("success"):
-            console.print("[yellow]--bench omitido: el proyecto no compila.[/yellow]")
+        # 1. Compilación
+        if comp.get("success"):
+            console.print("  [bold green]✓ Compilación GCC / Clang:[/bold green] Exitosa sin errores bloqueantes.")
         else:
-            from ripley.core.bench import compilar_optimizado, normalizar_cota, verificar_cota
+            console.print("  [bold red]✗ Fallo de Compilación:[/bold red]")
+            if comp.get("human_summary"):
+                console.print(f"    [yellow]{comp['human_summary']}[/yellow]")
+            for d in comp.get("translated_diagnostics", []):
+                console.print(f"    · [bold]{d.get('file')}:{d.get('line')}[/bold] [{d.get('severity')}] {d.get('translated_message')}")
+                if d.get("suggestion"):
+                    console.print(f"      [dim]💡 {d.get('suggestion')}[/dim]")
+            if comp.get("raw_stderr") and not comp.get("translated_diagnostics"):
+                console.print(f"    [dim]{comp['raw_stderr'][:400]}[/dim]")
 
-            base = target if target.is_dir() else target.parent
-            fuentes = [base / rel for rel in result.c_files]
-            bin_bench = Path(tempfile.mkdtemp(prefix="ripley_bench_")) / "bench.bin"
-            ok_compile, err = compilar_optimizado(fuentes, bin_bench, include_dirs=[base])
-            if not ok_compile:
-                console.print(f"[red]complexity-bench: no se pudo compilar optimizado:[/red] {err}")
-                raise typer.Exit(code=1)
-            ok_cota, resumen = verificar_cota(bin_bench, bench, patron_entrada=bench_pattern)
-            console.print(f"\n[bold]complexity-bench[/bold] ({normalizar_cota(bench)}): {resumen}")
-            if ok_cota is False:
-                console.print("[bold red]✗ El algoritmo excede la cota exigida por la consigna.[/bold red]")
-                raise typer.Exit(code=1)
-            if ok_cota is None:
-                console.print("[yellow]⚠ Medición inconclusa: no se penaliza esta vez.[/yellow]")
+        # 2. Reglas AST y Calidad
+        if findings:
+            table = Table(title="Hallazgos de Calidad, Reglas P1 y AST")
+            table.add_column("Archivo:Línea", style="cyan", justify="left")
+            table.add_column("Regla", style="bold")
+            table.add_column("Severidad", justify="center")
+            table.add_column("Diagnóstico y Sugerencia Pedagógica")
+
+            for f in findings:
+                sev = f.get("severity", "ADVERTENCIA")
+                color = "red" if sev == "ERROR" else ("yellow" if "WARN" in sev or "ADV" in sev else "blue")
+                msg = f"{f.get('message')}\n[dim]💡 {f.get('suggestion')}[/dim]" if f.get("suggestion") else f.get("message")
+                table.add_row(
+                    f"{f.get('file')}:{f.get('line')}",
+                    f.get("rule_id"),
+                    f"[{color}]{sev}[/{color}]",
+                    msg,
+                )
+            console.print("\n")
+            console.print(table)
+        else:
+            console.print("  [bold green]✓ Reglas de Estilo y AST:[/bold green] Sin observaciones.")
+
+        # 3. Pruebas y Memoria
+        if tests.get("total", 0) > 0:
+            passed = tests.get("passed", 0)
+            total = tests.get("total", 0)
+            color = "green" if passed == total else "red"
+            console.print(f"\n  [bold]Pruebas Funcionales:[/bold] [{color}]{passed}/{total} aprobadas[/{color}]")
+            for tc in tests.get("cases", []):
+                status = "[green]PASÓ[/green]" if tc.get("passed") else "[red]FALLÓ[/red]"
+                leak = " [bold red][Fuga de Memoria][/bold red]" if tc.get("memory_leak") else ""
+                console.print(f"    · {tc.get('name')}: {status}{leak}")
+                if not tc.get("passed") and tc.get("sanitizer_error"):
+                    console.print(f"      [dim red]{tc.get('sanitizer_error')[:300]}[/dim red]")
+
+        # 3.b ub-sentinel: comportamiento indefinido (opcional)
+        if strict_ub:
+            from ripley.core.ub_sentinel import auditar_ub
+
+            base_ub = target if target.is_dir() else target.parent
+            fuentes_ub = [base_ub / rel for rel in result.c_files]
+            casos = sorted((base_ub / "tests").glob("caso_*.in")) if (base_ub / "tests").is_dir() else []
+            reporte_ub = auditar_ub(fuentes_ub, casos, nivel_maximo=ub_level, timeout=ub_timeout)
+            console.print(f"\n[bold]ub-sentinel[/bold] — {reporte_ub.resumen()}")
+            for h in reporte_ub.hallazgos:
+                sev_color = "red" if h.severidad == "ERROR" else "yellow"
+                donde = f"{h.archivo}:{h.linea}" if h.linea else str(h.archivo)
+                console.print(f"  [{sev_color}]N{h.nivel}·{h.categoria}[/{sev_color}] {donde}: {h.mensaje}")
+                if h.sugerencia:
+                    console.print(f"    [dim]💡 {h.sugerencia}[/dim]")
+            if not reporte_ub.hallazgos and not reporte_ub.omitidos:
+                console.print("  [green]✓ Sin comportamiento indefinido detectado.[/green]")
+            if reporte_ub.hay_errores:
+                result.metrics["ast_errors_count"] = result.metrics.get("ast_errors_count", 0) + len(reporte_ub.errores)
+
+        # 4. complexity-bench: verificar cota asintótica exigida (opcional)
+        if bench:
+            if not comp.get("success"):
+                console.print("[yellow]--bench omitido: el proyecto no compila.[/yellow]")
             else:
-                console.print("[green]✓ La complejidad empírica respeta la cota exigida.[/green]")
+                from ripley.core.bench import compilar_optimizado, normalizar_cota, verificar_cota
+
+                base = target if target.is_dir() else target.parent
+                fuentes = [base / rel for rel in result.c_files]
+                bin_bench = Path(tempfile.mkdtemp(prefix="ripley_bench_")) / "bench.bin"
+                ok_compile, err = compilar_optimizado(fuentes, bin_bench, include_dirs=[base])
+                if not ok_compile:
+                    console.print(f"[red]complexity-bench: no se pudo compilar optimizado:[/red] {err}")
+                    raise typer.Exit(code=1)
+                ok_cota, resumen = verificar_cota(bin_bench, bench, patron_entrada=bench_pattern)
+                console.print(f"\n[bold]complexity-bench[/bold] ({normalizar_cota(bench)}): {resumen}")
+                if ok_cota is False:
+                    console.print("[bold red]✗ El algoritmo excede la cota exigida por la consigna.[/bold red]")
+                    raise typer.Exit(code=1)
+                if ok_cota is None:
+                    console.print("[yellow]⚠ Medición inconclusa: no se penaliza esta vez.[/yellow]")
+                else:
+                    console.print("[green]✓ La complejidad empírica respeta la cota exigida.[/green]")
 
     # Generación de informe HTML opcional
     if html:
@@ -819,25 +826,32 @@ def cmd_check(
             ],
         }
         generate_interactive_html_report(eval_data, html)
-        console.print(f"  [bold green]✓ Reporte HTML interactivo generado en:[/bold green] [cyan]{html}[/cyan]")
+        if not quiet:
+            console.print(f"  [bold green]✓ Reporte HTML interactivo generado en:[/bold green] [cyan]{html}[/cyan]")
 
     # Veredicto final
-    has_errors = not comp.get("success", False) or result.metrics.get("ast_errors_count", 0) > 0 or tests.get("failed", 0) > 0
+    has_errors = not comp.get("success", False) or (profile != "relaxed" and (result.metrics.get("ast_errors_count", 0) > 0 or tests.get("failed", 0) > 0))
+    if profile == "exam":
+        has_errors = has_errors or result.metrics.get("ast_findings_count", 0) > 0
+
     if has_errors:
-        console.print("\n[bold red]✗ Se encontraron errores o violaciones que impiden la entrega.[/bold red]\n")
-        raise typer.Exit(code=1)
-    elif strict and result.metrics.get("ast_findings_count", 0) > 0:
-        console.print("\n[bold yellow]⚠ Modo estricto: Existen advertencias pendientes de corrección.[/bold yellow]\n")
-        raise typer.Exit(code=1)
+        if not quiet:
+            console.print("\n[bold red]✗ Se encontraron errores o violaciones que impiden la entrega.[/bold red]\n")
+        raise typer.Exit(code=0 if exit_zero else 1)
+    elif (strict or profile == "exam") and result.metrics.get("ast_findings_count", 0) > 0:
+        if not quiet:
+            console.print("\n[bold yellow]⚠ Modo estricto: Existen advertencias pendientes de corrección.[/bold yellow]\n")
+        raise typer.Exit(code=0 if exit_zero else 1)
     else:
-        console.print("\n[bold green]✓ Proyecto verificado con éxito y listo para entregar.[/bold green]\n")
+        if not quiet:
+            console.print("\n[bold green]✓ Proyecto verificado con éxito y listo para entregar.[/bold green]\n")
 
 
 @app.command("explain")
 def cmd_explain(
-    rule_code: str = typer.Argument(..., help="Código de regla de cátedra (ej. 0x1001h, 0x0001h o 'all')."),
+    rule_code: str = typer.Argument(..., help="Código de regla de cátedra (ej. 0x1001h, 0x0001h, 'all' o palabra clave de búsqueda)."),
 ) -> None:
-    """Explica una regla pedagógica de cátedra con ejemplos de código correcto vs. código incorrecto."""
+    """Explica una regla pedagógica de cátedra o busca por palabras clave en el catálogo canónico."""
     from rich.panel import Panel
     from rich.syntax import Syntax
     from ripley.core.p1_rules import P1_RULES_CATALOG
@@ -855,6 +869,25 @@ def cmd_explain(
         return
 
     code_norm = rule_code.strip()
+    if not (code_norm.startswith("0x") and code_norm.endswith("h")):
+        # Búsqueda interactiva por palabra clave en el catálogo
+        query = code_norm.lower()
+        coincidencias = [
+            (c, r) for c, r in P1_RULES_CATALOG.items()
+            if query in c.lower() or query in r.title.lower() or query in r.description.lower() or query in r.category.lower() or query in r.rationale.lower()
+        ]
+        if coincidencias:
+            table = Table(title=f"Reglas P1 encontradas para '{rule_code}' ({len(coincidencias)})")
+            table.add_column("Código", style="cyan")
+            table.add_column("Categoría")
+            table.add_column("Severidad", justify="center")
+            table.add_column("Título")
+            for c, r in sorted(coincidencias):
+                sev_color = "red" if r.severity == "ERROR" else ("yellow" if r.severity == "ADVERTENCIA" else "blue")
+                table.add_row(c, r.category, f"[{sev_color}]{r.severity}[/{sev_color}]", r.title)
+            console.print(table)
+            return
+
     if not code_norm.startswith("0x"):
         code_norm = f"0x{code_norm}"
     if not code_norm.endswith("h"):
@@ -863,7 +896,7 @@ def cmd_explain(
     rule = P1_RULES_CATALOG.get(code_norm)
     if not rule:
         console.print(f"[bold red]Regla desconocida: '{rule_code}'[/bold red]")
-        console.print("[dim]Utilizá 'ripley-check explain all' para listar todas las reglas disponibles.[/dim]")
+        console.print("[dim]Utilizá 'ripley-check explain all' para listar todas las reglas disponibles o buscá por palabra clave.[/dim]")
         raise typer.Exit(code=1)
 
     sev_color = "red" if rule.severity == "ERROR" else ("yellow" if rule.severity == "ADVERTENCIA" else "blue")
