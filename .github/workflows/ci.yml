@@ -14,7 +14,7 @@ jobs:
       - uses: astral-sh/setup-uv@v4
         with:
           python-version: "3.12"
-      - run: sudo apt-get update && sudo apt-get install -y valgrind cppcheck bubblewrap
+      - run: sudo apt-get update && sudo apt-get install -y valgrind bubblewrap
       - run: uv sync --extra dev
       - run: uv run pytest -q
 
