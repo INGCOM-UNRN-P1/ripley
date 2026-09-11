@@ -8,7 +8,7 @@ on:
 jobs:
   full-suite:
     name: Suite completa (entorno docente)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
@@ -20,7 +20,7 @@ jobs:
 
   student-minimal:
     name: Entorno estudiante mínimo (ripley-check)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
