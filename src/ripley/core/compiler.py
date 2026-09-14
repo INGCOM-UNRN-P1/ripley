@@ -6,6 +6,7 @@ from pathlib import Path
 import resource
 import shutil
 import subprocess
+import warnings
 from typing import List, Optional, Sequence
 
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
@@ -69,7 +70,11 @@ def set_process_limits(
 
 
 class Compiler:
-    """Compila archivos C de forma segura aplicando restricciones y sanitizadores."""
+    """Compila archivos C de forma segura aplicando restricciones y sanitizadores.
+
+    .. deprecated:: 0.2.0
+       Módulo monolítico de compilación interna deprecado en favor de SatellitePluginAdapter.
+    """
 
     def __init__(
         self,
@@ -77,6 +82,12 @@ class Compiler:
         limits_cfg: LimitsConfig,
         sandbox_cfg: SandboxConfig,
     ) -> None:
+        warnings.warn(
+            "Compiler interno de ripley está deprecado. La compilación debe consolidarse "
+            "a través de SatellitePluginAdapter ('compiler' / daedalus).",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.compiler_cfg = compiler_cfg
         self.limits_cfg = limits_cfg
         self.sandbox_cfg = sandbox_cfg

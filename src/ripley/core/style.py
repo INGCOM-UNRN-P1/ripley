@@ -69,43 +69,41 @@ class StyleAnalyzer:
 
             reglas_excluidas: Set[str] = set()
             if not is_allman:
-                reglas_excluidas.add("0x000Bh")
-                reglas_excluidas.add("0x0009h")
+                reglas_excluidas.update({"0x0007h", "0x000Bh", "0x0009h"})
             if not self.config.require_braces:
-                reglas_excluidas.add("0x1001h")
-                reglas_excluidas.add("0x0008h")
+                reglas_excluidas.update({"0x1001h", "0x0008h"})
             if not self.config.spacing_keywords:
-                reglas_excluidas.add("0x0004h")
+                reglas_excluidas.update({"0x0004h", "0x0011h", "0x0022h"})
             if not self.config.spacing_operators:
-                reglas_excluidas.add("0x0003h")
+                reglas_excluidas.update({"0x0003h"})
             if self.config.indent_style != "spaces" and not self.config.no_trailing_whitespace:
-                reglas_excluidas.add("0x0005h")
+                reglas_excluidas.update({"0x0004h", "0x0005h"})
             if not self.config.max_blank_lines:
-                reglas_excluidas.add("0x000Dh")
+                reglas_excluidas.update({"0x000Dh"})
 
             violaciones_gaff = analizar_archivo(path, reglas_excluidas=reglas_excluidas)
 
             for v in violaciones_gaff:
                 cod = str(v.codigo)
                 regla_id = cod
-                if cod in ("0x0009h", "0x000Bh"):
-                    regla_id = "brace_style"
-                elif cod in ("0x1001h", "0x0008h"):
+                msg_low = v.mensaje.lower()
+                if cod in ("0x1001h", "0x0008h") or "sin bloque de llaves" in msg_low:
                     regla_id = "require_braces"
-                elif cod == "0x0004h":
-                    if "palabra clave" in v.mensaje.lower():
-                        regla_id = "spacing_keywords"
-                    else:
-                        regla_id = "spacing_comma"
-                elif cod == "0x0003h":
+                elif cod in ("0x0007h", "0x0009h", "0x000Bh") or "allman" in msg_low or "estilo allman" in msg_low:
+                    regla_id = "brace_style"
+                elif cod in ("0x0011h", "0x0022h") or (cod == "0x0004h" and "palabra clave" in msg_low) or "palabra clave" in msg_low:
+                    regla_id = "spacing_keywords"
+                elif cod in ("0x0003h",) or "operador" in msg_low:
                     regla_id = "spacing_operators"
-                elif cod == "0x0005h":
-                    if "trailing" in v.mensaje.lower() or "final" in v.mensaje.lower():
+                elif cod in ("0x0004h", "0x0005h"):
+                    if "trailing" in msg_low or "final" in msg_low:
                         regla_id = "trailing_whitespace"
                     else:
                         regla_id = "indent_style"
                 elif cod == "0x000Dh":
                     regla_id = "max_blank_lines"
+                elif "coma" in msg_low:
+                    regla_id = "spacing_comma"
 
                 observaciones.append(
                     StyleObservation(

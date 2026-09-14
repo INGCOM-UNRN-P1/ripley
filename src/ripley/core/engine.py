@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import tempfile
 from typing import Any, Dict, List, Optional
+import warnings
 
 from ripley.core.ast_auditors import (
     ConstCorrectnessLinter,
@@ -353,7 +354,17 @@ def compile_sources(
     extra_flags: Optional[List[str]] = None,
     enable_asan: bool = True,
 ) -> CompilationResult:
-    """Compila las fuentes C con GCC, instrumentando AddressSanitizer y capturando stderr."""
+    """Compila las fuentes C con GCC, instrumentando AddressSanitizer y capturando stderr.
+
+    .. deprecated:: 0.2.0
+       La compilación interna directa está deprecada; debe realizarse a través de
+       SatellitePluginAdapter ('compiler' / daedalus).
+    """
+    warnings.warn(
+        "compile_sources interno está deprecado; la compilación se consolida vía SatellitePluginAdapter ('compiler' / daedalus).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     gcc = shutil.which("gcc")
     if not gcc:
         return CompilationResult(
