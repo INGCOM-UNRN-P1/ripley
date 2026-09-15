@@ -628,7 +628,7 @@ def cmd_plugins_git_hook(
 
 def generar_seccion_markdown(result) -> str:
     """Genera sección de auditoría estática, reglas P1 y compilación de Ripley para Dredd."""
-    lines = ["## Evaluación Pedagógica Integral (Ripley)\n"]
+    lines = ["<!-- dredd-section: ripley v1.0.0 -->\n## Evaluación Pedagógica Integral (Ripley)\n"]
     comp_ok = result.compilation.get("success", False)
     estado_comp = "✓ Compilación Exitosa" if comp_ok else "❌ Falló Compilación"
     lines.append(f"- **Compilación GCC:** {estado_comp}")
@@ -645,9 +645,12 @@ def generar_seccion_markdown(result) -> str:
         lines.append("| Ubicación | Regla | Severidad | Mensaje / Sugerencia |")
         lines.append("| :--- | :---: | :---: | :--- |")
         for f in result.ast_findings:
-            loc = f"`{Path(f.get('file', '')).name}:{f.get('line', '')}`"
-            sug = f" — *Sugerencia:* {f.get('suggestion')}" if f.get("suggestion") else ""
-            lines.append(f"| {loc} | `{f.get('rule_id')}` | **{f.get('severity', 'WARN')}** | {f.get('message')}{sug} |")
+            loc = f"`{Path(f.get('file', '')).name}:{f.get('line', '')}`".replace("|", "\\|")
+            sug = f" — *Sugerencia:* {f.get('suggestion')}".replace("|", "\\|") if f.get("suggestion") else ""
+            rule_id = str(f.get("rule_id", "")).replace("|", "\\|")
+            sev = str(f.get("severity", "WARN")).replace("|", "\\|")
+            msg = str(f.get("message", "")).replace("|", "\\|")
+            lines.append(f"| {loc} | `{rule_id}` | **{sev}** | {msg}{sug} |")
         lines.append("")
     return "\n".join(lines)
 

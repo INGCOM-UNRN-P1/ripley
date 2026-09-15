@@ -78,7 +78,9 @@ class AnalysisResult:
     passed: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        d = asdict(self)
+        d["schema_version"] = "1.0.0"
+        return d
 
     def to_json(self, indent: int = 2) -> str:
         return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
