@@ -156,3 +156,76 @@ def test_satellite_plugin_adapter_fail_open_resilience(tmp_path: Path):
     assert "Fallo catastrófico" in obs["message"]
 
 
+def test_fuzzing_entrypoint_resolves_to_drake(monkeypatch):
+    import shutil
+    from ripley.core.entrypoints import SatellitePluginAdapter
+
+    monkeypatch.setattr("shutil.which", lambda cmd: f"/usr/bin/{cmd}" if cmd == "drake" else None)
+
+    adapter = SatellitePluginAdapter(
+        name="fuzzing",
+        entry_point=None,
+        instance=None,
+    )
+    assert adapter.tool_name == "drake"
+    assert adapter.cli_command == "drake"
+    assert adapter.is_available is True
+    assert adapter.execution_mode == "cli"
+
+
+def test_brett_padding_normalization(tmp_path: Path):
+    from ripley.core.entrypoints import SatellitePluginAdapter
+
+    class BrettPlugin:
+        def execute(self, workspace, config):
+            return {
+                "total_structs": 1,
+                "total_wasted_bytes": 12,
+                "structs": [
+                    {
+                        "name": "struct Nodo",
+                        "size_bytes": 32,
+                        "wasted_padding_bytes": 12,
+                        "file": "list.c",
+                        "line": 15,
+                    }
+                ]
+            }
+
+    adapter = SatellitePluginAdapter(name="padding", tool_name="brett", instance=BrettPlugin())
+    res = adapter.execute(tmp_path)
+    assert res["ok"] is True
+    assert len(res["observaciones"]) == 1
+    obs = res["observaciones"][0]
+    assert obs["rule_code"] == "PADDING_INEFFICIENT"
+    assert obs["severity"] == "ADVERTENCIA"
+    assert "12 bytes de padding" in obs["message"]
+    assert obs["line"] == 15
+
+
+def test_wierzbowski_cycles_and_guards_normalization(tmp_path: Path):
+    from ripley.core.entrypoints import SatellitePluginAdapter
+
+    class WierzbowskiPlugin:
+        def execute(self, workspace, config):
+            return {
+                "ok": True,
+                "guard_issues": ["El archivo header.h carece de include guard o #pragma once."],
+                "cycles": [
+                    {
+                        "cycle": ["a.h", "b.h", "a.h"],
+                        "description": "Dependencia circular detectada entre a.h y b.h"
+                    }
+                ]
+            }
+
+    adapter = SatellitePluginAdapter(name="headers_audit", tool_name="wierzbowski", instance=WierzbowskiPlugin())
+    res = adapter.execute(tmp_path)
+    assert res["ok"] is True
+    assert len(res["observaciones"]) == 2
+    codes = {o["rule_code"] for o in res["observaciones"]}
+    assert "GUARD_MISSING" in codes
+    assert "CIRCULAR_DEPENDENCY" in codes
+
+
+

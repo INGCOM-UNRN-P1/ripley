@@ -115,8 +115,27 @@ class StyleAnalyzer:
                 )
 
         except ImportError:
-            # Fallback en caso de que gaff no esté instalado en el entorno
-            pass
+            # Fallback en caso de que gaff no esté instalado en el entorno de ejecución
+            try:
+                from ripley.core.entrypoints import get_satellite_plugin
+                gaff_plugin = get_satellite_plugin("style")
+                if gaff_plugin and gaff_plugin.is_available:
+                    res = gaff_plugin.execute(path)
+                    raw_obs = res.get("observaciones") or res.get("issues") or []
+                    for obs in raw_obs:
+                        cod = str(obs.get("codigo") or obs.get("rule_code") or "style")
+                        msg = str(obs.get("mensaje") or obs.get("message") or "")
+                        linea = int(obs.get("linea") or obs.get("line") or 1)
+                        observaciones.append(
+                            StyleObservation(
+                                archivo=fname,
+                                linea=linea,
+                                regla=cod,
+                                mensaje=f"[{cod}] {msg}",
+                            )
+                        )
+            except Exception:
+                pass
 
         # 2. Verificación adicional para configuraciones explícitas de estilo K&R
         if is_kr and raw_code:

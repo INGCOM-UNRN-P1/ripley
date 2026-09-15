@@ -32,6 +32,20 @@ TOOL_CATALOG: Dict[str, str] = {
     "bishop": "Visualizador pedagógico de memoria Stack & Heap",
     "sebastian": "Analizador de recursión y stack frame",
     "rachel": "Desensamblador y visualizador de jump tables",
+    "wierzbowski": "Auditoría de inclusión de encabezados y dependencias directas (IWYU)",
+    "zhora": "Auditoría de seguridad y paréntesis en macros y preprocesador",
+    "motoko": "Verificación de opacidad y encapsulamiento de Tipos de Datos Abstractos (TDA)",
+    "crowe": "Detección de dependencias y tipos no portables entre plataformas",
+    "tetsuo": "Análisis de mutación y calidad pedagógica de test suites",
+    "vasquez": "Auditoría de fugas de descriptores de archivo y recursos POSIX",
+    "vassili": "Benchmarking pedagógico micro/macro con detección de outliers",
+    "tyrell": "Síntesis de harness de testing y casos de borde",
+    "ferro": "Auditoría de concurrencia y carreras de datos (pthreads)",
+    "parker": "Profiling pedagógico de patrones de acceso a memoria y cache",
+    "dietrich": "Verificación empírica de complejidad algorítmica y orden asintótico",
+    "kane": "Auditoría pedagógica de números mágicos y constantes literales",
+    "corbel": "Validación de esquemas y layouts binarios",
+    "esper": "Análisis pedagógico de generadores pseudoaleatorios y entropía",
 }
 
 

@@ -149,15 +149,31 @@ def run_ast_linters(
             discovered = []
 
         static_plugins = {
-            "style", "antipatterns", "security", "headers_audit",
-            "macro_security", "padding", "tda_encapsulation",
-            "portability", "callgraph", "formal_contracts", "abi_audit"
+            "style", "gaff",
+            "antipatterns", "spunkmeyer",
+            "security", "kaneda",
+            "headers_audit", "wierzbowski",
+            "macro_security", "zhora",
+            "padding", "brett",
+            "tda_encapsulation", "motoko",
+            "portability", "crowe",
+            "callgraph", "giger",
+            "formal_contracts", "callahan",
+            "abi_audit",
+            "magic_numbers", "kane",
+            "concurrency", "ferro",
+            "fd_leaks", "vasquez",
+            "entropy", "esper",
+            "binary_schema", "corbel",
+            "asymptotics", "dietrich",
+            "disassembler", "rachel",
+            "recursion", "sebastian",
         }
 
         for p in discovered:
             if p.name not in static_plugins or not p.is_available:
                 continue
-            if p.name == "style":
+            if p.name in ("style", "gaff"):
                 has_style_plugin = True
 
             try:

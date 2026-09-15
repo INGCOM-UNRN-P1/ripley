@@ -84,16 +84,143 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
         "cli_subcmd": "verify",
         "description": "Verificación formal de contratos y pre/postcondiciones ACSL con Frama-C.",
     },
+    "fuzzing": {
+        "tool": "drake",
+        "cli_cmd": "drake",
+        "cli_subcmd": "check",
+        "description": "Fuzzing guiado por límites y pruebas de robustez contra payloads extremos.",
+    },
+    "sanitizer_translator": {
+        "tool": "tetsuo",
+        "cli_cmd": "tetsuo",
+        "cli_subcmd": "check",
+        "description": "Compilación y ejecución bajo sanitizers (ASan/UBSan) con traducción de reportes.",
+    },
+    "mocks": {
+        "tool": "holden",
+        "cli_cmd": "holden",
+        "cli_subcmd": "list",
+        "description": "Generación de mocks en C e inyección de fallos de asignación y archivos.",
+    },
+    "fault_injection": {
+        "tool": "vasquez",
+        "cli_cmd": "vasquez",
+        "cli_subcmd": "check",
+        "description": "Inyección determinista de fallos de memoria, archivos y condiciones de carrera.",
+    },
+    "mutation_testing": {
+        "tool": "vassili",
+        "cli_cmd": "vassili",
+        "cli_subcmd": "check",
+        "description": "Análisis de mutación y cálculo de mutation score sobre suites de pruebas.",
+    },
+    "dataset_generator": {
+        "tool": "tyrell",
+        "cli_cmd": "tyrell",
+        "cli_subcmd": "generate",
+        "description": "Generador determinista de casos de prueba y datasets sintéticos (.in/.out).",
+    },
+    "hardware_profiler": {
+        "tool": "ferro",
+        "cli_cmd": "ferro",
+        "cli_subcmd": "check",
+        "description": "Perfilado de rendimiento, regresión asintótica O(n) y auditoría de throughput.",
+    },
+    "abi_audit": {
+        "tool": "parker",
+        "cli_cmd": "parker",
+        "cli_subcmd": "check",
+        "description": "Auditoría de ABI, símbolos exportados y visibilidad en bibliotecas compartidas.",
+    },
+    "mcdc_coverage": {
+        "tool": "dietrich",
+        "cli_cmd": "dietrich",
+        "cli_subcmd": "check",
+        "description": "Medición y reporte de cobertura de código estructural (MCDC, ramas, sentencias).",
+    },
+    "binary_io": {
+        "tool": "kane",
+        "cli_cmd": "kane",
+        "cli_subcmd": "check",
+        "description": "Inspección y decodificación estructurada de archivos binarios y endianness.",
+    },
+    "documentation": {
+        "tool": "corbel",
+        "cli_cmd": "corbel",
+        "cli_subcmd": "check",
+        "description": "Verificación y scaffolding de documentación técnica Doxygen y contratos C.",
+    },
+    "gcc_explainer": {
+        "tool": "esper",
+        "cli_cmd": "esper",
+        "cli_subcmd": "catalog",
+        "description": "Catálogo y explicación pedagógica de warnings y optimizaciones de GCC.",
+    },
+    "semantic_diff": {
+        "tool": "weyl",
+        "cli_cmd": "weyl",
+        "cli_subcmd": "check",
+        "description": "Diffing semántico y comparación estructural AST entre entregas y modelos.",
+    },
+    "bishop": {
+        "tool": "bishop",
+        "cli_cmd": "bishop",
+        "cli_subcmd": "audit",
+        "description": "Visualización e inspección dinámica y estática de memoria en Stack y Heap.",
+    },
+    "rachel": {
+        "tool": "rachel",
+        "cli_cmd": "rachel",
+        "cli_subcmd": "check",
+        "description": "Desensamblado e inspección de control de flujo bifurcado y Jump Tables.",
+    },
+    "sebastian": {
+        "tool": "sebastian",
+        "cli_cmd": "sebastian",
+        "cli_subcmd": "check",
+        "description": "Auditoría de funciones recursivas, profundidad de pila y riesgos de stack overflow.",
+    },
 }
 
 
-def extract_raw_observations(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+def extract_raw_observations(data: Union[Dict[str, Any], List[Any]]) -> List[Dict[str, Any]]:
     """Extrae la lista de observaciones/violaciones/antipatrones/vulnerabilidades de la salida de un plugin."""
     raw_obs: List[Dict[str, Any]] = []
+
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, dict):
+                # Soporte de salida de sebastian (funciones analizadas)
+                if "riesgo_overflow" in item:
+                    riesgo = str(item.get("riesgo_overflow", "BAJO")).upper()
+                    if riesgo in ("ALTO", "CRITICO"):
+                        raw_obs.append({
+                            "rule_code": "STACK_OVERFLOW_RISK",
+                            "severity": "ERROR" if riesgo == "CRITICO" else "ADVERTENCIA",
+                            "message": f"Función '{item.get('funcion')}' presenta riesgo {riesgo} de stack overflow.",
+                            "file": item.get("archivo", ""),
+                            "line": int(item.get("linea_inicio", 1)),
+                        })
+                    for rec in item.get("recomendaciones", []):
+                        raw_obs.append({
+                            "rule_code": "RECURSION_RECOMMENDATION",
+                            "severity": "SUGERENCIA",
+                            "message": str(rec),
+                            "file": item.get("archivo", ""),
+                            "line": int(item.get("linea_inicio", 1)),
+                        })
+                elif any(k in item for k in ("rule_code", "codigo", "code", "message", "mensaje")):
+                    raw_obs.append(item)
+        return raw_obs
+
+    if not isinstance(data, dict):
+        return raw_obs
+
     keys = (
         "observaciones",
         "issues",
         "diagnosticos",
+        "diagnostics",
         "violations",
         "violaciones",
         "antipatrones",
@@ -102,6 +229,7 @@ def extract_raw_observations(data: Dict[str, Any]) -> List[Dict[str, Any]]:
         "findings",
         "auditorias",
         "structs",
+        "makefile_issues",
     )
     for k in keys:
         v = data.get(k)
@@ -110,10 +238,28 @@ def extract_raw_observations(data: Dict[str, Any]) -> List[Dict[str, Any]]:
                 if isinstance(item, dict):
                     raw_obs.append(item)
 
+    if "guard_issues" in data and isinstance(data["guard_issues"], list):
+        for g in data["guard_issues"]:
+            raw_obs.append({
+                "rule_code": "GUARD_MISSING",
+                "severity": "ADVERTENCIA",
+                "message": str(g),
+            })
+
+    if "cycles" in data and isinstance(data["cycles"], list):
+        for c in data["cycles"]:
+            if isinstance(c, dict):
+                raw_obs.append({
+                    "rule_code": "CIRCULAR_DEPENDENCY",
+                    "severity": "ERROR",
+                    "message": c.get("description", "Dependencia circular detectada"),
+                    "file": c.get("cycle", [""])[0] if c.get("cycle") else "",
+                })
+
     if "archivos" in data and isinstance(data["archivos"], list):
         for arch in data["archivos"]:
             if isinstance(arch, dict):
-                for subk in ("violaciones", "observaciones", "issues", "violations", "antipatrones", "vulnerabilidades"):
+                for subk in ("violaciones", "observaciones", "issues", "violations", "antipatrones", "vulnerabilidades", "diagnosticos", "diagnostics"):
                     subv = arch.get(subk)
                     if isinstance(subv, list):
                         for item in subv:
@@ -123,7 +269,7 @@ def extract_raw_observations(data: Dict[str, Any]) -> List[Dict[str, Any]]:
     if "files" in data and isinstance(data["files"], list):
         for f in data["files"]:
             if isinstance(f, dict):
-                for subk in ("violaciones", "observaciones", "issues", "violations", "antipatrones", "vulnerabilidades"):
+                for subk in ("violaciones", "observaciones", "issues", "violations", "antipatrones", "vulnerabilidades", "diagnosticos", "diagnostics"):
                     subv = f.get(subk)
                     if isinstance(subv, list):
                         for item in subv:
@@ -135,6 +281,39 @@ def extract_raw_observations(data: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, Any]:
     """Adapta cualquier observación devuelta por plugins (RAM o CLI) al esquema canónico de Ripley."""
+    # Soporte para structs auditados por brett
+    if "wasted_padding_bytes" in raw_obs:
+        wasted = int(raw_obs.get("wasted_padding_bytes", 0))
+        struct_name = str(raw_obs.get("name", "struct"))
+        rule_code = "PADDING_INEFFICIENT" if wasted > 0 else "PADDING_OPTIMAL"
+        rule_name = f"Alineación y Padding: {struct_name}"
+        severity = "ADVERTENCIA" if wasted > 0 else "INFO"
+        msg = str(raw_obs.get("message") or f"Estructura '{struct_name}' desperdicia {wasted} bytes de padding.")
+        sug = str(raw_obs.get("suggestion") or (f"Reordenar campos para ahorrar {wasted} bytes." if wasted > 0 else ""))
+        raw_file = str(raw_obs.get("file_path") or raw_obs.get("file") or raw_obs.get("archivo") or "")
+        f_name = Path(raw_file).name if raw_file else ""
+        line = int(raw_obs.get("line_number") or raw_obs.get("line") or raw_obs.get("linea") or 0)
+        return {
+            "rule_code": rule_code,
+            "rule_name": rule_name,
+            "severity": severity,
+            "file": f_name,
+            "line": line,
+            "column": 0,
+            "message": msg,
+            "suggestion": sug,
+            "source_plugin": source_plugin,
+            "rule_id": rule_code,
+            "codigo": rule_code,
+            "titulo": rule_name,
+            "severidad": severity,
+            "archivo": f_name,
+            "linea": line,
+            "columna": 0,
+            "mensaje": msg,
+            "sugerencia": sug,
+        }
+
     rule_code = str(
         raw_obs.get("rule_code")
         or raw_obs.get("codigo")
@@ -166,10 +345,16 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
     else:
         severity = raw_sev
 
-    raw_file = str(raw_obs.get("file") or raw_obs.get("archivo") or raw_obs.get("location") or "")
+    raw_file = str(
+        raw_obs.get("file")
+        or raw_obs.get("archivo")
+        or raw_obs.get("location")
+        or raw_obs.get("file_path")
+        or ""
+    )
     f_name = Path(raw_file).name if raw_file else ""
-    line = int(raw_obs.get("line") or raw_obs.get("linea") or 0)
-    col = int(raw_obs.get("column") or raw_obs.get("columna") or 0)
+    line = int(raw_obs.get("line") or raw_obs.get("linea") or raw_obs.get("line_number") or 0)
+    col = int(raw_obs.get("column") or raw_obs.get("columna") or raw_obs.get("col_offset") or 0)
     msg = str(raw_obs.get("message") or raw_obs.get("mensaje") or raw_obs.get("explicacion") or "")
     sug = str(raw_obs.get("suggestion") or raw_obs.get("sugerencia") or "")
 
@@ -211,6 +396,24 @@ class SatellitePluginAdapter:
 
     def __post_init__(self) -> None:
         cat_info = SATELLITE_CATALOG.get(self.name, {})
+        if not cat_info:
+            # Buscar si self.name es el nombre del binario o herramienta en el catálogo
+            for k, v in SATELLITE_CATALOG.items():
+                if v.get("tool") == self.name or v.get("cli_cmd") == self.name:
+                    cat_info = v
+                    break
+        if not cat_info and self.entry_point is not None:
+            # Inferir paquete del entrypoint (ej. 'drake.ripley_plugin:DrakePlugin' -> 'drake')
+            mod = getattr(self.entry_point, "module", "") or str(getattr(self.entry_point, "value", ""))
+            pkg = mod.split(".")[0] if mod else ""
+            if pkg:
+                cat_info = SATELLITE_CATALOG.get(pkg, {})
+                if not cat_info:
+                    for k, v in SATELLITE_CATALOG.items():
+                        if v.get("tool") == pkg or v.get("cli_cmd") == pkg:
+                            cat_info = v
+                            break
+
         if not self.tool_name:
             self.tool_name = cat_info.get("tool", self.name)
         if not self.cli_command:
@@ -314,6 +517,9 @@ class SatellitePluginAdapter:
             res["ok"] = res["passed"]
         elif "ok" in res and "passed" not in res:
             res["passed"] = res["ok"]
+        elif "ok" not in res and "passed" not in res:
+            res["ok"] = not any(str(o.get("severity", "")).upper() == "ERROR" for o in norm_obs)
+            res["passed"] = res["ok"]
 
         return res
 
@@ -341,7 +547,7 @@ class SatellitePluginAdapter:
                 str(workspace / "tests") if (workspace / "tests").is_dir() else str(workspace)
             )
             args = [cmd, "check", str(bin_path), str(test_dir), "--json"]
-        elif self.name in ("callgraph", "formal_contracts") and workspace.is_dir():
+        elif self.name in ("callgraph", "formal_contracts", "giger", "callahan", "recursion", "sebastian", "disassembler", "rachel") and workspace.is_dir():
             c_files = manifest_config.get("c_files")
             if not c_files:
                 c_files = list(workspace.glob("*.c")) + list(workspace.glob("src/*.c"))
@@ -362,6 +568,8 @@ class SatellitePluginAdapter:
                 if proc.stdout:
                     try:
                         data = json.loads(proc.stdout.strip())
+                        if isinstance(data, list):
+                            data = {"ok": proc.returncode == 0, "observaciones": data}
                         raw_obs = extract_raw_observations(data)
                         all_obs.extend([normalize_finding(o, self.name) for o in raw_obs])
                         if not data.get("ok", data.get("exito", True)):
@@ -374,6 +582,12 @@ class SatellitePluginAdapter:
                 "observaciones": all_obs,
                 "issues": all_obs,
             }
+        elif self.name in ("abi_audit", "parker"):
+            header = manifest_config.get("header")
+            binary = manifest_config.get("binary")
+            if not header or not binary:
+                return {"ok": True, "observaciones": [], "issues": []}
+            args = [cmd, "audit", str(header), str(binary), "--json"]
         else:
             cat = SATELLITE_CATALOG.get(self.name, {})
             subcmd = cat.get("cli_subcmd", "check")
@@ -393,6 +607,11 @@ class SatellitePluginAdapter:
             return {"ok": True, "observaciones": [], "issues": []}
 
         data = json.loads(stdout)
+        if isinstance(data, list):
+            data = {"ok": proc.returncode == 0, "observaciones": data}
+        elif not isinstance(data, dict):
+            data = {"ok": proc.returncode == 0, "observaciones": []}
+
         raw_obs = extract_raw_observations(data)
         norm_obs = [normalize_finding(o, self.name) for o in raw_obs]
 
