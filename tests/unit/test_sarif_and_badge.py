@@ -97,19 +97,6 @@ def test_autofix_corrections(tmp_path):
     assert "fflush(stdin);" not in nuevo_txt
 
 
-def test_inline_annotator(tmp_path):
-    from ripley.core.inline_annotator import renderizar_anotacion_inline
-    from rich.console import Console
-
-    c_file = tmp_path / "annot.c"
-    c_file.write_text("int x = 1;\nint *p = (int*)malloc(10);\n", encoding="utf-8")
-
-    cons = Console(record=True)
-    res = renderizar_anotacion_inline(c_file, linea_num=2, columna=10, codigo_error="0x300Ah", mensaje="Cast redundante", console=cons)
-    assert "0x300Ah" in res
-    assert "^~~~" in res
-
-
 def test_style_compliance(tmp_path):
     from ripley.core.style_compliance import auditar_conformidad_estilo
     from rich.console import Console

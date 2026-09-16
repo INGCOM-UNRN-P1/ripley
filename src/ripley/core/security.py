@@ -40,6 +40,11 @@ class SecurityScanner:
 
     def __init__(self, config: SecurityConfig) -> None:
         self.config = config
+        try:
+            from ripley.core.entrypoints import get_satellite_plugin
+            self.satellite = get_satellite_plugin("security")
+        except Exception:
+            self.satellite = None
 
     def scan_code(self, filename: str, code: str) -> List[SecurityViolation]:
         violations: List[SecurityViolation] = []

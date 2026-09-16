@@ -477,6 +477,13 @@ class P1RuleObservation:
 class P1RuleChecker:
     """Evaluador exhaustivo de las reglas de estilo y buenas prácticas de Programación I."""
 
+    def __init__(self) -> None:
+        try:
+            from ripley.core.entrypoints import get_satellite_plugin
+            self.satellite = get_satellite_plugin("style")
+        except Exception:
+            self.satellite = None
+
     def analyze(self, code: str, filename: str = "archivo.c") -> List[P1RuleObservation]:
         observations: List[P1RuleObservation] = []
         raw_lines = code.splitlines()

@@ -45,6 +45,13 @@ class StructPaddingAuditor:
     """Detecta estructuras con bytes de relleno (*padding*) que se envían a archivos,
     sockets o pipes sin haber sido inicializadas con memset/zero-init previo."""
 
+    def __init__(self) -> None:
+        try:
+            from ripley.core.entrypoints import get_satellite_plugin
+            self.satellite = get_satellite_plugin("padding")
+        except Exception:
+            self.satellite = None
+
     def _parse_field(self, raw: str) -> Optional[Tuple[str, str]]:
         """Devuelve (tipo_base, declarador) de un campo o None si no es computable."""
         raw = raw.strip()

@@ -27,6 +27,13 @@ class CallGraphResult:
 class CallGraphGenerator:
     """Extrae las relaciones de invocación entre funciones C y genera grafos en Mermaid y DOT."""
 
+    def __init__(self) -> None:
+        try:
+            from ripley.core.entrypoints import get_satellite_plugin
+            self.satellite = get_satellite_plugin("callgraph")
+        except Exception:
+            self.satellite = None
+
     def build_callgraph(self, code: str) -> CallGraphResult:
         functions = extract_c_functions(code)
         defined_names = set(functions.keys())

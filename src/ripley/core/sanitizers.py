@@ -23,21 +23,13 @@ class SanitizerAnalyzer:
     """Audita desbordamientos de enteros (UBSan) y variables no inicializadas."""
 
     def __init__(self) -> None:
-        self.compiler = Compiler(
-            compiler_cfg=CompilerConfig(
-                executable="gcc",
-                flags=[
-                    "-std=c11",
-                    "-Wall",
-                    "-Wextra",
-                    "-Wuninitialized",
-                    "-Wmaybe-uninitialized",
-                    "-fsanitize=signed-integer-overflow,shift,integer-divide-by-zero",
-                ],
-            ),
-            limits_cfg=LimitsConfig(timeout_segundos=5),
-            sandbox_cfg=SandboxConfig(),
-        )
+        try:
+            from ripley.core.entrypoints import get_satellite_plugin
+            self.compiler = get_satellite_plugin("compiler")
+            self.satellite = get_satellite_plugin("sanitizer_translator")
+        except Exception:
+            self.compiler = None
+            self.satellite = None
 
     def parse_compiler_uninitialized_warnings(self, stderr: str) -> List[SanitizerFinding]:
         """Detecta advertencias de variables no inicializadas en la salida del compilador."""

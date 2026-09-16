@@ -1016,34 +1016,6 @@ def cmd_lsp() -> None:
     run_lsp_server_stdio()
 
 
-@app.command("watch")
-def cmd_watch(
-    sources: List[Path] = typer.Argument(..., help="Archivos .c/.h a monitorear continuamente."),
-    interval: float = typer.Option(1.5, "--interval", "-i", help="Intervalo de sondeo en segundos."),
-) -> None:
-    """Monitorea modificaciones en archivos fuente y re-ejecuta auditorías automáticamente."""
-    import time
-    from ripley.core.watcher import ejecutar_ciclo_watch, obtener_mtimes
-
-    valid_sources = [Path(s) for s in sources if Path(s).exists()]
-    if not valid_sources:
-        console.print("[bold red]No se encontraron archivos válidos para monitorear.[/bold red]")
-        raise typer.Exit(code=1)
-
-    mtimes = obtener_mtimes(valid_sources)
-    ejecutar_ciclo_watch(valid_sources, console=console)
-
-    try:
-        while True:
-            time.sleep(interval)
-            nuevos_mtimes = obtener_mtimes(valid_sources)
-            if nuevos_mtimes != mtimes:
-                mtimes = nuevos_mtimes
-                ejecutar_ciclo_watch(valid_sources, console=console)
-    except KeyboardInterrupt:
-        console.print("\n[dim]Watcher detenido por el usuario.[/dim]")
-
-
 @app.command("fix-interactive")
 def cmd_fix_interactive(
     source: Path = typer.Argument(..., help="Archivo .c a corregir interactivamente."),

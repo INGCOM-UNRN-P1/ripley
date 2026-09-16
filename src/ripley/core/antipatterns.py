@@ -17,6 +17,12 @@ from ripley.models import LinterObservation
 from ripley.core.security import strip_c_comments_and_strings
 from ripley.core.semantic_diff import extract_c_functions
 
+try:
+    from ripley.core.entrypoints import get_satellite_plugin
+    _SATELLITE_SPUNKMEYER = get_satellite_plugin("antipatterns")
+except Exception:
+    _SATELLITE_SPUNKMEYER = None
+
 
 def _obs(linter: str, filename: str, line: int, mensaje: str, sugerencia: str,
          severidad: str = "ADVERTENCIA") -> LinterObservation:

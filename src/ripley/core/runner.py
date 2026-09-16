@@ -16,6 +16,23 @@ from ripley.core.diagnostics import DiagnosisType, diagnose_runtime_crash
 from ripley.core.testcases import TestCaseInfo
 
 
+def _try_import_nostromo():
+    try:
+        from nostromo.core.sandbox import ejecutar_aislado
+        return ejecutar_aislado
+    except ImportError:
+        import sys
+        sibling = Path(__file__).resolve().parents[4] / "nostromo" / "src"
+        if sibling.is_dir() and str(sibling) not in sys.path:
+            sys.path.insert(0, str(sibling))
+            try:
+                from nostromo.core.sandbox import ejecutar_aislado
+                return ejecutar_aislado
+            except ImportError:
+                return None
+        return None
+
+
 @dataclass
 class CustomToolResult:
     name: str
@@ -161,6 +178,71 @@ class DynamicTestRunner:
 
         cmd = [str(bin_path)] + cli_args
         start_time = time.perf_counter()
+
+        ejecutar_aislado = _try_import_nostromo()
+        if ejecutar_aislado is not None:
+            try:
+                res = ejecutar_aislado(
+                    binario=bin_path,
+                    args=cli_args,
+                    stdin_texto=stdin_data,
+                    timeout_segundos=float(self.limits_cfg.timeout_segundos),
+                    memoria_mb=self.limits_cfg.limite_memoria_mb,
+                    usar_bwrap=False,
+                )
+                if res.error_tipo == "TIMEOUT":
+                    elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                    diag = diagnose_runtime_crash(
+                        returncode=0,
+                        stdout="",
+                        stderr="",
+                        timeout=True,
+                        input_data=stdin_data,
+                    )
+                    return TestResultDetail(
+                        ejercicio=test_case.exercise,
+                        nombre_caso=test_case.case_name,
+                        argumentos_cli=raw_args_str,
+                        resultado=diag.diagnosis.value,
+                        tiempo_ms=elapsed_ms,
+                        stderr=f"Timeout ({self.limits_cfg.timeout_segundos}s excedidos). {diag.message}",
+                        esperado=expected_out,
+                        pedagogical_hint=diag.pedagogical_hint,
+                    )
+
+                elapsed_ms = res.tiempo_ms
+                is_match = compare_outputs(res.stdout, expected_out, fuzzy=True)
+
+                if res.codigo_retorno != 0:
+                    diag = diagnose_runtime_crash(
+                        returncode=res.codigo_retorno,
+                        stdout=res.stdout,
+                        stderr=res.stderr,
+                        timeout=False,
+                        input_data=stdin_data,
+                    )
+                    result_status = diag.diagnosis.value if diag.diagnosis != DiagnosisType.CLEAN else "ERROR"
+                    pedagogical_hint = diag.pedagogical_hint
+                elif is_match:
+                    result_status = "PASSED"
+                    pedagogical_hint = ""
+                else:
+                    result_status = "FAILED"
+                    pedagogical_hint = "La salida generada difiere de la esperada por el caso de prueba."
+
+                return TestResultDetail(
+                    ejercicio=test_case.exercise,
+                    nombre_caso=test_case.case_name,
+                    argumentos_cli=raw_args_str,
+                    resultado=result_status,
+                    tiempo_ms=elapsed_ms,
+                    stdout=res.stdout,
+                    stderr=res.stderr,
+                    esperado=expected_out,
+                    pedagogical_hint=pedagogical_hint,
+                )
+            except Exception:
+                pass  # Fallback a ejecución local directa
 
         try:
             proc = subprocess.run(

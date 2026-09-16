@@ -33,6 +33,26 @@ class FormalContractAnalyzer:
         return audit_coverage(code)
 
     def run_frama_c(self, source_path: Path | str, timeout_sec: int = 60) -> FramaCResult:
+        try:
+            from callahan.core.acsl import verificar_formal_frama_c
+            rep = verificar_formal_frama_c(Path(source_path))
+            if not rep.frama_c_disponible:
+                return FramaCResult(
+                    available=False,
+                    message="Frama-C no está instalado en el sistema; se omite la demostración automática.",
+                )
+            proved = sum(1 for c in rep.contratos if c.verificado_wp)
+            unproved = sum(1 for c in rep.contratos if not c.verificado_wp)
+            return FramaCResult(
+                available=True,
+                proved_goals=proved,
+                unproved_goals=unproved,
+                raw_output="\n".join(c.mensaje_prover for c in rep.contratos),
+                message="Demostración WP finalizada.",
+            )
+        except Exception:
+            pass
+
         frama_c_bin = shutil.which("frama-c")
         if not frama_c_bin:
             return FramaCResult(

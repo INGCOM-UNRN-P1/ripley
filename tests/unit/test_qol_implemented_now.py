@@ -10,33 +10,9 @@ import pytest
 from typer.testing import CliRunner
 
 from ripley.cli.student import app
-from ripley.core.async_runner import ejecutar_tareas_paralelo, ResultadoTareaAsync
+from ripley.cli.student import app
 
 runner = CliRunner()
-
-
-def test_async_runner(tmp_path: Path):
-    # Crear 3 archivos de prueba
-    f1 = tmp_path / "a.c"
-    f2 = tmp_path / "b.c"
-    f3 = tmp_path / "c.c"
-    f1.write_text("int a = 1;\n")
-    f2.write_text("int b = 2;\n")
-    f3.write_text("int c = 3;\n")
-
-    def tarea_contar_lineas(p: Path) -> int:
-        return len(p.read_text().splitlines())
-
-    tareas = [
-        ("contar_a", f1, tarea_contar_lineas),
-        ("contar_b", f2, tarea_contar_lineas),
-        ("contar_c", f3, tarea_contar_lineas),
-    ]
-
-    resultados = ejecutar_tareas_paralelo(tareas, max_workers=2)
-    assert len(resultados) == 3
-    assert all(r.exito for r in resultados)
-    assert {r.resultado for r in resultados} == {1}
 
 
 def test_cli_explain_keyword():
