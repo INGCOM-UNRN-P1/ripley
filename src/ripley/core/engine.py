@@ -130,8 +130,14 @@ def run_ast_linters(
     target_path: Optional[Path] = None,
     include_plugins: bool = True,
     strict: bool = False,
+    plugins_dinamicos: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Aplica el catálogo de linters AST, reglas de cátedra P1 y plugins satélites sobre cada archivo .c."""
+    """Aplica el catálogo de linters AST, reglas de cátedra P1 y plugins satélites sobre cada archivo .c.
+
+    Los satélites de fase dinámica (fuzzing, mutación, inyección de fallos,
+    perfilado) compilan y ejecutan el código del estudiante, así que quedan
+    fuera del análisis estático salvo que se pidan con `plugins_dinamicos`.
+    """
     findings: List[Dict[str, Any]] = []
     seen_keys: Set[Tuple[str, int, str]] = set()
 
@@ -157,27 +163,15 @@ def run_ast_linters(
         except Exception:
             discovered = []
 
-        static_plugins = {
-            "style", "gaff",
-            "antipatterns", "spunkmeyer",
-            "security", "kaneda",
-            "headers_audit", "wierzbowski",
-            "macro_security", "zhora",
-            "padding", "brett",
-            "tda_encapsulation", "motoko",
-            "portability", "crowe",
-            "callgraph", "giger",
-            "formal_contracts", "callahan",
-            "abi_audit",
-            "magic_numbers", "kane",
-            "concurrency", "ferro",
-            "fd_leaks", "vasquez",
-            "entropy", "esper",
-            "binary_schema", "corbel",
-            "asymptotics", "dietrich",
-            "disassembler", "rachel",
-            "recursion", "sebastian",
-        }
+        # Se deriva del catálogo en vez de mantenerse a mano: la lista paralela
+        # anterior omitía 15 de los 28 satélites catalogados (mocks, semantic_diff,
+        # mcdc_coverage, binary_io, documentation, dataset_generator,
+        # mutation_testing...), que quedaban declarados pero nunca ejecutados.
+        from ripley.core.entrypoints import plugins_de_fase
+
+        static_plugins = plugins_de_fase("estatico")
+        if plugins_dinamicos:
+            static_plugins |= plugins_de_fase("dinamico")
 
         for p in discovered:
             if p.name not in static_plugins or not p.is_available:
