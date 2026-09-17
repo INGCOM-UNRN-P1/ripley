@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typer.testing import CliRunner
 
+from ripley import __version__
 from ripley.cli.student import app as student_app
 from ripley.core.engine import analyze_target
 
@@ -66,7 +67,7 @@ int main(void) {
     cli_res = runner.invoke(student_app, ["analyze", str(src)])
     assert cli_res.exit_code == 0
     parsed = json.loads(cli_res.output)
-    assert parsed.get("version") == "2.0.0"
+    assert parsed.get("version") == __version__
     assert parsed.get("compilation", {}).get("success") is True
 
 
@@ -97,9 +98,13 @@ def test_engine_delegates_to_daedalus_and_nostromo(tmp_path: Path):
     src = tmp_path / "echo.c"
     src.write_text(
         """#include <stdio.h>
-int main(void) {
-    char s[64];
-    if (fgets(s, sizeof(s), stdin)) {
+#define BUFFER_SIZE 64
+
+int main(void)
+{
+    char s[BUFFER_SIZE];
+    if (fgets(s, sizeof(s), stdin))
+    {
         fputs(s, stdout);
     }
     return 0;

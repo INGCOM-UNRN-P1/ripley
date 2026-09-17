@@ -12,6 +12,7 @@ from typing import List, Optional
 import typer
 from rich.table import Table
 
+from ripley import __version__
 from ripley.cli._common import console
 from ripley.config import load_config
 
@@ -21,6 +22,27 @@ app = typer.Typer(
     help="Verificación temprana de entregas C desde la computadora del estudiante.",
     no_args_is_help=True,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"ripley-check {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Muestra la versión de ripley-check y finaliza.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
+) -> None:
+    pass
+
 
 checks_app = typer.Typer(name="checks", help="Catálogo unificado de verificaciones.", no_args_is_help=True)
 app.add_typer(checks_app, name="checks")
@@ -671,9 +693,13 @@ def cmd_check(
     profile: str = typer.Option("strict", "--profile", "-p", help="Perfil de rigurosidad: 'strict', 'relaxed' o 'exam'."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Modo silencioso sin volcado a consola (para pre-commit hooks)."),
     exit_zero: bool = typer.Option(False, "--exit-zero", help="Forzar código de salida 0 incluso ante advertencias o fallas."),
+    as_json: bool = typer.Option(False, "--json", help="Alias para emitir reporte en formato JSON (--format json)."),
 ) -> None:
     """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
     from ripley.core.engine import analyze_target
+
+    if as_json:
+        output_format = "json"
 
     if not target.exists():
         if not quiet:
@@ -694,13 +720,13 @@ def cmd_check(
         from ripley.core.sarif import exportar_sarif
         sarif_data = exportar_sarif(result)
         print(json.dumps(sarif_data, indent=2, ensure_ascii=False))
-        if strict and (not result.compilation.get("success", False) or result.metrics.get("ast_findings_count", 0) > 0):
+        if strict and (not result.compilation.get("success", False) or result.metrics.get("ast_findings_count", 0) > 0) and not exit_zero:
             raise typer.Exit(code=1)
         return
 
     if output_format.lower() == "json":
         print(result.to_json())
-        if not result.compilation.get("success", False) or (strict and result.metrics.get("ast_findings_count", 0) > 0):
+        if (not result.compilation.get("success", False) or (strict and result.metrics.get("ast_findings_count", 0) > 0)) and not exit_zero:
             raise typer.Exit(code=1)
         return
 
@@ -919,6 +945,61 @@ def cmd_explain(
     console.print("")
 
 
+@app.command("gcc-explain")
+def cmd_gcc_explain(
+    target: str = typer.Argument("-", help="Ruta al archivo con la salida de error de GCC/ld o '-' para leer de stdin."),
+    as_json: bool = typer.Option(False, "--json", help="Emitir diagnósticos traducidos en formato JSON estructurado."),
+) -> None:
+    """Traduce mensajes de error y advertencias de GCC/ld a explicaciones claras en español."""
+    import sys
+    from ripley.core.gcc_translator import translate_stderr
+    from rich.panel import Panel
+
+    if target == "-":
+        content = sys.stdin.read()
+    else:
+        path = Path(target)
+        if not path.exists():
+            console.print(f"[bold red]Archivo inexistente: {target}[/bold red]")
+            raise typer.Exit(code=1)
+        content = path.read_text(encoding="utf-8", errors="replace")
+
+    diagnostics = translate_stderr(content)
+
+    if as_json:
+        out = {
+            "version": __version__,
+            "total_diagnostics": len(diagnostics),
+            "diagnostics": [
+                {
+                    "file": d.file,
+                    "line": d.line,
+                    "column": d.col,
+                    "level": d.level,
+                    "title": d.title,
+                    "explanation": d.explanation,
+                    "suggestion": d.suggestion,
+                    "original": d.original,
+                    "translated": d.translated,
+                }
+                for d in diagnostics
+            ],
+        }
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        return
+
+    if not diagnostics:
+        console.print("[green]No se detectaron errores ni advertencias traducibles de GCC/ld en la entrada.[/green]")
+        return
+
+    for d in diagnostics:
+        loc = f"{d.file}:{d.line}:{d.col}" if d.file else f"Línea {d.line}"
+        border_color = "red" if d.level == "error" else "yellow"
+        body = f"[bold]{d.explanation}[/bold]\n\n[cyan]💡 Sugerencia:[/cyan] {d.suggestion}\n\n[dim]Original: {d.original}[/dim]"
+        console.print(Panel(body, title=f"[{border_color}]{loc} · {d.title}[/{border_color}]", border_style=border_color))
+
+
+
 @app.command("analyze")
 def cmd_analyze(
     target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a analizar."),
@@ -930,7 +1011,7 @@ def cmd_analyze(
 
     if not target.exists():
         error_res = {
-            "version": "2.0.0",
+            "version": __version__,
             "error": f"Target not found: {target}",
             "compilation": {"success": False},
         }

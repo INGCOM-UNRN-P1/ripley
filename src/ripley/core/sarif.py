@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List
 
+from ripley import __version__
+
 
 def exportar_sarif(analisis_resultado: Any) -> Dict[str, Any]:
     """Convierte el objeto AnalysisResult de Ripley a un diccionario compatible con SARIF v2.1.0."""
@@ -56,7 +58,7 @@ def exportar_sarif(analisis_resultado: Any) -> Dict[str, Any]:
                 "tool": {
                     "driver": {
                         "name": "Ripley",
-                        "version": "2.0.0",
+                        "version": __version__,
                         "informationUri": "https://github.com/catedra-p1/ripley",
                         "rules": list(rules_map.values()),
                     }

@@ -73,3 +73,26 @@ def test_invalid_style_and_limits():
     cfg.limits.timeout_segundos = -1
     with pytest.raises(ValueError, match="timeout_segundos debe ser mayor a 0"):
         cfg.validate()
+
+
+def test_load_config_warns_on_unknown_sections_and_keys(tmp_path):
+    toml_file = tmp_path / "ripley_unknown.toml"
+    toml_file.write_text(
+        """
+[seccion_inexistente]
+foo = "bar"
+
+[limits]
+timeout_segundos = 5
+time_out_segundos = 10
+        """,
+        encoding="utf-8",
+    )
+    with pytest.warns(UserWarning) as records:
+        cfg = load_config(toml_file)
+
+    messages = [str(r.message) for r in records]
+    assert any("seccion_inexistente" in m for m in messages)
+    assert any("time_out_segundos" in m for m in messages)
+    assert cfg.limits.timeout_segundos == 5
+

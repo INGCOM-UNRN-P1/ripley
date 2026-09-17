@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from ripley import __version__
 from ripley.core.engine import analyze_target, run_ast_linters
 
 
@@ -52,7 +53,7 @@ def procesar_lsp_mensaje(mensaje: Dict[str, Any]) -> Optional[Dict[str, Any]]:
                     "textDocumentSync": 1,  # Full sync
                     "diagnosticProvider": {"interFileDependencies": False, "workspaceDiagnostics": False},
                 },
-                "serverInfo": {"name": "ripley-lsp", "version": "2.0.0"},
+                "serverInfo": {"name": "ripley-lsp", "version": __version__},
             },
         }
 

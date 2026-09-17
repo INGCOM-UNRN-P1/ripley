@@ -2,7 +2,7 @@
 name = "ripley"
 version = "0.1.0"
 description = "CLI tool for batch processing, grading, versioning and evaluating Moodle C submissions"
-readme = "docs/referencia/especificacion-original.md"
+readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
 authors = [
     {name = "Martín René Vilugrón", email = "martinvilu@gmail.com"}

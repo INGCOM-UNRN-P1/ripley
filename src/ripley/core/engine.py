@@ -15,6 +15,7 @@ import tempfile
 from typing import Any, Dict, List, Optional
 import warnings
 
+from ripley import __version__
 from ripley.core.ast_auditors import (
     ConstCorrectnessLinter,
     DanglingStackPointerLinter,
@@ -67,7 +68,13 @@ class TestCaseResult:
 
 @dataclass
 class AnalysisResult:
-    version: str = "2.0.0"
+    """Resultado estructurado de análisis.
+
+    Contrato Canónico (Schema JSON v1.0.0):
+    - Claves canónicas en inglés: rule_id, rule_name, severity, file, line, column, message, suggestion.
+    - Claves espejo en español provistas por retrocompatibilidad con herramientas satélites y Dredd.
+    """
+    version: str = __version__
     target: str = ""
     is_directory: bool = False
     c_files: List[str] = field(default_factory=list)

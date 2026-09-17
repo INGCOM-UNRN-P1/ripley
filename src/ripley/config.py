@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Optional
 import tomllib
+import warnings
 
 
 @dataclass
@@ -296,6 +297,90 @@ class RipleyConfig:
             raise ValueError(f"indent_style inválido: '{self.style.indent_style}'. Opciones: {valid_indents}")
 
 
+KNOWN_CONFIG_SECTIONS = {
+    "compiler",
+    "limits",
+    "templates",
+    "cppcheck",
+    "style",
+    "p1_rules",
+    "linters",
+    "ast_auditors",
+    "flowchart",
+    "memory_visualizer",
+    "callgraph",
+    "property_testing",
+    "pure_functions",
+    "padding",
+    "padding_audit",
+    "restrictions",
+    "doxygen",
+    "valgrind",
+    "rubric",
+    "security",
+    "sandbox",
+    "makefile",
+    "graphics",
+    "custom_tools",
+    "actividad",
+    "plugins",
+    "general",
+    "moodle",
+    "ub_sentinel",
+}
+
+KNOWN_SECTION_KEYS = {
+    "compiler": {"enabled", "executable", "flags"},
+    "limits": {"timeout_segundos", "limite_memoria_mb", "max_tamano_ejecutable_mb"},
+    "templates": {"ruta_plantillas"},
+    "cppcheck": {"enabled", "ejecutable", "parametros", "reglas_python"},
+    "style": {
+        "enabled",
+        "brace_style",
+        "require_braces",
+        "indent_style",
+        "indent_size",
+        "spacing_operators",
+        "spacing_keywords",
+        "no_trailing_whitespace",
+        "max_blank_lines",
+    },
+    "p1_rules": {"enabled"},
+    "linters": {"enabled", "dead_code", "magic_numbers", "internal_clones", "naming", "doxygen"},
+    "ast_auditors": {
+        "enabled",
+        "const_correctness",
+        "short_circuit",
+        "deep_free",
+        "string_null",
+        "variable_shadowing",
+        "dangling_stack_pointer",
+        "overengineering",
+        "evaluation_order",
+        "string_literal_write",
+        "backward_goto",
+        "deprecated_api",
+        "enum_bitmask",
+        "loop_termination",
+    },
+    "flowchart": {"enabled", "format"},
+    "memory_visualizer": {"enabled", "format"},
+    "callgraph": {"enabled", "format", "include_stdlib"},
+    "property_testing": {"enabled", "properties"},
+    "pure_functions": {"enabled", "functions"},
+    "padding": {"enabled"},
+    "padding_audit": {"enabled"},
+    "makefile": {"enabled", "prefer_makefile", "executable", "target", "timeout_segundos", "expected_binary"},
+    "graphics": {"enabled", "screen", "settle_seconds", "max_diff_pixels", "display_base"},
+    "restrictions": {"forbidden_constructs", "required_constructs", "enabled"},
+    "doxygen": {"enabled", "require_brief", "require_params", "require_return"},
+    "valgrind": {"enabled", "flags"},
+    "rubric": {"peso_compilacion", "peso_linter", "peso_estilo", "peso_pruebas"},
+    "security": {"enabled", "forbidden_calls", "forbidden_headers"},
+    "sandbox": {"enabled", "provider"},
+}
+
+
 def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     """Carga y valida ripley.toml. Si no existe, retorna configuración por defecto."""
     path = Path(config_path)
@@ -306,6 +391,25 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
 
     with open(path, "rb") as f:
         data: dict[str, Any] = tomllib.load(f)
+
+    unknown_sections = set(data.keys()) - KNOWN_CONFIG_SECTIONS
+    if unknown_sections:
+        warnings.warn(
+            f"Secciones desconocidas en '{path}': {sorted(unknown_sections)}. Serán ignoradas.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    for section_name, valid_keys in KNOWN_SECTION_KEYS.items():
+        sec_val = data.get(section_name)
+        if isinstance(sec_val, dict):
+            unknown_keys = set(sec_val.keys()) - valid_keys
+            if unknown_keys:
+                warnings.warn(
+                    f"Claves desconocidas en sección '[{section_name}]' de '{path}': {sorted(unknown_keys)}.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     compiler_data = data.get("compiler", {})
     limits_data = data.get("limits", {})

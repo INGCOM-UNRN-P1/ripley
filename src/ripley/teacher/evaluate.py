@@ -10,7 +10,7 @@ import tempfile
 from typing import Any, Callable, Dict, List, Optional
 
 
-from ripley.pipeline.checks import *  # noqa: F401,F403  (registra el catálogo)
+import ripley.pipeline.checks  # noqa: F401  (registra el catálogo unificado)
 from ripley.pipeline.registry import iter_uniform_static
 
 from ripley.core.callgraph import CallGraphGenerator

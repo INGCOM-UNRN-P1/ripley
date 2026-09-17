@@ -1,7 +1,10 @@
 """Ripley CLI package: flat `ripley` app combining teacher and student commands."""
 
+from typing import Optional
+
 import typer
 
+from ripley import __version__
 from ripley.cli import student as _student
 from ripley.cli import teacher as _teacher
 
@@ -10,6 +13,26 @@ app = typer.Typer(
     help="CLI para procesar, compilar, probar y evaluar entregas de C descargadas de Moodle.",
     no_args_is_help=True,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"ripley {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Muestra la versión de ripley y finaliza.",
+        callback=_version_callback,
+        is_eager=True,
+    ),
+) -> None:
+    pass
 
 
 def _merge(target: typer.Typer, source: typer.Typer) -> None:
