@@ -1,8 +1,12 @@
 """Doxygen documentation auditor for C functions and headers."""
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import re
+import shutil
+import subprocess
+import tempfile
 from typing import Dict, List, Optional, Set
 
 from ripley.core.semantic_diff import CFunctionAST, extract_c_functions
@@ -41,7 +45,88 @@ class DoxygenAuditor:
         code = path.read_text(encoding="utf-8", errors="replace")
         return self.audit_code(code, filename=path.name)
 
+    def _auditar_con_corbel(self, code: str, filename: str) -> Optional[List[DoxygenObservation]]:
+        """Delega la auditoría en corbel, propietario de R-A13.
+
+        Ripley mantenía este auditor en paralelo al `check` de corbel,
+        duplicando la misma responsabilidad (CORBEL-D0902). Corbel detecta
+        además el encabezado de archivo faltante y los docblocks incompletos
+        por tag, así que la delegación no pierde detalle.
+        """
+        faltantes = self._faltantes_desde_corbel(code, filename)
+        if faltantes is None:
+            return None
+
+        observaciones: List[DoxygenObservation] = []
+        for item in faltantes:
+            nombre = str(item.get("name", ""))
+            if item.get("type") == "file_header" or nombre in ("main", "setUp", "tearDown"):
+                continue
+
+            if item.get("type") == "función":
+                items = list(item.get("missing_tags") or ["documentación Doxygen completa"])
+                mensaje = (
+                    f"Función `{nombre}()` sin documentación Doxygen. "
+                    f"Falta documentar: {', '.join(items)}."
+                )
+            else:
+                items = list(item.get("missing_tags") or [])
+                if not items:
+                    continue
+                mensaje = (
+                    f"Función `{nombre}()` incompleta en Doxygen. "
+                    f"Falta documentar: {', '.join(items)}."
+                )
+
+            observaciones.append(DoxygenObservation(
+                filename=filename,
+                function_name=nombre,
+                line=int(item.get("line", 0)),
+                missing_items=items,
+                message=mensaje,
+            ))
+        return observaciones
+
+    @staticmethod
+    def _faltantes_desde_corbel(code: str, filename: str) -> Optional[List[Dict[str, object]]]:
+        """Obtiene los faltantes de corbel por import y, si no está instalado, por CLI."""
+        try:
+            from corbel.core.placeholder import analyze_missing_documentation
+
+            return analyze_missing_documentation(
+                source_code=code, filename=filename, verificar_completitud=True
+            )
+        except ImportError:
+            pass
+        except Exception:
+            return None
+
+        corbel_bin = shutil.which("corbel")
+        if not corbel_bin:
+            return None
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            objetivo = Path(tmp_dir) / (filename or "archivo.c")
+            try:
+                objetivo.write_text(code, encoding="utf-8")
+                proc = subprocess.run(
+                    [corbel_bin, "check", str(objetivo), "--completitud", "--json"],
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                datos = json.loads(proc.stdout or "{}")
+            except (OSError, subprocess.SubprocessError, ValueError):
+                return None
+        faltantes = datos.get("missing")
+        return faltantes if isinstance(faltantes, list) else None
+
     def audit_code(self, code: str, filename: str = "archivo.c") -> List[DoxygenObservation]:
+        delegado = self._auditar_con_corbel(code, filename)
+        if delegado is not None:
+            return delegado
+
+        # Respaldo propio para entornos donde corbel no esté instalado.
         observations: List[DoxygenObservation] = []
         functions = extract_c_functions(code)
         lines = code.splitlines()
