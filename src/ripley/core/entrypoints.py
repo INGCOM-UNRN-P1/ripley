@@ -646,7 +646,7 @@ class SatellitePluginAdapter:
             binary = manifest_config.get("binary")
             if not header or not binary:
                 return {"ok": True, "observaciones": [], "issues": []}
-            args = [cmd, "audit", str(header), str(binary), "--json"]
+            args = [cmd, "audit", str(header), "--binary", str(binary), "--json"]
         else:
             cat = SATELLITE_CATALOG.get(self.name, {})
             subcmd = cat.get("cli_subcmd", "check")
