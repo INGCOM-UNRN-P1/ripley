@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import importlib.metadata
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -100,6 +101,10 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
     },
     "fuzzing": {
         "fase": "dinamico",
+        # `drake check` recibe UN archivo con `main` (lo compila y lo fuzza): se lo
+        # invoca por archivo, y solo con los que son programas completos.
+        "entrada": "archivo",
+        "requiere_main": True,
         "tool": "drake",
         "cli_cmd": "drake",
         "cli_subcmd": "check",
@@ -107,6 +112,8 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
     },
     "sanitizer_translator": {
         "fase": "dinamico",
+        "entrada": "archivo",
+        "requiere_main": True,
         "tool": "tetsuo",
         "cli_cmd": "tetsuo",
         "cli_subcmd": "check",
@@ -142,6 +149,11 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
     },
     "hardware_profiler": {
         "fase": "dinamico",
+        # Perfilar ejecuta el programa con N creciente bajo Cachegrind: puede tardar
+        # y exige que el programa lea N por stdin. Solo corre si el manifiesto indica
+        # cuál (`target`), en vez de perfilar a ciegas cada archivo.
+        "requiere_config": ("target",),
+        "argumento_config": "target",
         "tool": "ferro",
         "cli_cmd": "ferro",
         "cli_subcmd": "check",
@@ -182,9 +194,13 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
     },
     "gcc_explainer": {
         "fase": "orquestado",
+        # `esper catalog` solo lista el catálogo y no recibe rutas: lo que explica
+        # los diagnósticos del código es `esper compile`, sin dejar un ejecutable.
+        "entrada": "archivo",
         "tool": "esper",
         "cli_cmd": "esper",
-        "cli_subcmd": "catalog",
+        "cli_subcmd": "compile",
+        "args_extra": ("-Wall", "-Wextra", "-o", "/dev/null"),
         "description": "Catálogo y explicación pedagógica de warnings y optimizaciones de GCC.",
     },
     "semantic_diff": {
@@ -261,6 +277,7 @@ def extract_raw_observations(data: Union[Dict[str, Any], List[Any]]) -> List[Dic
         "issues",
         "diagnosticos",
         "diagnostics",
+        "diagnoses",
         "violations",
         "violaciones",
         "antipatrones",
@@ -277,6 +294,29 @@ def extract_raw_observations(data: Union[Dict[str, Any], List[Any]]) -> List[Dic
             for item in v:
                 if isinstance(item, dict):
                     raw_obs.append(item)
+
+    # drake: cada crash del fuzzing es un hallazgo; `ok: false` sin ellos dejaba al
+    # alumno con un plugin fallido y ningún mensaje.
+    if isinstance(data.get("crashes"), list):
+        for crash in data["crashes"]:
+            if isinstance(crash, dict):
+                raw_obs.append({
+                    "rule_code": "FUZZ_CRASH",
+                    "rule_name": "Caída bajo fuzzing",
+                    "severity": "ERROR",
+                    "file": data.get("archivo", ""),
+                    "message": (
+                        f"El fuzzing provocó {crash.get('senal') or 'una terminación anormal'} "
+                        f"con la entrada {str(crash.get('payload', '')).strip()!r}."
+                    ),
+                })
+
+    # ferro: avisos de que el perfilado no es confiable (p. ej. el optimizador
+    # eliminó el bucle medido).
+    if isinstance(data.get("advertencias"), list):
+        for aviso in data["advertencias"]:
+            if isinstance(aviso, str):
+                raw_obs.append({"rule_code": "PERF_WARNING", "severity": "ADVERTENCIA", "message": aviso})
 
     if "guard_issues" in data and isinstance(data["guard_issues"], list):
         for g in data["guard_issues"]:
@@ -419,6 +459,18 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
         "mensaje": msg,
         "sugerencia": sug,
     }
+
+
+_MAIN = re.compile(r"\bint\s+main\s*\(|\bmain\s*\(\s*(?:void|int)")
+
+
+def _define_main(archivo: Path) -> bool:
+    """¿El archivo C define `main`? Heurística textual, suficiente para elegir programas completos."""
+    try:
+        texto = archivo.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return bool(_MAIN.search(texto))
 
 
 @dataclass
@@ -610,16 +662,21 @@ class SatellitePluginAdapter:
             c_files = manifest_config.get("c_files")
             if not c_files:
                 c_files = list(workspace.glob("*.c")) + list(workspace.glob("src/*.c"))
+            cat = SATELLITE_CATALOG.get(self.name, {})
+            if cat.get("requiere_main"):
+                # Fuzzear o correr bajo sanitizers exige un programa completo: un
+                # módulo sin `main` no enlaza y su error de compilación llegaba
+                # como hallazgo contra el estudiante.
+                c_files = [f for f in c_files if _define_main(Path(f))]
             if not c_files:
                 return {"ok": True, "observaciones": [], "issues": []}
 
-            cat = SATELLITE_CATALOG.get(self.name, {})
             subcmd = cat.get("cli_subcmd", "check")
             all_obs = []
             all_ok = True
             for cf in c_files:
                 proc = subprocess.run(
-                    [cmd, subcmd, str(cf), "--json"],
+                    [cmd, subcmd, str(cf), *cat.get("args_extra", ()), "--json"],
                     capture_output=True,
                     text=True,
                     timeout=timeout,
@@ -631,7 +688,11 @@ class SatellitePluginAdapter:
                             data = {"ok": proc.returncode == 0, "observaciones": data}
                         raw_obs = extract_raw_observations(data)
                         all_obs.extend([normalize_finding(o, self.name) for o in raw_obs])
-                        if not data.get("ok", data.get("exito", True)):
+                        if data.get("instrumented") is False:
+                            # tetsuo no pudo instrumentar (p. ej. falta libasan): no se
+                            # verificó nada, y eso no es un hallazgo sobre el código.
+                            continue
+                        if not data.get("ok", data.get("exito", data.get("passed", proc.returncode == 0))):
                             all_ok = False
                     except Exception:
                         pass
@@ -647,6 +708,10 @@ class SatellitePluginAdapter:
             if not header or not binary:
                 return {"ok": True, "observaciones": [], "issues": []}
             args = [cmd, "audit", str(header), "--binary", str(binary), "--json"]
+        elif SATELLITE_CATALOG.get(self.name, {}).get("argumento_config"):
+            cat = SATELLITE_CATALOG[self.name]
+            # `requiere_config` ya garantizó que el valor está presente.
+            args = [cmd, cat.get("cli_subcmd", "check"), str(manifest_config[cat["argumento_config"]]), "--json"]
         else:
             cat = SATELLITE_CATALOG.get(self.name, {})
             subcmd = cat.get("cli_subcmd", "check")
