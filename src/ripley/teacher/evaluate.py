@@ -75,6 +75,7 @@ from ripley.core.security import SecurityScanner
 from ripley.core.semantic_diff import extract_c_functions
 from ripley.core.style import StyleCheckResult, StyleAnalyzer
 from ripley.core.testcases import discover_testcases
+from ripley.teacher.evaluate_pruebas import ejecutar_casos_de_prueba
 
 
 @dataclass
@@ -460,49 +461,9 @@ class Evaluator:
                 compiled = len(compiled_binaries) > 0 and (all_compiled or any(file_compilation_status.values()))
 
                 # 4. Ejecución Dinámica de Casos de Prueba
-                test_results: List[Dict[str, Any]] = []
-                tests_passed_count = 0
-                total_tests_count = 0
-
-                if compiled:
-                    for ex_name, cases in testcases_by_exercise.items():
-                        # Obtener el binario correspondiente al ejercicio
-                        bin_for_ex = compiled_binaries.get(ex_name)
-                        if not bin_for_ex:
-                            # Fallback si un binario coincide en dígitos
-                            for k, b in compiled_binaries.items():
-                                if re.findall(r"\d+", k) == re.findall(r"\d+", ex_name):
-                                    bin_for_ex = b
-                                    break
-
-                        if not bin_for_ex:
-                            for tc in cases:
-                                total_tests_count += 1
-                                test_results.append(
-                                    {
-                                        "ejercicio": tc.exercise,
-                                        "nombre_caso": tc.case_name,
-                                        "argumentos_cli": "-",
-                                        "resultado": "NO_SOURCE",
-                                        "tiempo_ms": 0.0,
-                                    }
-                                )
-                            continue
-
-                        for tc in cases:
-                            total_tests_count += 1
-                            r_detail = test_runner.run_case(bin_for_ex, tc)
-                            if r_detail.resultado == "PASSED":
-                                tests_passed_count += 1
-                            test_results.append(
-                                {
-                                    "ejercicio": r_detail.ejercicio,
-                                    "nombre_caso": r_detail.nombre_caso,
-                                    "argumentos_cli": r_detail.argumentos_cli or "-",
-                                    "resultado": r_detail.resultado,
-                                    "tiempo_ms": r_detail.tiempo_ms,
-                                }
-                            )
+                test_results, tests_passed_count, total_tests_count = ejecutar_casos_de_prueba(
+                    compiled, compiled_binaries, testcases_by_exercise, test_runner
+                )
 
                 # 5. Cálculo de Rúbrica
                 breakdown = rubric_calc.calculate(
