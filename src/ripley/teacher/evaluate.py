@@ -5,27 +5,16 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 from pathlib import Path
-import re
 import tempfile
 from typing import Any, Callable, Dict, List, Optional
 
 
 import ripley.pipeline.checks  # noqa: F401  (registra el catálogo unificado)
-from ripley.pipeline.registry import iter_uniform_static
 
-from ripley.core.callgraph import CallGraphGenerator
 from ripley.core.compiler import CompilationResult, Compiler
 from ripley.config import RipleyConfig, load_config
 from ripley.teacher.db import DatabaseManager
 from ripley.core.diffing import generate_unified_diff
-from ripley.core.doxygen import DoxygenAuditor
-from ripley.core.flowchart import FlowchartGenerator
-from ripley.core.linters import (
-    DeadCodeLinter,
-    InternalCloneLinter,
-    MagicNumberLinter,
-    NamingConventionLinter,
-)
 SPECIAL_AUXILIARY = "[AUXILIAR]"
 SPECIAL_IGNORE = "[IGNORAR]"
 
@@ -55,16 +44,11 @@ class MappingStore:
             return available_exercises[0]
         return None
 
-from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 from ripley.core.p1_rules import P1RuleChecker
-from ripley.core.property_testing import PropertyTestRunner
-from ripley.core.pure_functions import PureFunctionAnalyzer
 from ripley.teacher.reporter import MarkdownReporter, StudentReportContext, VersionReportContext
-from ripley.core.restrictions import CodeRestrictionsValidator
 from ripley.core.runner import (
     CppcheckResult,
     CppcheckRunner,
-    CustomToolResult,
     CustomToolRunner,
     DynamicTestRunner,
     RubricCalculator,
@@ -72,9 +56,9 @@ from ripley.core.runner import (
     ValgrindRunner,
 )
 from ripley.core.security import SecurityScanner
-from ripley.core.semantic_diff import extract_c_functions
-from ripley.core.style import StyleCheckResult, StyleAnalyzer
+from ripley.core.style import StyleAnalyzer
 from ripley.core.testcases import discover_testcases
+from ripley.teacher.evaluate_estatico import analizar_fuente
 from ripley.teacher.evaluate_pruebas import ejecutar_casos_de_prueba
 
 
@@ -233,159 +217,11 @@ class Evaluator:
                         file_compilation_status[src.name] = True
                         compilation_logs.append(f"=== Compilador ({src.name}) ===\nCompilación desactivada en configuración.\n")
 
-                    # 3.2 Análisis de Estilo individual (si está habilitado)
-                    s_score = 10.0
-                    if act_cfg.style.enabled:
-                        s_res = style_analyzer.analyze_file(src)
-                        s_score = s_res.score
-                        total_style_sum += s_res.score
-                        for obs in s_res.observaciones:
-                            all_style_obs.append(
-                                {
-                                    "archivo": obs.archivo,
-                                    "linea": obs.linea,
-                                    "mensaje": obs.mensaje,
-                                }
-                            )
-                    else:
-                        total_style_sum += 10.0
+                    s_score = analizar_fuente(
+                        src, act_cfg, style_analyzer, p1_checker, all_style_obs, compilation_logs
+                    )
+                    total_style_sum += s_score
 
-                    # 3.2.1 Reglas oficiales de Programación I (P1 Rules)
-                    if p1_checker is not None:
-                        src_content = src.read_text(encoding="utf-8", errors="replace")
-                        p1_obs = p1_checker.analyze(src_content, src.name)
-                        for obs in p1_obs:
-                            all_style_obs.append(
-                                {
-                                    "archivo": obs.filename,
-                                    "linea": obs.line,
-                                    "mensaje": f"[{obs.rule_code}] {obs.title}: {obs.message}",
-                                }
-                            )
-
-                    # 3.2.2 Linters especializados (si están habilitados)
-                    if act_cfg.linters.enabled:
-                        src_content = src.read_text(encoding="utf-8", errors="replace")
-                        if act_cfg.linters.dead_code:
-                            for obs in DeadCodeLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[DeadCode] {obs.message}"})
-                        if act_cfg.linters.magic_numbers:
-                            for obs in MagicNumberLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[MagicNumber] {obs.message}"})
-                        if act_cfg.linters.naming:
-                            for obs in NamingConventionLinter().analyze(src_content, src.name):
-                                all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Naming] {obs.message}"})
-
-                    # 3.2.3 Auditores AST Profundos + padding, vía registro unificado.
-                    # El catálogo (pipeline.checks) replica 1:1 los toggles de ripley.toml,
-                    # de modo que el estudiante ejecute exactamente las mismas reglas.
-                    src_content = src.read_text(encoding="utf-8", errors="replace")
-                    for spec in iter_uniform_static():
-                        section = getattr(act_cfg, spec.config_section, None)
-                        if section is None or not getattr(section, "enabled", True):
-                            continue  # Sección sin master enabled (p. ej. padding off).
-                        if spec.config_section == "ast_auditors" and not act_cfg.ast_auditors.enabled:
-                            continue
-                        if not getattr(section, spec.toggle, False):
-                            continue
-                        for obs in spec.runner(src_content, src.name):
-                            all_style_obs.append({
-                                "archivo": obs.filename,
-                                "linea": obs.line,
-                                "mensaje": f"{spec.prefix} {obs.message}",
-                            })
-
-                    # 3.2.4 Validación de Restricciones (si está habilitada)
-                    if act_cfg.restrictions.enabled:
-                        rest_val = CodeRestrictionsValidator(
-                            forbidden_constructs=act_cfg.restrictions.forbidden_constructs,
-                            required_constructs=act_cfg.restrictions.required_constructs,
-                        )
-                        violations = rest_val.validate_file(src)
-                        for viol in violations:
-                            all_style_obs.append({"archivo": src.name, "linea": viol.line_number, "mensaje": f"[Restricción:{viol.violation_type}] {viol.message}"})
-
-
-                    # 3.2.5 Auditoría de Documentación Doxygen (si está habilitada)
-                    if act_cfg.doxygen.enabled:
-                        dox_auditor = DoxygenAuditor(
-                            require_brief=act_cfg.doxygen.require_brief,
-                            require_params=act_cfg.doxygen.require_params,
-                            require_return=act_cfg.doxygen.require_return,
-                        )
-                        d_obs = dox_auditor.audit_file(src)
-                        for obs in d_obs:
-                            all_style_obs.append({"archivo": obs.filename, "linea": obs.line, "mensaje": f"[Doxygen] {obs.message}"})
-
-                    # 3.2.6 Análisis de Funciones Puras (si está habilitado)
-                    if act_cfg.pure_functions.enabled:
-                        pure_analyzer = PureFunctionAnalyzer(target_functions=act_cfg.pure_functions.functions)
-                        p_obs = pure_analyzer.analyze_file(src)
-                        for obs in p_obs:
-                            if not obs.is_pure:
-                                all_style_obs.append({"archivo": src.name, "linea": obs.line, "mensaje": f"[FunciónPura] `{obs.function_name}()` no es pura: {', '.join(obs.violations)}"})
-
-
-                    # 3.2.7 Generación de Diagramas de Flujo (si está habilitado)
-                    if act_cfg.flowchart.enabled:
-                        fc_gen = FlowchartGenerator()
-                        try:
-                            fc_diagrams = fc_gen.generate_for_file(src, output_format=act_cfg.flowchart.format)
-                            for fn_name, d_code in fc_diagrams.items():
-                                compilation_logs.append(
-                                    f"=== Diagrama de Flujo: `{fn_name}()` ({src.name}) ===\n```{act_cfg.flowchart.format}\n{d_code}\n```\n"
-                                )
-                        except Exception as e:
-                            compilation_logs.append(f"[Flowchart] Error generando diagrama para {src.name}: {e}\n")
-
-                    # 3.2.8 Visualizador de Memoria y Estructuras (si está habilitado)
-                    if act_cfg.memory_visualizer.enabled:
-                        mem_vis = DynamicMemoryVisualizer()
-                        try:
-                            mem_diag = mem_vis.generate_diagram(src, output_format=act_cfg.memory_visualizer.format)
-                            compilation_logs.append(
-                                f"=== Diagrama de Topología de Memoria ({src.name}) ===\n```{act_cfg.memory_visualizer.format}\n{mem_diag}\n```\n"
-                            )
-                        except Exception as e:
-                            compilation_logs.append(f"[MemoryVisualizer] Error generando diagrama para {src.name}: {e}\n")
-
-
-                    # 3.2.9 Grafo de Llamadas y Recursión (si está habilitado)
-                    if act_cfg.callgraph.enabled:
-                        cg_gen = CallGraphGenerator()
-                        try:
-                            cg_diag = cg_gen.generate_for_file(
-                                src,
-                                output_format=act_cfg.callgraph.format,
-                                include_stdlib=act_cfg.callgraph.include_stdlib,
-                            )
-                            compilation_logs.append(
-                                f"=== Grafo de Invocación / Call Graph ({src.name}) ===\n```{act_cfg.callgraph.format}\n{cg_diag}\n```\n"
-                            )
-                        except Exception as e:
-                            compilation_logs.append(f"[CallGraph] Error generando grafo para {src.name}: {e}\n")
-
-                    # 3.2.10 Property-Based Testing (si está habilitado y el archivo compila)
-                    if act_cfg.property_testing.enabled:
-                        prop_runner = PropertyTestRunner()
-                        try:
-                            fns = extract_c_functions(src.read_text(encoding="utf-8", errors="replace"))
-                            for fn_name in fns.keys():
-                                if fn_name in ("main", "setUp", "tearDown"):
-                                    continue
-                                for prop in act_cfg.property_testing.properties:
-                                    p_res = prop_runner.run_property_test(
-                                        student_source=src,
-                                        property_type=prop,
-                                        target_function=fn_name,
-                                        iterations=50,
-                                    )
-                                    status_str = "PASSED" if p_res.passed else "FAILED"
-                                    compilation_logs.append(
-                                        f"=== Property Test [{prop.upper()}] (`{fn_name}()` en {src.name}) ===\nResultado: {status_str} ({p_res.iterations_run} iters)\n{p_res.message}\n"
-                                    )
-                        except Exception as e:
-                            compilation_logs.append(f"[PropertyTesting] Error evaluando {src.name}: {e}\n")
 
 
                     # 3.3 Análisis Estático Cppcheck individual (si está habilitado)
