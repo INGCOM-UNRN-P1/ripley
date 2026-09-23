@@ -166,8 +166,9 @@ def cmd_run(
 
 def generar_seccion_markdown(result) -> str:
     """Genera sección de auditoría estática, reglas P1 y compilación de Ripley para Dredd."""
-    lines = ["<!-- dredd-section: ripley v1.0.0 -->\n## Evaluación Pedagógica Integral (Ripley)\n"]
     comp_ok = result.compilation.get("success", False)
+    status = "ok" if comp_ok and not any(f.get("severity") == "ERROR" for f in result.ast_findings) else "fail"
+    lines = [f"<!-- dredd-section: ripley, tool=ripley, version=1.0.0, status={status} -->\n## Evaluación Pedagógica Integral (Ripley)\n"]
     estado_comp = "✓ Compilación Exitosa" if comp_ok else "❌ Falló Compilación"
     lines.append(f"- **Compilación GCC:** {estado_comp}")
     lines.append(f"- **Hallazgos de estilo y AST:** {len(result.ast_findings)}")
