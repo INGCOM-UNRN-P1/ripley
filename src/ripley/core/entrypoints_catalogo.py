@@ -232,3 +232,9 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
         "description": "Auditoría de funciones recursivas, profundidad de pila y riesgos de stack overflow.",
     },
 }
+
+# Registrar alias canónicos por nombre de herramienta para asegurar lookup directo bidireccional
+for _clave, _info in list(SATELLITE_CATALOG.items()):
+    _tool = _info.get("tool")
+    if _tool and _tool not in SATELLITE_CATALOG:
+        SATELLITE_CATALOG[_tool] = _info

@@ -50,6 +50,7 @@ htmlcov/
 *.out
 *.exe
 *.bin
+.frama-c/
 
 # Antigravity & AI Assistant internals
 .gemini/

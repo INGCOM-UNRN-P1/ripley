@@ -172,12 +172,13 @@ class SatellitePluginAdapter:
         """Ejecuta la herramienta secundaria como subproceso CLI solicitando salida JSON."""
         cmd = self.cli_command or self.tool_name or self.name
         timeout = float(manifest_config.get("timeout", 20.0))
+        cat = SATELLITE_CATALOG.get(self.name) or SATELLITE_CATALOG.get(self.tool_name, {})
 
         # Un satélite que necesita configuración que no recibió se saltea. Si se
         # lo invocara igual, su error de uso ("Missing argument 'modelo'")
         # terminaría como un hallazgo de severidad ERROR contra el código del
         # estudiante, que no tiene nada que ver con el problema.
-        requeridas = SATELLITE_CATALOG.get(self.name, {}).get("requiere_config", ())
+        requeridas = cat.get("requiere_config", ())
         faltantes = [k for k in requeridas if not manifest_config.get(k)]
         if faltantes:
             return {
@@ -211,11 +212,10 @@ class SatellitePluginAdapter:
                 str(workspace / "tests") if (workspace / "tests").is_dir() else str(workspace)
             )
             args = [cmd, "check", str(bin_path), str(test_dir), "--json"]
-        elif SATELLITE_CATALOG.get(self.name, {}).get("entrada") == "archivo" and workspace.is_dir():
+        elif cat.get("entrada") == "archivo" and workspace.is_dir():
             c_files = manifest_config.get("c_files")
             if not c_files:
                 c_files = list(workspace.glob("*.c")) + list(workspace.glob("src/*.c"))
-            cat = SATELLITE_CATALOG.get(self.name, {})
             if cat.get("requiere_main"):
                 # Fuzzear o correr bajo sanitizers exige un programa completo: un
                 # módulo sin `main` no enlaza y su error de compilación llegaba
@@ -261,12 +261,10 @@ class SatellitePluginAdapter:
             if not header or not binary:
                 return {"ok": True, "observaciones": [], "issues": []}
             args = [cmd, "audit", str(header), "--binary", str(binary), "--json"]
-        elif SATELLITE_CATALOG.get(self.name, {}).get("argumento_config"):
-            cat = SATELLITE_CATALOG[self.name]
+        elif cat.get("argumento_config"):
             # `requiere_config` ya garantizó que el valor está presente.
             args = [cmd, cat.get("cli_subcmd", "check"), str(manifest_config[cat["argumento_config"]]), "--json"]
         else:
-            cat = SATELLITE_CATALOG.get(self.name, {})
             subcmd = cat.get("cli_subcmd", "check")
             args = [cmd, subcmd, str(workspace), "--json"]
 
