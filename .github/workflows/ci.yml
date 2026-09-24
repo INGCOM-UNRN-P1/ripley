@@ -10,7 +10,7 @@ jobs:
     name: Suite completa (entorno docente)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v4
         with:
           python-version: "3.12"
@@ -22,7 +22,7 @@ jobs:
     name: Entorno estudiante mínimo (ripley-check)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v4
         with:
           python-version: "3.12"
