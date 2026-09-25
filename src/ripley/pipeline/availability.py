@@ -4,8 +4,10 @@ from dataclasses import dataclass
 import shutil
 from typing import Dict, List
 
-# Ejecutable -> descripción funcional (qué checks se degradan sin él)
-TOOL_CATALOG: Dict[str, str] = {
+from ripley.core.entrypoints_catalogo import SATELLITE_CATALOG
+
+# Binarios del sistema -> qué checks se degradan sin ellos.
+_BINARIOS_DEL_SISTEMA: Dict[str, str] = {
     "gcc": "Compilación, sanitizadores, stack-usage, fuzzing con cobertura",
     "valgrind": "Auditoría de memoria, conteo de instrucciones (Callgrind)",
     "cppcheck": "Análisis estático externo",
@@ -16,36 +18,32 @@ TOOL_CATALOG: Dict[str, str] = {
     "qemu-aarch64": "Ejecución cruzada ARM64",
     "qemu-riscv64": "Ejecución cruzada RISC-V",
     "gpg": "Firma/verificación criptográfica de paquetes .ripkg",
-    # Subherramientas desacopladas del ecosistema
-    "daedalus": "Compilador pedagógico y traductor de diagnósticos GCC/Clang",
-    "nostromo": "Sandbox de ejecución aislada y runner de testcases .in/.out",
-    "gaff": "Linter pedagógico de convenciones de cátedra con autofix",
-    "hal": "Asistente forense de core dumps y segfaults post-mortem",
-    "brett": "Auditor de padding y alineación de structs",
-    "kaneda": "Auditor de seguridad y llamadas a sistema prohibidas",
-    "spunkmeyer": "Detector de antipatrones didácticos en C",
-    "holden": "Generador de mocks e inyección de fallos",
-    "callahan": "Verificador formal de contratos ACSL",
-    "drake": "Fuzzer pedagógico guiado por límites",
-    "giger": "Generador de callgraphs y grafos de flujo",
-    "weyl": "Diffing semántico y comparación estructural",
-    "bishop": "Visualizador pedagógico de memoria Stack & Heap",
-    "sebastian": "Analizador de recursión y stack frame",
-    "rachel": "Desensamblador y visualizador de jump tables",
-    "wierzbowski": "Auditoría de inclusión de encabezados y dependencias directas (IWYU)",
-    "zhora": "Auditoría de seguridad y paréntesis en macros y preprocesador",
-    "motoko": "Verificación de opacidad y encapsulamiento de Tipos de Datos Abstractos (TDA)",
-    "crowe": "Detección de dependencias y tipos no portables entre plataformas",
-    "tetsuo": "Análisis de mutación y calidad pedagógica de test suites",
-    "vasquez": "Auditoría de fugas de descriptores de archivo y recursos POSIX",
-    "vassili": "Benchmarking pedagógico micro/macro con detección de outliers",
-    "tyrell": "Síntesis de harness de testing y casos de borde",
-    "ferro": "Auditoría de concurrencia y carreras de datos (pthreads)",
-    "parker": "Profiling pedagógico de patrones de acceso a memoria y cache",
-    "dietrich": "Verificación empírica de complejidad algorítmica y orden asintótico",
-    "kane": "Auditoría pedagógica de números mágicos y constantes literales",
-    "corbel": "Validación de esquemas y layouts binarios",
-    "esper": "Análisis pedagógico de generadores pseudoaleatorios y entropía",
+}
+
+# Herramientas del ecosistema que no son satélites de ripley, pero cuya
+# presencia informa `doctor`.
+_HERRAMIENTAS_EXTRA: Dict[str, str] = {
+    "hal": "Forense de core dumps y análisis pedagógico post-mortem de segfaults",
+}
+
+
+def _descripciones_satelites() -> Dict[str, str]:
+    """Comando -> descripción, tomadas de SATELLITE_CATALOG (fuente única).
+
+    Antes este módulo mantenía su propia copia de las descripciones, que había
+    derivado: `ripley doctor` describía mal a diez satélites (N-RIPLEY-01).
+    """
+    descripciones: Dict[str, str] = {}
+    for entrada in SATELLITE_CATALOG.values():
+        descripciones.setdefault(entrada["cli_cmd"], entrada["description"])
+    return descripciones
+
+
+# Ejecutable -> descripción funcional (qué checks se degradan sin él)
+TOOL_CATALOG: Dict[str, str] = {
+    **_BINARIOS_DEL_SISTEMA,
+    **_descripciones_satelites(),
+    **_HERRAMIENTAS_EXTRA,
 }
 
 
