@@ -1,5 +1,7 @@
 # Ripley: Motor y CLI de Verificación Pedagógica para C
 
+> 📖 **Manual de Usuario:** Para una guía exhaustiva de comandos, banderas, arquitectura y ejemplos, consultá el [Manual de Uso](MANUAL.md).
+
 Motor de análisis estático, reglas de cátedra P1 (0xXXXXh), compilación sandbox y feedback temprano para código C universitario.
 
 ---
