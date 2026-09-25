@@ -17,6 +17,7 @@ from ripley.cli._common import console
 
 
 app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
     name="ripley-check",
     help="Verificación temprana de entregas C desde la computadora del estudiante.",
     no_args_is_help=True,
@@ -77,13 +78,43 @@ def checks_list(
 
 
 @app.command("doctor")
-def doctor() -> None:
-    """Diagnóstico del entorno: herramientas externas presentes y checks afectados."""
+def doctor(
+    json_output: bool = typer.Option(False, "--json", help="Emitir el diagnóstico como JSON (schema_version 1.0.0)."),
+) -> None:
+    """Diagnóstico del entorno: herramientas externas presentes y checks afectados.
+
+    Sale con 1 si falta gcc: sin compilador no se puede verificar ninguna entrega.
+    """
     from ripley.pipeline.availability import probe_all
     from ripley.pipeline.registry import is_runnable, iter_student
 
     statuses = probe_all()
     tools = {s.name: s.available for s in statuses}
+    omitidos = [s.check_id for s in iter_student() if not is_runnable(s, tools)]
+    requeridos = {"gcc"}
+    ok = all(tools.get(nombre, False) for nombre in requeridos)
+
+    if json_output:
+        import json as _json
+
+        from ripley import __version__
+
+        print(_json.dumps({
+            "schema_version": "1.0.0",
+            "herramienta": "ripley",
+            "version": __version__,
+            "ok": ok,
+            "chequeos": [
+                {"nombre": s.name, "requerido": s.name in requeridos, "ok": s.available,
+                 "detalle": s.path or "No encontrado en $PATH", "proposito": s.description}
+                for s in statuses
+            ],
+            "checks_omitidos": omitidos,
+        }, ensure_ascii=False, indent=2))
+        if not ok:
+            raise typer.Exit(code=1)
+        return
+
     table = Table(title="Disponibilidad de Herramientas Externas")
     table.add_column("Herramienta", style="cyan")
     table.add_column("Estado")
@@ -93,11 +124,12 @@ def doctor() -> None:
         table.add_row(s.name, estado, s.description)
     console.print(table)
 
-    omitidos = [s.check_id for s in iter_student() if not is_runnable(s, tools)]
     if omitidos:
         console.print(f"\n[yellow]Checks estudiantiles que se omitirán: {', '.join(omitidos)}[/yellow]")
     else:
         console.print("\n[green]Todos los checks estudiantiles son ejecutables en este entorno.[/green]")
+    if not ok:
+        raise typer.Exit(code=1)
 
 
 

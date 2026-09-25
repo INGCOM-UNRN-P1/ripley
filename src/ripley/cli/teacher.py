@@ -18,6 +18,7 @@ from ripley.core.testcases import (
 
 
 app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
     name="ripley-teacher",
     help="Comandos del flujo docente.",
     no_args_is_help=True,

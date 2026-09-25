@@ -9,6 +9,7 @@ from ripley.cli import student as _student
 from ripley.cli import teacher as _teacher
 
 app = typer.Typer(
+    context_settings={"help_option_names": ["-h", "--help"]},
     name="ripley",
     help="CLI para procesar, compilar, probar y evaluar entregas de C descargadas de Moodle.",
     no_args_is_help=True,
