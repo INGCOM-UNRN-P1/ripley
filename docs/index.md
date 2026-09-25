@@ -33,11 +33,11 @@
 ## Instalación express
 
 ```bash
-# Docente: suite completa
-pipx install ripley            # comando: ripley
+# Un solo paquete instala los dos comandos: `ripley` (docente, suite completa)
+# y `ripley-check` (estudiante, solo verificación). Siempre desde el
+# repositorio: el nombre `ripley` en PyPI pertenece a otro proyecto.
+uv tool install git+https://github.com/INGCOM-UNRN-P1/ripley
 
-# Estudiante: solo verificación
-pipx install ripley            # comando: ripley-check
 # …o sin instalación:
 python scripts/build_zipapp.py && ./dist/ripley_check.pyz --help
 ```

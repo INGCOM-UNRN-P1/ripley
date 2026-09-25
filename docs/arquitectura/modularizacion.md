@@ -114,7 +114,7 @@ Regla de oro: **si un check no figura en el manifiesto, `ripley-check` ni lo men
 
 ## 6. Flujo del estudiante
 
-1. Instalar una sola vez: `pipx install ripley-check` (o descargar zipapp).
+1. Instalar una sola vez: `uv tool install git+https://github.com/INGCOM-UNRN-P1/ripley` (instala `ripley-check`; o descargar el zipapp).
 2. Descargar `entrega-N.ripkg` del campus.
 3. `ripley-check doctor` → qué checks correrán y qué herramientas faltan.
 4. `ripley-check lint src/` · `ripley-check test src/` · `ripley-check run --practica ...`
