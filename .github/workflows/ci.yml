@@ -15,7 +15,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: sudo apt-get update && sudo apt-get install -y valgrind bubblewrap
-      - run: uv sync --extra dev
+      - run: |
+          uv sync --extra dev
+          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git"
       - run: uv run pytest -q
 
   student-minimal:
