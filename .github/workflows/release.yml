@@ -2,7 +2,7 @@ name: Release
 
 # Publica el zipapp ripley.pyz como asset de un GitHub Release.
 # El entorno del alumno lo descarga de:
-#   https://github.com/martinvilu/ripley/releases/latest/download/ripley.pyz
+#   https://github.com/INGCOM-UNRN-P1/ripley/releases/latest/download/ripley.pyz
 # (setup.ps1 y bin/update-env.sh de `entorno`, y tp.sh de plantilla-TP,
 # dependen de ese URL estable: no renombrar el artefacto).
 
