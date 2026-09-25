@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 
 def calcular_puntaje_calidad(analisis_resultado: Any) -> float:
     """Calcula un puntaje del 0.0 al 10.0 basado en compilación, pruebas y hallazgos AST."""
