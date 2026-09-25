@@ -16,12 +16,14 @@ jobs:
           python-version: "3.12"
       - run: |
           sudo apt-get update && sudo apt-get install -y valgrind bubblewrap
+          sudo chmod u+s /usr/bin/bwrap || true
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
 
       - run: |
           uv sync --extra dev
-          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git"
+          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git"
       - run: uv run pytest -q
+
 
   student-minimal:
     name: Entorno estudiante mínimo (ripley-check)
