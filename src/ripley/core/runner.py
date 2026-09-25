@@ -189,6 +189,9 @@ class DynamicTestRunner:
                 elapsed_ms = res.tiempo_ms
                 is_match = compare_outputs(res.stdout, expected_out, fuzzy=True)
 
+                if res.codigo_retorno != 0 and "AddressSanitizer failed to allocate" in (res.stderr or ""):
+                    raise RuntimeError("ASan incompatible con restriccion de memoria virtual RLIMIT_AS")
+
                 if res.codigo_retorno != 0:
                     diag = diagnose_runtime_crash(
                         returncode=res.codigo_retorno,
