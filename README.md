@@ -42,7 +42,7 @@ Motor de análisis estático, reglas de cátedra P1 (0xXXXXh), compilación sand
 ```bash
 # Instalación en modo desarrollo
 cd ripley
-uv sync --extra dev
+uv sync                      # incluye el grupo de desarrollo (pytest)
 
 # Verificación de entorno y herramientas instaladas
 uv run ripley doctor

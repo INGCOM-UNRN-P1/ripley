@@ -3,7 +3,7 @@
 ## Entorno
 
 ```bash
-uv sync --extra dev          # deps + pytest
+uv sync                      # deps + grupo dev (pytest)
 uv run pytest                # suite completa (263 tests, ~15s)
 uv run pytest -m integration # solo integración (algunas requieren Xvfb/valgrind)
 ```

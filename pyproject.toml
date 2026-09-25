@@ -38,12 +38,6 @@ Homepage = "https://github.com/INGCOM-UNRN-P1/ripley"
 Repository = "https://github.com/INGCOM-UNRN-P1/ripley.git"
 Issues = "https://github.com/INGCOM-UNRN-P1/ripley/issues"
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "pytest-mock>=3.12.0",
-]
-
 [project.scripts]
 ripley = "ripley.cli:app"
 ripley-check = "ripley.cli.student:app"
@@ -60,4 +54,10 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "integration: pruebas de integración que requieren herramientas externas completas",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
 ]

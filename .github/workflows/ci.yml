@@ -20,7 +20,7 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
 
       - run: |
-          uv sync --extra dev
+          uv sync
           uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git"
       - run: uv run pytest -q
 
@@ -41,7 +41,7 @@ jobs:
           mkdir -p /tmp/studentbin
           ln -s "$(command -v gcc)" /tmp/studentbin/gcc || true
           echo "/tmp/studentbin" > "$GITHUB_PATH"
-      - run: uv sync --extra dev
+      - run: uv sync
       - name: Fronteras de capas y registro
         run: uv run pytest tests/unit/test_layer_boundaries.py tests/unit/test_registry.py -q
       - name: Flujo pack/run sin herramientas avanzadas

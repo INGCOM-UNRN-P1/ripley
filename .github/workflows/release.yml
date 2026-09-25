@@ -27,7 +27,7 @@ jobs:
           python-version: "3.12"
 
       # typer/rich del venv del proyecto: los necesita el smoke test del zipapp
-      - run: uv sync --extra dev
+      - run: uv sync
 
       - name: Compilar zipapp (ripley.pyz + alias ripley_check.pyz)
         run: uv run python scripts/build_zipapp.py -o dist/ripley.pyz
