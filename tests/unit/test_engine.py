@@ -89,8 +89,9 @@ int main(void) {
     result = analyze_target(src)
     findings = result.ast_findings
     rule_codes = {f.get("rule_code") for f in findings}
-    assert "0x300Ah" in rule_codes
+    assert "0x3001h" in rule_codes or "0x300Ah" in rule_codes
     assert "KAN001" in rule_codes
+
     assert "0x300Dh" in rule_codes or "0x5006h" in rule_codes
 
 

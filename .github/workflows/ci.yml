@@ -14,7 +14,10 @@ jobs:
       - uses: astral-sh/setup-uv@v4
         with:
           python-version: "3.12"
-      - run: sudo apt-get update && sudo apt-get install -y valgrind bubblewrap
+      - run: |
+          sudo apt-get update && sudo apt-get install -y valgrind bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
       - run: |
           uv sync --extra dev
           uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git"
