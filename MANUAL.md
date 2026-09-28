@@ -1,6 +1,6 @@
 # Manual de Uso y Referencia Técnica: ripley
 
-> **RIPLEY** — CLI tool for batch processing, grading, versioning and evaluating Moodle C submissions
+> **RIPLEY** — Orquestador de verificación pedagógica de código C para estudiantes y docentes de Programación 1: reglas de cátedra, compilación aislada y análisis de los satélites del ecosistema.
 > **Versión:** `0.1.0` · **CLI principal:** `ripley` · **Plugin Ripley:** `ripley`
 
 ---
