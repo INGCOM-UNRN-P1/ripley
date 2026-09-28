@@ -187,17 +187,8 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
         "cli_subcmd": "check",
         "description": "Verificación y scaffolding de documentación técnica Doxygen y contratos C.",
     },
-    "gcc_explainer": {
-        "fase": "orquestado",
-        # `esper catalog` solo lista el catálogo y no recibe rutas: lo que explica
-        # los diagnósticos del código es `esper compile`, sin dejar un ejecutable.
-        "entrada": "archivo",
-        "tool": "esper",
-        "cli_cmd": "esper",
-        "cli_subcmd": "compile",
-        "args_extra": ("-Wall", "-Wextra", "-o", "/dev/null"),
-        "description": "Catálogo y explicación pedagógica de warnings y optimizaciones de GCC.",
-    },
+    # `gcc_explainer` (esper) se retiró: la explicación de los diagnósticos de GCC es
+    # de daedalus, el satélite `compiler` (N-ESPER-01).
     "semantic_diff": {
         "fase": "estatico",
         # `weyl check` compara la entrega contra un modelo: sin la referencia

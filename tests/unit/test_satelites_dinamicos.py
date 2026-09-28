@@ -1,4 +1,4 @@
-"""Regresión de FERRO-D0901, TETSUO-D0901, DRAKE-D0902 y ESPER-D0903.
+"""Regresión de FERRO-D0901, TETSUO-D0901 y DRAKE-D0902 (ESPER-D0903 quedó sin objeto: esper se retiró).
 
 Los satélites dinámicos estaban catalogados pero ripley los invocaba con el
 directorio del proyecto, que no aceptan: drake y esper daban un error de uso,
@@ -84,14 +84,11 @@ def test_ferro_solo_corre_si_el_manifiesto_indica_el_objetivo(proyecto, monkeypa
     assert llamadas == [["ferro", "check", objetivo, "--json"]]
 
 
-def test_esper_invoca_compile_sobre_el_archivo_y_no_el_catalogo(proyecto, monkeypatch):
-    llamadas = _simular(monkeypatch, {"esper": {"passed": True, "diagnostics": []}})
-    _adaptador("gcc_explainer")._execute_cli(proyecto, {})
-    assert llamadas
-    for llamada in llamadas:
-        assert llamada[:2] == ["esper", "compile"]
-        assert "catalog" not in llamada
-        assert llamada[-3:] == ["-o", "/dev/null", "--json"]
+def test_esper_esta_retirado_y_daedalus_explica_los_diagnosticos():
+    """esper se retiró (N-ESPER-01): ningún satélite lo invoca y daedalus es el dueño del compilador."""
+    assert "gcc_explainer" not in SATELLITE_CATALOG
+    assert all(entrada["tool"] != "esper" for entrada in SATELLITE_CATALOG.values())
+    assert SATELLITE_CATALOG["compiler"]["tool"] == "daedalus"
 
 
 DRAKE = {
