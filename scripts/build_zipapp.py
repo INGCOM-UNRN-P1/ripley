@@ -9,17 +9,28 @@ El paquete resultante incluye los módulos de la zona estudiante
 
     ./ripley_check.pyz doctor
 
-Requisitos del entorno destino: Python >= 3.11 con typer y rich
-instalados (pip install typer rich). Las herramientas externas opcionales
+Requisitos del entorno destino: solo Python >= 3.11. Las dependencias de
+ejecución (typer, rich, jinja2, pyyaml…, fijadas por uv.lock) viajan dentro
+del zipapp en su versión de Python puro: entorno descarga ripley.pyz y lo
+ejecuta sin venv ni pip (N-RIPLEY-07). Las herramientas externas opcionales
 (gcc, valgrind...) se detectan en tiempo de ejecución.
+
+Se construye con el venv del proyecto sincronizado (`uv sync`): las
+dependencias se copian de ahí, sin las extensiones compiladas (PyYAML y
+MarkupSafe usan su implementación en Python si no las encuentran). Las que
+solo existen en otra plataforma (colorama en Windows) se descargan con uv.
 """
 
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
+import subprocess
 import sys
+import tempfile
 import zipfile
+from importlib import metadata
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src"
@@ -92,11 +103,70 @@ def collect_modules() -> dict[str, bytes]:
     return files
 
 
-def build(output: Path) -> Path:
+COMPILADOS = (".so", ".pyd", ".dll", ".dylib", ".pyc")
+
+
+def dependencias_fijadas() -> list[tuple[str, str]]:
+    """Dependencias de ejecución (sin grupos de desarrollo) con la versión de uv.lock."""
+    salida = subprocess.run(
+        ["uv", "export", "--no-dev", "--no-emit-project", "--no-hashes", "--frozen"],
+        cwd=SRC.parent, capture_output=True, text=True, check=True,
+    ).stdout
+    return re.findall(r"(?m)^([A-Za-z0-9._-]+)==([^\s;]+)", salida)
+
+
+def _archivos_de(dist: metadata.Distribution) -> dict[str, bytes]:
+    archivos = {}
+    for relativo in dist.files or []:
+        nombre = str(relativo).replace("\\", "/")
+        if nombre.startswith("..") or "__pycache__" in nombre or nombre.endswith(COMPILADOS):
+            continue
+        ruta = Path(dist.locate_file(relativo))
+        if ruta.is_file():
+            archivos[nombre] = ruta.read_bytes()
+    return archivos
+
+
+def collect_dependencies() -> dict[str, bytes]:
+    """Archivos de Python puro de cada dependencia fijada, listos para la raíz del zipapp."""
+    archivos: dict[str, bytes] = {}
+    faltantes = []
+    for nombre, version in dependencias_fijadas():
+        try:
+            dist = metadata.distribution(nombre)
+        except metadata.PackageNotFoundError:
+            faltantes.append((nombre, version))
+            continue
+        if dist.version != version:
+            sys.exit(f"ERROR: {nombre} {dist.version} instalado y uv.lock pide {version}: corré `uv sync`.")
+        archivos.update(_archivos_de(dist))
+    for nombre, version in faltantes:
+        # Solo existen en otra plataforma (p. ej. colorama en Windows): se bajan sin instalar.
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = subprocess.run(["uv", "pip", "install", "--quiet", "--no-deps", "--target", tmp,
+                                   f"{nombre}=={version}"], capture_output=True, text=True)
+            if proc.returncode != 0:
+                print(f"AVISO: no se pudo incluir {nombre}=={version} ({proc.stderr.strip()[:120]})")
+                continue
+            for ruta in Path(tmp).rglob("*"):
+                rel = ruta.relative_to(tmp).as_posix()
+                if ruta.is_file() and "__pycache__" not in rel and not rel.endswith(COMPILADOS) \
+                        and not rel.startswith("bin/"):
+                    archivos[rel] = ruta.read_bytes()
+    return archivos
+
+
+def build(output: Path, con_dependencias: bool = True) -> Path:
     if not (PACKAGE / "cli" / "student.py").exists():
         sys.exit("ERROR: no se encontró ripley/cli/student.py; ¿ejecutaste desde la raíz del repo?")
 
     files = collect_modules()
+    if con_dependencias:
+        dependencias = collect_dependencies()
+        repetidos = set(dependencias) & set(files)
+        if repetidos:
+            sys.exit(f"ERROR: archivos de dependencias que pisan a ripley: {sorted(repetidos)[:5]}")
+        files.update(dependencias)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Escribir archivo zipapp con shebang ejecutable
@@ -124,15 +194,14 @@ def build(output: Path) -> Path:
     return output
 
 
-def smoke_test(app_path: Path) -> bool:
-    """Verifica que el zipapp responde --help con el intérprete actual.
+def smoke_test(app_path: Path, autocontenido: bool = True) -> bool:
+    """Verifica que el zipapp responde --help.
 
-    Requiere typer/rich instalados en ese entorno (requisito documentado
-    del paquete estudiantil).
+    Con `autocontenido`, se ejecuta con `python -S` (sin site-packages): así se
+    comprueba que no depende de nada instalado, como en la máquina del estudiante.
     """
-    import subprocess
-
-    proc = subprocess.run([sys.executable, str(app_path), "--help"], capture_output=True, text=True)
+    opciones = ["-S"] if autocontenido else []
+    proc = subprocess.run([sys.executable, *opciones, str(app_path), "--help"], capture_output=True, text=True)
     ok = proc.returncode == 0 and ("Verificación temprana" in proc.stdout or "ripley" in proc.stdout)
     if not ok:
         print(proc.stdout, proc.stderr)
@@ -142,9 +211,11 @@ def smoke_test(app_path: Path) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-o", "--output", default="dist/ripley.pyz")
+    parser.add_argument("--sin-dependencias", action="store_true",
+                        help="no incluir typer/rich/…: el destino tiene que tenerlas instaladas")
     args = parser.parse_args()
-    out = build(Path(args.output))
-    if not smoke_test(out):
+    out = build(Path(args.output), con_dependencias=not args.sin_dependencias)
+    if not smoke_test(out, autocontenido=not args.sin_dependencias):
         sys.exit("ERROR: el smoke test del zipapp falló.")
     print("Smoke test OK: el zipapp responde correctamente como ripley.")
 
