@@ -4,6 +4,17 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/);
 versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.2.2] - 2026-09-30
+
+### Corregido
+
+- **entrypoints**: sugerir instalar los satélites desde git y no por nombre (N-RIPLEY-10) (`6688d20`)
+- **contrato**: sebastian no genera una advertencia vacía por cada función (N-RIPLEY-09) (`728c20d`)
+
+### Mantenimiento
+
+- **deps**: subir yutani a 4b99a42 (N-ECO-14) (`3690837`)
+
 ## [1.2.1] - 2026-09-30
 
 ### Corregido
