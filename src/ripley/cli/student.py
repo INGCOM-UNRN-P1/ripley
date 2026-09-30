@@ -53,28 +53,77 @@ app.add_typer(checks_app, name="checks")
 # ============================================================================
 
 
-@checks_app.command("list")
-def checks_list(
-    scope: str = typer.Option("student", "--scope", "-s", help="Filtrar por scope: student | teacher | both | all."),
-) -> None:
-    """Lista el catálogo unificado de verificaciones disponibles."""
-    from ripley.pipeline.availability import available_map
+# Fase del catálogo de satélites → capa de `checks list`.
+_CAPA_DE_FASE = {"estatico": "static", "dinamico": "dynamic", "orquestado": "pipeline"}
+
+
+def _en_scope(scope_check: str, filtro: str) -> bool:
+    """`student` y `teacher` incluyen los checks de ambos (`both`); `all`, todos."""
+    return filtro == "all" or scope_check == filtro or (scope_check == "both" and filtro in ("student", "teacher"))
+
+
+def filas_catalogo(scope: str, herramientas: dict[str, bool]) -> list[dict]:
+    """Checks propios y satélites del SATELLITE_CATALOG con su disponibilidad (N-RIPLEY-04)."""
+    from ripley.core.entrypoints_catalogo import SATELLITE_CATALOG
     from ripley.pipeline.registry import all_checks
 
-    tools = available_map()
+    filas = []
+    for spec in all_checks():
+        if _en_scope(spec.scope, scope):
+            filas.append({"id": spec.check_id, "origen": "ripley", "capa": spec.layer, "scope": spec.scope,
+                          "herramientas": list(spec.requires_tools),
+                          "faltan": [t for t in spec.requires_tools if not herramientas.get(t)], "requiere": []})
+    # Los satélites corren en `ripley run`, que usan el estudiante y la corrección docente (dredd).
+    if _en_scope("both", scope):
+        # El catálogo registra cada satélite también por el nombre de su herramienta (el mismo
+        # objeto, agregado al final): se lista una sola vez, con el nombre de su función.
+        vistos: set[int] = set()
+        for clave, info in SATELLITE_CATALOG.items():
+            if id(info) in vistos:
+                continue
+            vistos.add(id(info))
+            requiere = list(info.get("requiere_config", ())) + (["main()"] if info.get("requiere_main") else [])
+            filas.append({"id": f"satelite.{clave}", "origen": "satélite", "capa": _CAPA_DE_FASE.get(info["fase"], info["fase"]),
+                          "scope": "both", "herramientas": [info["tool"]],
+                          "faltan": [] if herramientas.get(info["tool"]) else [info["tool"]], "requiere": requiere})
+    return sorted(filas, key=lambda f: (f["origen"] != "ripley", f["id"]))
+
+
+@checks_app.command("list")
+def checks_list(
+    scope: str = typer.Option("student", "--scope", "-s",
+                              help="Filtrar por scope: student | teacher | both | all (student y teacher incluyen both)."),
+    json_output: bool = typer.Option(False, "--json", help="Emitir el catálogo como JSON (schema_version 1.0.0)."),
+) -> None:
+    """Lista el catálogo unificado de verificaciones: los checks de ripley y los satélites que orquesta."""
+    from ripley.pipeline.availability import available_map
+
+    filas = filas_catalogo(scope, available_map())
+    if json_output:
+        import json as _json
+
+        print(_json.dumps({"schema_version": "1.0.0", "herramienta": "ripley", "scope": scope, "checks": filas},
+                          ensure_ascii=False, indent=2))
+        return
     table = Table(title="Catálogo de Verificaciones de Ripley")
     table.add_column("Check ID", style="cyan")
     table.add_column("Capa")
     table.add_column("Scope")
     table.add_column("Herramientas", style="dim")
     table.add_column("Estado")
-    for spec in all_checks():
-        if scope != "all" and spec.scope != scope:
-            continue
-        missing = [t for t in spec.requires_tools if not tools.get(t)]
-        estado = "[green]lista[/green]" if not missing else f"[yellow]omite: falta {', '.join(missing)}[/yellow]"
-        table.add_row(spec.check_id, spec.layer, spec.scope, ", ".join(spec.requires_tools) or "-", estado)
+    for fila in filas:
+        if fila["faltan"]:
+            estado = f"[yellow]omite: falta {', '.join(fila['faltan'])}[/yellow]"
+        elif fila["requiere"]:
+            estado = f"[green]lista[/green] [dim](requiere {', '.join(fila['requiere'])})[/dim]"
+        else:
+            estado = "[green]lista[/green]"
+        table.add_row(fila["id"], fila["capa"], fila["scope"], ", ".join(fila["herramientas"]) or "-", estado)
     console.print(table)
+    satelites = [f for f in filas if f["origen"] == "satélite"]
+    if satelites:
+        disponibles = sum(1 for f in satelites if not f["faltan"])
+        console.print(f"Satélites disponibles: {disponibles}/{len(satelites)} (instalá los que faltan con el perfil «analisis»).")
 
 
 @app.command("doctor")
