@@ -7,6 +7,29 @@ from typing import Any, Dict, List, Union
 
 
 
+def _observaciones_de_sebastian(item: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Un reporte de función de sebastian: solo el riesgo alto de overflow y sus recomendaciones son hallazgos."""
+    raw_obs: List[Dict[str, Any]] = []
+    riesgo = str(item.get("riesgo_overflow", "BAJO")).upper()
+    if riesgo in ("ALTO", "CRITICO"):
+        raw_obs.append({
+            "rule_code": "STACK_OVERFLOW_RISK",
+            "severity": "ERROR" if riesgo == "CRITICO" else "ADVERTENCIA",
+            "message": f"Función '{item.get('funcion')}' presenta riesgo {riesgo} de stack overflow.",
+            "file": item.get("archivo", ""),
+            "line": int(item.get("linea_inicio", 1)),
+        })
+    for rec in item.get("recomendaciones", []):
+        raw_obs.append({
+            "rule_code": "RECURSION_RECOMMENDATION",
+            "severity": "SUGERENCIA",
+            "message": str(rec),
+            "file": item.get("archivo", ""),
+            "line": int(item.get("linea_inicio", 1)),
+        })
+    return raw_obs
+
+
 def extract_raw_observations(data: Union[Dict[str, Any], List[Any]]) -> List[Dict[str, Any]]:
     """Extrae la lista de observaciones/violaciones/antipatrones/vulnerabilidades de la salida de un plugin."""
     raw_obs: List[Dict[str, Any]] = []
@@ -16,23 +39,7 @@ def extract_raw_observations(data: Union[Dict[str, Any], List[Any]]) -> List[Dic
             if isinstance(item, dict):
                 # Soporte de salida de sebastian (funciones analizadas)
                 if "riesgo_overflow" in item:
-                    riesgo = str(item.get("riesgo_overflow", "BAJO")).upper()
-                    if riesgo in ("ALTO", "CRITICO"):
-                        raw_obs.append({
-                            "rule_code": "STACK_OVERFLOW_RISK",
-                            "severity": "ERROR" if riesgo == "CRITICO" else "ADVERTENCIA",
-                            "message": f"Función '{item.get('funcion')}' presenta riesgo {riesgo} de stack overflow.",
-                            "file": item.get("archivo", ""),
-                            "line": int(item.get("linea_inicio", 1)),
-                        })
-                    for rec in item.get("recomendaciones", []):
-                        raw_obs.append({
-                            "rule_code": "RECURSION_RECOMMENDATION",
-                            "severity": "SUGERENCIA",
-                            "message": str(rec),
-                            "file": item.get("archivo", ""),
-                            "line": int(item.get("linea_inicio", 1)),
-                        })
+                    raw_obs.extend(_observaciones_de_sebastian(item))
                 elif any(k in item for k in ("rule_code", "codigo", "code", "message", "mensaje")):
                     raw_obs.append(item)
         return raw_obs
@@ -61,7 +68,12 @@ def extract_raw_observations(data: Union[Dict[str, Any], List[Any]]) -> List[Dic
         if isinstance(v, list):
             for item in v:
                 if isinstance(item, dict):
-                    raw_obs.append(item)
+                    # La lista de sebastian llega envuelta en `observaciones` (el adaptador de CLI la
+                    # envuelve): cada función analizada, aun sin riesgo, se volvía un hallazgo vacío.
+                    if "riesgo_overflow" in item:
+                        raw_obs.extend(_observaciones_de_sebastian(item))
+                    else:
+                        raw_obs.append(item)
 
     # drake: cada crash del fuzzing es un hallazgo; `ok: false` sin ellos dejaba al
     # alumno con un plugin fallido y ningún mensaje.
