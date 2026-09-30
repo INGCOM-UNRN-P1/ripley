@@ -37,8 +37,7 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parents[1] / "src"
 PACKAGE = SRC / "ripley"
 
-STUDENT_ZONES = ["models", "core", "tools", "pipeline", "cli"]
-STUDENT_CLI_MODULES = {"__init__.py", "_common.py", "student.py"}
+STUDENT_ZONES = ["models", "core", "tools", "pipeline"]  # de cli/, solo lo del estudiante (abajo)
 EXCLUDE_TEACHER_SHIMS = {
     # shims planos que re-exportan el flujo docente
     "ingest.py", "mapping.py", "db.py", "evaluate.py", "reporter.py",
@@ -74,32 +73,25 @@ def collect_modules() -> dict[str, bytes]:
     for zone in STUDENT_ZONES:
         add(PACKAGE / zone, f"ripley/{zone}")
 
-    # Módulos planos compartidos: schema de config y shims estudiantiles
+    # Módulos planos: todos salvo los shims del flujo docente. Antes entraban solo los que citaban
+    # ripley.core/ripley.tools, y config_modelos.py (salido de partir config.py) quedaba afuera:
+    # `ripley check` terminaba en ModuleNotFoundError aunque --help y doctor anduvieran.
     for flat in sorted(PACKAGE.glob("*.py")):
-        name = flat.name
-        if name in EXCLUDE_TEACHER_SHIMS or name == "cli.py":
+        if flat.name in EXCLUDE_TEACHER_SHIMS or flat.name in ("cli.py", "__main__.py"):
             continue
-        text = flat.read_text(encoding="utf-8")
-        if name == "config.py":
-            files[f"ripley/{name}"] = text.encode("utf-8")
-            continue
-        target_zone = next((z for z in ("core", "tools") if f"ripley.{z}." in text), None)
-        if target_zone:
-            files[f"ripley/{name}"] = text.encode("utf-8")
+        files[f"ripley/{flat.name}"] = flat.read_bytes()
 
     # __init__.py raíz y cli/__init__ reducido para no arrastrar teacher
     root_init = PACKAGE / "__init__.py"
     if root_init.exists():
         files["ripley/__init__.py"] = root_init.read_bytes()
 
-    cli_pkg = PACKAGE / "cli"
-    for mod in STUDENT_CLI_MODULES:
-        p = cli_pkg / mod
-        if mod == "__init__.py":
-            content = '"""CLI estudiantil autocontenido (zipapp)."""\nfrom ripley.cli.student import app\n'
-            files["ripley/cli/__init__.py"] = content.encode("utf-8")
-        elif p.exists():
-            files[f"ripley/cli/{mod}"] = p.read_bytes()
+    # cli/: el __init__ reducido, _common y los módulos del CLI estudiantil (student*.py); los del
+    # docente (teacher*.py) dependen de ripley.teacher, que no viaja en el zipapp.
+    files["ripley/cli/__init__.py"] = b'"""CLI estudiantil autocontenido (zipapp)."""\nfrom ripley.cli.student import app\n'
+    for p in sorted((PACKAGE / "cli").glob("*.py")):
+        if p.name == "_common.py" or p.name.startswith("student"):
+            files[f"ripley/cli/{p.name}"] = p.read_bytes()
 
     return files
 
@@ -224,7 +216,25 @@ def smoke_test(app_path: Path, autocontenido: bool = True) -> bool:
     ok = proc.returncode == 0 and ("Verificación temprana" in proc.stdout or "ripley" in proc.stdout)
     if not ok:
         print(proc.stdout, proc.stderr)
-    return ok
+        return False
+    # --help y doctor no importan todo: un módulo que falta recién aparece al usar `check`. Se
+    # importan todos los módulos de ripley que viajan en el zipapp.
+    modulos = sorted(n[:-3].replace("/", ".").removesuffix(".__init__") for n in zipfile.ZipFile(app_path).namelist()
+                     if n.startswith("ripley/") and n.endswith(".py"))
+    programa = ("import importlib, sys\n"
+                f"sys.path.insert(0, {str(app_path)!r})\n"
+                "fallas = []\n"
+                f"for m in {modulos!r}:\n"
+                "    try:\n"
+                "        importlib.import_module(m)\n"
+                "    except Exception as e:\n"
+                "        fallas.append(f'{m}: {e!r}')\n"
+                "print('\\n'.join(fallas))\n")
+    proc = subprocess.run([sys.executable, *opciones, "-c", programa], capture_output=True, text=True)
+    if proc.returncode != 0 or proc.stdout.strip():
+        print("Módulos del zipapp que no importan:", proc.stdout, proc.stderr, sep="\n")
+        return False
+    return True
 
 
 def main() -> None:
