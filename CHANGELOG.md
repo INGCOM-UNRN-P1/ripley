@@ -4,6 +4,16 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/);
 versiones según [SemVer](https://semver.org/lang/es/).
 
+## [1.2.1] - 2026-09-30
+
+### Corregido
+
+- **compiler**: funcionar en Windows sin el módulo resource (N-ECO-10) (`c669a8a`)
+
+### Mantenimiento
+
+- probar en Windows con MSYS2 UCRT64, por ahora como informativo (N-ECO-10) (`67938b3`)
+
 ## [1.2.0] - 2026-09-30
 
 ### Agregado
