@@ -139,7 +139,7 @@ def cmd_gcc_explain(
 
 @app.command("analyze")
 def cmd_analyze(
-    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a analizar."),
+    target: Path = typer.Argument(Path("."), exists=True, help="Ruta al archivo .c o directorio del proyecto a analizar."),
     format: str = typer.Option("json", "--format", help="Formato de salida ('json')."),
     html: Optional[Path] = typer.Option(None, "--html", help="Generar informe interactivo HTML con badges de cátedra."),
 ) -> None:
@@ -186,7 +186,7 @@ def cmd_analyze(
 
 @app.command("report")
 def cmd_report(
-    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a verificar."),
+    target: Path = typer.Argument(Path("."), exists=True, help="Ruta al archivo .c o directorio del proyecto a verificar."),
     output: Optional[Path] = typer.Option(None, "--output", "-o", help="Ruta de destino del archivo Markdown."),
 ) -> None:
     """Genera directamente la sección de reporte Markdown de RIPLEY para Dredd."""
@@ -206,7 +206,7 @@ def cmd_report(
 
 @app.command("badge")
 def cmd_badge(
-    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a evaluar."),
+    target: Path = typer.Argument(Path("."), exists=True, help="Ruta al archivo .c o directorio del proyecto a evaluar."),
     output: Path = typer.Option(Path("ripley_badge.svg"), "--output", "-o", help="Ruta de destino del archivo SVG."),
     label: str = typer.Option("ripley", "--label", "-l", help="Etiqueta izquierda del badge SVG."),
 ) -> None:
@@ -236,7 +236,7 @@ def cmd_lsp() -> None:
 
 @app.command("fix-interactive")
 def cmd_fix_interactive(
-    source: Path = typer.Argument(..., help="Archivo .c a corregir interactivamente."),
+    source: Path = typer.Argument(..., exists=True, help="Archivo .c a corregir interactivamente."),
     auto_apply: bool = typer.Option(True, "--auto", "-y", help="Aplicar correcciones sin confirmación manual."),
 ) -> None:
     """Aplica auto-correcciones pedagógicas para vicios comunes de C."""
@@ -251,7 +251,7 @@ def cmd_fix_interactive(
 
 @app.command("style-check")
 def cmd_style_check(
-    sources: List[Path] = typer.Argument(..., help="Archivos .c/.h a auditar contra el estándar de cátedra."),
+    sources: List[Path] = typer.Argument(..., exists=True, help="Archivos .c/.h a auditar contra el estándar de cátedra."),
 ) -> None:
     """Verifica la conformidad del código con el estándar estilístico oficial de la cátedra."""
     from ripley.core.style_compliance import auditar_conformidad_estilo
@@ -266,7 +266,7 @@ def cmd_style_check(
 
 @app.command("history")
 def cmd_history(
-    target: Path = typer.Argument(Path("."), help="Directorio raíz del proyecto estudiantil."),
+    target: Path = typer.Argument(Path("."), exists=True, help="Directorio raíz del proyecto estudiantil."),
 ) -> None:
     """Muestra el historial de evolución de corrección de errores del alumno."""
     from ripley.core.history import mostrar_historial_progreso

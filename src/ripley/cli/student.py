@@ -170,7 +170,7 @@ def doctor(
 
 @app.command("run")
 def cmd_run(
-    sources: List[Path] = typer.Argument(..., help="Archivos .c del estudiante a verificar."),
+    sources: List[Path] = typer.Argument(..., exists=True, help="Archivos .c del estudiante a verificar."),
     practica: str = typer.Option(..., "--practica", "-p", help="Ruta al paquete .ripkg de la práctica."),
     strict: bool = typer.Option(False, "--strict", help="Salir con código 1 si hay hallazgos, no solo errores."),
     verify_signature: bool = typer.Option(False, "--verify-signature", help="Exigir firma GPG válida del paquete."),
@@ -258,7 +258,7 @@ def generar_seccion_markdown(result) -> str:
 
 @app.command("check")
 def cmd_check(
-    target: Path = typer.Argument(Path("."), help="Ruta al archivo .c o directorio del proyecto a verificar."),
+    target: Path = typer.Argument(Path("."), exists=True, help="Ruta al archivo .c o directorio del proyecto a verificar."),
     strict: bool = typer.Option(False, "--strict", help="Salir con código de error si se detectan advertencias."),
     output_format: str = typer.Option("rich", "--format", help="Formato de salida: 'rich' (consola interactiva), 'json' o 'sarif'."),
     socratic: bool = typer.Option(False, "--socratic", "-s", help="Modo tutor socrático: muestra pistas conceptuales progresivas en vez de soluciones directas."),

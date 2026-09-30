@@ -251,7 +251,7 @@ def cmd_practica_show(
 
 @practica_app.command("graphics-capture")
 def cmd_practica_graphics_capture(
-    binary_path: Path = typer.Argument(..., help="Binario gráfico (SDL2/Raylib) a ejecutar."),
+    binary_path: Path = typer.Argument(..., exists=True, help="Binario gráfico (SDL2/Raylib) a ejecutar."),
     output: Path = typer.Option("golden.png", "--output", "-o", help="PNG dorado a generar."),
     args_str: str = typer.Option("", "--args", help="Argumentos CLI para el binario."),
     stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Entrada estándar opcional."),
@@ -289,7 +289,7 @@ def shutil_move(src: Path, dst: Path) -> None:
 
 @practica_app.command("graphics-eval")
 def cmd_practica_graphics_eval(
-    binary_path: Path = typer.Argument(..., help="Binario del alumno a evaluar."),
+    binary_path: Path = typer.Argument(..., exists=True, help="Binario del alumno a evaluar."),
     golden: list[Path] = typer.Option(..., "--golden", "-g", help="Imagen(es) doradas contra las que comparar."),
     args_str: str = typer.Option("", "--args", help="Argumentos CLI para el binario (mismo escenario por golden)."),
     stdin_file: Optional[str] = typer.Option(None, "--stdin", "-i", help="Entrada estándar opcional."),

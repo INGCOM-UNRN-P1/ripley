@@ -223,7 +223,7 @@ def cmd_show_ripkg(
 
 @app.command("watch")
 def cmd_watch(
-    paths: Optional[List[Path]] = typer.Argument(None, help="Archivos o directorios .c a vigilar (por defecto: .)."),
+    paths: Optional[List[Path]] = typer.Argument(None, exists=True, help="Archivos o directorios .c a vigilar (por defecto: .)."),
     practica: Optional[str] = typer.Option(None, "--practica", "-p", help="Paquete .ripkg para flags oficiales y testcases públicos."),
     interval: float = typer.Option(1.0, "--interval", "-i", help="Segundos entre sondeos de cambios."),
 ) -> None:
