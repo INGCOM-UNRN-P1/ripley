@@ -31,6 +31,8 @@ dependencies = [
     "python-slugify>=8.0.4",
     "tomli-w>=1.0.0",
     "pyyaml>=6.0.3",
+    # Núcleo común del ecosistema (N-ECO-14): contrato de línea de comandos y textos en español.
+    "yutani @ git+https://github.com/INGCOM-UNRN-P1/yutani@e4c8e1050e5dd87a930c5404aba6b65d1be1665a",
 ]
 
 [project.optional-dependencies]

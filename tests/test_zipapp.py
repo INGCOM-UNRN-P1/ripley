@@ -41,7 +41,7 @@ def test_corre_sin_site_packages(zipapp):
 
 def test_incluye_dependencias_de_python_puro(zipapp):
     nombres = zipfile.ZipFile(zipapp).namelist()
-    for paquete in ("typer/", "rich/", "yaml/", "jinja2/", "slugify/"):
+    for paquete in ("typer/", "rich/", "yaml/", "jinja2/", "slugify/", "yutani/"):  # yutani viene de git
         assert any(n.startswith(paquete) for n in nombres), paquete
     assert not [n for n in nombres if n.endswith((".so", ".pyd", ".dll"))]
     assert "ripley/cli/student.py" in nombres

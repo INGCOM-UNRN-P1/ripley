@@ -1,39 +1,19 @@
 """Ripley CLI package: flat `ripley` app combining teacher and student commands."""
 
-from typing import Optional
-
 import typer
+from yutani.cli import crear_app
 
 from ripley import __version__
 from ripley.cli import student as _student
 from ripley.cli import teacher as _teacher
 
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    name="ripley",
-    help="CLI para procesar, compilar, probar y evaluar entregas de C descargadas de Moodle.",
-    no_args_is_help=True,
+# Contrato de línea de comandos del ecosistema (-h/--help, --version/-v, errores de datos como
+# mensajes) y textos de Typer en español, desde yutani (N-ECO-14).
+app = crear_app(
+    "ripley",
+    __version__,
+    "CLI para procesar, compilar, probar y evaluar entregas de C descargadas de Moodle.",
 )
-
-
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"ripley {__version__}")
-        raise typer.Exit()
-
-
-@app.callback()
-def _main(
-    version: Optional[bool] = typer.Option(
-        None,
-        "--version",
-        "-v",
-        help="Muestra la versión de ripley y finaliza.",
-        callback=_version_callback,
-        is_eager=True,
-    ),
-) -> None:
-    pass
 
 
 def _merge(target: typer.Typer, source: typer.Typer) -> None:

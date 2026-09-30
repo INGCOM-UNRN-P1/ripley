@@ -24,6 +24,7 @@ solo existen en otra plataforma (colorama en Windows) se descargan con uv.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -107,12 +108,26 @@ COMPILADOS = (".so", ".pyd", ".dll", ".dylib", ".pyc")
 
 
 def dependencias_fijadas() -> list[tuple[str, str]]:
-    """Dependencias de ejecución (sin grupos de desarrollo) con la versión de uv.lock."""
+    """Dependencias de ejecución (sin grupos de desarrollo) con la versión de uv.lock.
+
+    Las que vienen de git (yutani: no está en PyPI) llevan su referencia `git+…@commit` en
+    lugar de la versión: sin esto quedaban fuera del zipapp.
+    """
     salida = subprocess.run(
         ["uv", "export", "--no-dev", "--no-emit-project", "--no-hashes", "--frozen"],
         cwd=SRC.parent, capture_output=True, text=True, check=True,
     ).stdout
-    return re.findall(r"(?m)^([A-Za-z0-9._-]+)==([^\s;]+)", salida)
+    return (re.findall(r"(?m)^([A-Za-z0-9._-]+)==([^\s;]+)", salida)
+            + re.findall(r"(?m)^([A-Za-z0-9._-]+) @ (git\+[^\s;]+)", salida))
+
+
+def _commit_instalado(dist: metadata.Distribution) -> str:
+    """Commit desde el que se instaló una dependencia de git (direct_url.json), o ""."""
+    try:
+        datos = json.loads(dist.read_text("direct_url.json") or "{}")
+    except ValueError:
+        return ""
+    return str(datos.get("vcs_info", {}).get("commit_id", ""))
 
 
 def _archivos_de(dist: metadata.Distribution) -> dict[str, bytes]:
@@ -137,14 +152,18 @@ def collect_dependencies() -> dict[str, bytes]:
         except metadata.PackageNotFoundError:
             faltantes.append((nombre, version))
             continue
-        if dist.version != version:
+        if version.startswith("git+"):
+            if not version.endswith("@" + _commit_instalado(dist)):
+                sys.exit(f"ERROR: {nombre} instalado no es el commit que pide uv.lock ({version}): corré `uv sync`.")
+        elif dist.version != version:
             sys.exit(f"ERROR: {nombre} {dist.version} instalado y uv.lock pide {version}: corré `uv sync`.")
         archivos.update(_archivos_de(dist))
     for nombre, version in faltantes:
         # Solo existen en otra plataforma (p. ej. colorama en Windows): se bajan sin instalar.
         with tempfile.TemporaryDirectory() as tmp:
+            requisito = f"{nombre} @ {version}" if version.startswith("git+") else f"{nombre}=={version}"
             proc = subprocess.run(["uv", "pip", "install", "--quiet", "--no-deps", "--target", tmp,
-                                   f"{nombre}=={version}"], capture_output=True, text=True)
+                                   requisito], capture_output=True, text=True)
             if proc.returncode != 0:
                 print(f"AVISO: no se pudo incluir {nombre}=={version} ({proc.stderr.strip()[:120]})")
                 continue

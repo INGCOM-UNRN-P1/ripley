@@ -11,37 +11,18 @@ from typing import List, Optional
 
 import typer
 from rich.table import Table
+from yutani.cli import crear_app
 
 from ripley import __version__
 from ripley.cli._common import console
 
 
-app = typer.Typer(
-    context_settings={"help_option_names": ["-h", "--help"]},
-    name="ripley-check",
-    help="Verificación temprana de entregas C desde la computadora del estudiante.",
-    no_args_is_help=True,
+# Contrato de línea de comandos del ecosistema desde yutani (N-ECO-14).
+app = crear_app(
+    "ripley-check",
+    __version__,
+    "Verificación temprana de entregas C desde la computadora del estudiante.",
 )
-
-
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"ripley-check {__version__}")
-        raise typer.Exit()
-
-
-@app.callback()
-def _main(
-    version: Optional[bool] = typer.Option(
-        None,
-        "--version",
-        "-v",
-        help="Muestra la versión de ripley-check y finaliza.",
-        callback=_version_callback,
-        is_eager=True,
-    ),
-) -> None:
-    pass
 
 
 checks_app = typer.Typer(name="checks", help="Catálogo unificado de verificaciones.", no_args_is_help=True)
