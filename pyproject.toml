@@ -1,6 +1,6 @@
 [project]
 name = "ripley"
-version = "1.1.0"
+version = "1.2.0"
 description = "Orquestador de verificación pedagógica de código C para estudiantes y docentes de Programación 1: reglas de cátedra, compilación aislada y análisis de los satélites del ecosistema"
 readme = "README.md"
 license = {text = "GPL-3.0-or-later"}
