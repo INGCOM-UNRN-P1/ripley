@@ -9,7 +9,7 @@ import subprocess
 import time
 from typing import List, Optional
 
-from ripley.core.compiler import set_process_limits
+from ripley.core.compiler import limites_para_subprocess
 from ripley.config import CustomToolConfig, LimitsConfig
 from ripley.core.diagnostics import DiagnosisType, diagnose_runtime_crash
 from ripley.core.testcases import TestCaseInfo
@@ -221,7 +221,7 @@ class DynamicTestRunner:
                 capture_output=True,
                 text=True,
                 timeout=self.limits_cfg.timeout_segundos,
-                preexec_fn=lambda: set_process_limits(
+                preexec_fn=limites_para_subprocess(
                     self.limits_cfg.limite_memoria_mb,
                     self.limits_cfg.timeout_segundos,
                 ),
@@ -345,7 +345,7 @@ class CustomToolRunner:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                preexec_fn=lambda: set_process_limits(self.limits.limite_memoria_mb, timeout),
+                preexec_fn=limites_para_subprocess(self.limits.limite_memoria_mb, timeout),
             )
 
             success = (res.returncode == 0)

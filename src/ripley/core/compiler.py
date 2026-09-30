@@ -3,11 +3,15 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
-import resource
 import shutil
 import subprocess
 import warnings
-from typing import List, Optional, Sequence
+from typing import Callable, List, Optional, Sequence
+
+try:
+    import resource  # solo POSIX
+except ImportError:  # pragma: no cover - Windows (Python nativo o el de MSYS2 UCRT64)
+    resource = None  # type: ignore[assignment]
 
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
 
@@ -44,8 +48,10 @@ def set_process_limits(
     (shadow memory y arena del allocator) que el kernel contabiliza en dicho
     límite, por lo que forzarlo provoca el aborto inmediato del proceso
     auditado. La protección de memoria queda delegada a los sanitizadores,
-    Valgrind y el timeout de CPU.
+    Valgrind y el timeout de CPU. En Windows no hay límites por proceso: no hace nada.
     """
+    if resource is None:
+        return
     try:
         # Límite de CPU
         resource.setrlimit(resource.RLIMIT_CPU, (cpu_timeout_sec, cpu_timeout_sec + 2))
@@ -67,6 +73,18 @@ def set_process_limits(
     except (ValueError, OSError):
         pass
 
+
+
+def limites_para_subprocess(memory_limit_mb: int, cpu_timeout_sec: int) -> Optional[Callable[[], None]]:
+    """El `preexec_fn` que aplica los límites en el hijo, o None donde no existen.
+
+    En Windows no hay `resource` y `subprocess` rechaza `preexec_fn`: la ejecución queda acotada
+    solo por el timeout (antes, importar este módulo ya fallaba y con él los comandos que ejecutan
+    los programas del estudiante).
+    """
+    if resource is None or os.name == "nt":
+        return None
+    return lambda: set_process_limits(memory_limit_mb, cpu_timeout_sec)
 
 
 class Compiler:
