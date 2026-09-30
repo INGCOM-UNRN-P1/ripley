@@ -127,3 +127,72 @@ src/ripley/
 uv run pytest
 ```
 *Toda la suite (230+ tests) ejecuta con cobertura completa sin requerir herramientas externas privativas.*
+
+<!-- p1:referencia:inicio — generado por p1-tools/scripts/readme_generado.py: no editar a mano -->
+
+## Referencia rápida
+
+### Requisitos
+
+- Python ≥ 3.11 y [uv](https://docs.astral.sh/uv/getting-started/installation/).
+- Programas del sistema: `gcc`.
+
+| Sistema | `gcc` |
+|:--|:--|
+| Debian / Ubuntu | `sudo apt install gcc` |
+| Fedora | `sudo dnf install gcc` |
+| Windows | incluido en el entorno de la cátedra (MSYS2 UCRT64) |
+| macOS | `xcode-select --install` (clang como `gcc`) |
+
+### Comandos de `ripley`
+
+| Comando | Descripción |
+|:--|:--|
+| `ripley evaluate` | Ejecuta la compilación, linters, estilo, pruebas y calificación de los estudiantes. |
+| `ripley doctor` | Diagnóstico del entorno: herramientas externas presentes y checks afectados. |
+| `ripley run` | Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto. |
+| `ripley check` | Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer. |
+| `ripley show` | Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg. |
+| `ripley watch` | Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir). |
+| `ripley explain` | Explica una regla pedagógica de cátedra o busca por palabras clave en el catálogo canónico. |
+| `ripley gcc-explain` | Traduce mensajes de error y advertencias de GCC/ld a explicaciones claras en español. |
+| `ripley analyze` | Análisis programático sin estado para orquestadores (dredd, CI/CD, scripts). |
+| `ripley report` | Genera directamente la sección de reporte Markdown de RIPLEY para Dredd. |
+| `ripley badge` | Genera un badge SVG con la calificación pedagógica del estudiante. |
+| `ripley lsp` | Inicia el servidor Language Server Protocol (LSP) de Ripley en stdio. |
+| `ripley fix-interactive` | Aplica auto-correcciones pedagógicas para vicios comunes de C. |
+| `ripley style-check` | Verifica la conformidad del código con el estándar estilístico oficial de la cátedra. |
+| `ripley history` | Muestra el historial de evolución de corrección de errores del alumno. |
+| `ripley template` | Gestión y verificación de plantillas Markdown Jinja2. |
+| `ripley testcase` | Gestión y esqueletos de casos de prueba. |
+| `ripley practica` | Gestión de prácticas en ./practicas. |
+| `ripley audit` | Flujo de auditoría docente: tablero de estados, transiciones e historia. |
+| `ripley checks` | Catálogo unificado de verificaciones. |
+| `ripley plugins` | Plugins de usuario en plugins/: hooks de ciclo de vida y git hooks. |
+
+Ayuda de cada comando: `ripley <comando> -h`.
+
+### Comandos de `ripley-check`
+
+| Comando | Descripción |
+|:--|:--|
+| `ripley-check doctor` | Diagnóstico del entorno: herramientas externas presentes y checks afectados. |
+| `ripley-check run` | Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto. |
+| `ripley-check check` | Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer. |
+| `ripley-check show` | Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg. |
+| `ripley-check watch` | Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir). |
+| `ripley-check explain` | Explica una regla pedagógica de cátedra o busca por palabras clave en el catálogo canónico. |
+| `ripley-check gcc-explain` | Traduce mensajes de error y advertencias de GCC/ld a explicaciones claras en español. |
+| `ripley-check analyze` | Análisis programático sin estado para orquestadores (dredd, CI/CD, scripts). |
+| `ripley-check report` | Genera directamente la sección de reporte Markdown de RIPLEY para Dredd. |
+| `ripley-check badge` | Genera un badge SVG con la calificación pedagógica del estudiante. |
+| `ripley-check lsp` | Inicia el servidor Language Server Protocol (LSP) de Ripley en stdio. |
+| `ripley-check fix-interactive` | Aplica auto-correcciones pedagógicas para vicios comunes de C. |
+| `ripley-check style-check` | Verifica la conformidad del código con el estándar estilístico oficial de la cátedra. |
+| `ripley-check history` | Muestra el historial de evolución de corrección de errores del alumno. |
+| `ripley-check checks` | Catálogo unificado de verificaciones. |
+| `ripley-check plugins` | Plugins de usuario en plugins/: hooks de ciclo de vida y git hooks. |
+
+Ayuda de cada comando: `ripley-check <comando> -h`.
+
+<!-- p1:referencia:fin -->
