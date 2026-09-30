@@ -127,7 +127,8 @@ def test_satellite_plugin_adapter_missing_tool(tmp_path: Path, monkeypatch):
     obs = res["observaciones"][0]
     assert obs["rule_code"] == "MISSING_TOOL_CALLAHAN"
     assert obs["severity"] == "ADVERTENCIA"
-    assert "uv tool install callahan" in obs["suggestion"]
+    # Desde git: `uv tool install callahan` instalaría lo que esté en PyPI con ese nombre (N-RIPLEY-10).
+    assert "uv tool install git+https://github.com/INGCOM-UNRN-P1/callahan" in obs["suggestion"]
 
     # Bajo --strict se eleva a ERROR y falla (ok=False)
     res_strict = adapter.execute(tmp_path, strict=True)

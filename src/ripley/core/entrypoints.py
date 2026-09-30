@@ -308,7 +308,10 @@ class SatellitePluginAdapter:
         sev = "ERROR" if strict else "ADVERTENCIA"
         code = f"MISSING_TOOL_{tool_label.upper()}"
         msg = f"La herramienta secundaria '{tool_label}' no está disponible en el entorno ni en PATH. Se omitieron sus verificaciones."
-        sug = f"Instalá la herramienta mediante 'uv tool install {tool_label}'."
+        # Desde git: varios nombres del ecosistema están tomados en PyPI por proyectos ajenos, y
+        # `uv tool install <nombre>` instalaba código de terceros (N-ECO-02).
+        sug = (f"Instalala desde git: 'uv tool install git+https://github.com/INGCOM-UNRN-P1/{tool_label}' "
+               "(o todas las de análisis con 'mother instalar --perfil analisis').")
 
         finding = {
             "rule_code": code,

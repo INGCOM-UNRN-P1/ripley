@@ -369,7 +369,8 @@ def render_ripley_mk(
     watch_flag = f" --practica {practica}" if practica else ""
     return f"""# ripley.mk — generado por Ripley ({datetime.now():%Y-%m-%d})
 # Uso: agregar al FINAL de tu Makefile:   include ripley.mk
-# Requiere ripley-check en PATH (pipx install ripley)
+# Requiere ripley-check en el PATH: el ripley.pyz del entorno de la cátedra o
+#   uv tool install git+https://github.com/INGCOM-UNRN-P1/ripley
 
 RIPLEY ?= {ripley_bin}
 SOURCES ?= {src_list}
