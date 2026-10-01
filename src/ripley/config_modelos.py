@@ -6,6 +6,13 @@ from typing import List, Optional
 
 
 @dataclass
+class GeneralConfig:
+    # Modo pista para evaluaciones (revisión 05 §3): daedalus, tetsuo y hal dicen qué tipo de error hay
+    # y en qué función, sin la línea ni la corrección. ripley lo activa exportando P1_PISTA=1.
+    pistas: bool = False
+
+
+@dataclass
 class CompilerConfig:
     enabled: bool = True
     executable: str = "gcc"

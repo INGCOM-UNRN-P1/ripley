@@ -194,7 +194,9 @@ def cmd_run(
     estado = "[green]OK[/green]" if report.compiled_ok else "[red]FALLÓ[/red]"
     console.print(f"  Compilación      : {estado}")
     if not report.compiled_ok:
-        console.print(f"  [dim]{report.compile_errors[:600]}[/dim]")
+        # En modo pista la salida cruda de gcc no se muestra: trae la línea y la marca debajo del código.
+        detalle = report.human_diagnostics if report.pista else report.compile_errors[:600]
+        console.print(f"  [dim]{detalle}[/dim]")
     if report.tests_total:
         color = "green" if report.tests_passed == report.tests_total else "red"
         console.print(f"  Testcases públicos: [{color}]{report.tests_passed}/{report.tests_total}[/{color}]")
@@ -224,6 +226,20 @@ def cmd_run(
         raise typer.Exit(code=1)
 
 
+
+
+def _pistas_de_la_practica(target: Path) -> bool:
+    """`[general] pistas = true` en el ripley.toml del proyecto (junto al objetivo o en el directorio actual)."""
+    from ripley.config import load_config
+
+    base = target if target.is_dir() else target.parent
+    for candidato in (base / "ripley.toml", Path.cwd() / "ripley.toml"):
+        if candidato.is_file():
+            try:
+                return load_config(candidato).general.pistas
+            except Exception:  # noqa: BLE001 — un ripley.toml roto lo informa el docente, no este chequeo
+                return False
+    return False
 
 
 def generar_seccion_markdown(result) -> str:
@@ -273,6 +289,7 @@ def cmd_check(
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Modo silencioso sin volcado a consola (para pre-commit hooks)."),
     exit_zero: bool = typer.Option(False, "--exit-zero", help="Forzar código de salida 0 incluso ante advertencias o fallas."),
     as_json: bool = typer.Option(False, "--json", help="Alias para emitir reporte en formato JSON (--format json)."),
+    pista: bool = typer.Option(False, "--pista", help="Modo pista: los errores de compilación y de ejecución dicen el tipo y la función, sin la línea ni la corrección (también con [general] pistas = true en ripley.toml)."),
 ) -> None:
     """Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer."""
     from ripley.core.engine import analyze_target
@@ -285,7 +302,7 @@ def cmd_check(
             console.print(f"[bold red]Ruta inexistente: {target}[/bold red]")
         raise typer.Exit(code=0 if exit_zero else 1)
 
-    result = analyze_target(target)
+    result = analyze_target(target, pista=pista or _pistas_de_la_practica(target))
 
     if output_md:
         md_text = generar_seccion_markdown(result)

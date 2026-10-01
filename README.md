@@ -12,6 +12,7 @@ Motor de análisis estático, reglas de cátedra P1 (0xXXXXh), compilación sand
 - Microkernel central y orquestador pedagógico de análisis estático y reglas de cátedra de Programación 1 (`0xXXXXh`).
 - Publicación y diagnóstico en vivo mediante servidor Language Server Protocol (`ripley lsp`) para VS Code, Neovim y otros editores.
 - Modo pedagógico socrático (`--socratic`) que entrega pistas graduales sin revelar la solución directa.
+- Modo pista para evaluaciones (`[general] pistas = true` en el `ripley.toml` de la práctica, o `ripley-check check --pista`): exporta `P1_PISTA=1` a daedalus, tetsuo y hal, que dicen el tipo de error y la función sin la línea ni la corrección; el `.ripkg` lo lleva al estudiante.
 - Modo observador en vivo (`ripley watch`) para desarrollo guiado por pruebas (TDD).
 - Generación de reportes unificados en consola Rich, formato Markdown y SARIF v2.1.0 estándar.
 - Delegación del 100% de verificaciones y análisis profundos en plugins satélites especializados (`SatellitePluginAdapter`).

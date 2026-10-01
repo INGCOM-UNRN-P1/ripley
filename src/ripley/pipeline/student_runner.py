@@ -37,6 +37,7 @@ class StudentRunReport:
     signature_verified: bool = False
     human_diagnostics: str = ""
     plugins_ran: List[str] = field(default_factory=list)
+    pista: bool = False  # la práctica pide modo pista: errores sin línea ni corrección
 
     @property
     def total_findings(self) -> int:
@@ -82,6 +83,7 @@ def run_bundle(
     )
     manifest = loaded.manifest
     enabled_ids = {k for k, v in manifest.get("checks", {}).items() if v}
+    report.pista = bool(manifest.get("general", {}).get("pistas"))
     compiler_cfg = manifest.get("compiler", {})
 
     tools = available_map()
@@ -141,10 +143,11 @@ def run_bundle(
         if result.binary_path:
             binary = result.binary_path  # en Windows, con .exe
         if not result.success:
-            report.compile_errors = result.stderr.strip()[:4000]
             translated = translate_stderr(result.stderr)
+            # La salida cruda de gcc trae la línea y la marca debajo del código: en modo pista, no.
+            report.compile_errors = "" if report.pista else result.stderr.strip()[:4000]
             if translated:
-                report.human_diagnostics = summarize_for_humans(translated)
+                report.human_diagnostics = summarize_for_humans(translated, pista=report.pista)
             manager.dispatch("session_end", ctx)
             return report
 

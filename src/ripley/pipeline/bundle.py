@@ -56,6 +56,7 @@ def build_manifest(
     compiler_flags: List[str],
     payload_files: Dict[str, bytes],
     makefile_cfg: Optional[Dict] = None,
+    pistas: bool = False,
 ) -> Dict:
     """Construye el diccionario de manifiesto con hashes de integridad."""
     manifest = {
@@ -76,6 +77,8 @@ def build_manifest(
     }
     if makefile_cfg:
         manifest["makefile"] = dict(makefile_cfg)
+    if pistas:
+        manifest["general"] = {"pistas": True}
     return manifest
 
 

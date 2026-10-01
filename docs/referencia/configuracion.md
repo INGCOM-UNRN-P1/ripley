@@ -8,6 +8,7 @@
 
 | Sección | Clave | Default | Notas |
 |---|---|---|---|
+| `[general]` | pistas | false | modo pista de evaluación: daedalus, tetsuo y hal dicen el tipo de error y la función, sin la línea ni la corrección (ripley les exporta `P1_PISTA=1`); viaja en el `.ripkg` |
 | `[compiler]` | enabled / executable / flags | true · gcc · `-Wall -Wextra -pedantic -std=c11 -fsanitize=address,undefined …` | ASan+UBSan por defecto; fallback automático sin libasan |
 | `[limits]` | timeout_segundos / limite_memoria_mb / max_tamano_ejecutable_mb | 5 · 128 · 10 | RLIMIT_CPU siempre; RLIMIT_DATA opt-in (compatibilidad ASan) |
 | `[templates]` | ruta_plantillas | templates/ | informes Jinja2 |
@@ -62,3 +63,8 @@ peso_pruebas     = 0.35
 `ripley practica pack <slug>` lee esta config, consulta el registro unificado de checks
 y escribe en el `.ripkg` **solo** los habilitados visibles para estudiante + los flags de
 compilador. El alumno corre ese subconjunto exacto con `ripley-check run`.
+
+Con `[general] pistas = true`, el `.ripkg` lleva además el modo pista: `ripley-check run` muestra los
+errores de compilación traducidos sin la línea ni la sugerencia (y no la salida cruda de gcc, que la
+trae), y `ripley-check check` exporta `P1_PISTA=1` a los satélites mientras evalúa (lo toma del
+`ripley.toml` del proyecto o de `--pista`).

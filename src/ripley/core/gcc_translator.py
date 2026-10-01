@@ -243,16 +243,22 @@ def translate_stderr(stderr: str) -> List[TranslatedDiagnostic]:
     return results
 
 
-def summarize_for_humans(diagnostics: List[TranslatedDiagnostic], max_items: int = 5) -> str:
-    """Bloque de texto listo para informes: top-N diagnósticos traducidos."""
+def summarize_for_humans(diagnostics: List[TranslatedDiagnostic], max_items: int = 5, pista: bool = False) -> str:
+    """Bloque de texto listo para informes: top-N diagnósticos traducidos.
+
+    Con `pista` (modo pista de las evaluaciones) no dice la línea ni la sugerencia.
+    """
     errors = [d for d in diagnostics if d.level == "error"] or diagnostics
     lines = []
     for d in errors[:max_items]:
-        loc = f"{d.file}:{d.line}" if d.file else f"línea {d.line}"
+        if pista:
+            loc = d.file or "el código"
+        else:
+            loc = f"{d.file}:{d.line}" if d.file else f"línea {d.line}"
         lines.append(f"→ {loc} · {d.title}")
         if d.explanation and d.explanation != d.title:
             lines.append(f"  {d.explanation}")
-        if d.suggestion:
+        if d.suggestion and not pista:
             lines.append(f"  Sugerencia: {d.suggestion}")
     remaining = len(errors) - min(len(errors), max_items)
     if remaining > 0:

@@ -227,8 +227,19 @@ def _fill_metrics(result: AnalysisResult, c_files: List[Path], ast_findings: Lis
     }
 
 
-def analyze_target(target_path: str | Path, strict: bool = False) -> AnalysisResult:
-    """Ejecuta el pipeline completo de análisis estático, compilación y pruebas delegando en plugins satélites."""
+def analyze_target(target_path: str | Path, strict: bool = False, pista: bool = False) -> AnalysisResult:
+    """Ejecuta el pipeline completo de análisis estático, compilación y pruebas delegando en plugins satélites.
+
+    Con `pista`, los satélites (daedalus, tetsuo, hal) corren en modo pista: el tipo de error y la
+    función, sin la línea ni la corrección (ver ripley.core.pista).
+    """
+    from ripley.core.pista import con_pista
+
+    with con_pista(pista):
+        return _analyze_target(target_path, strict)
+
+
+def _analyze_target(target_path: str | Path, strict: bool = False) -> AnalysisResult:
     path = Path(target_path).resolve()
     result = AnalysisResult(
         target=str(path),

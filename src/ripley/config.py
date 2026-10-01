@@ -6,11 +6,12 @@ from typing import Any, List
 import tomllib
 import warnings
 
-from ripley.config_modelos import CompilerConfig, LimitsConfig, TemplatesConfig, CppcheckConfig, StyleConfig, P1RulesConfig, LintersConfig, ValgrindConfig, RubricConfig, SecurityConfig, SandboxConfig, FlowchartConfig, MemoryVisualizerConfig, CallgraphConfig, PropertyTestingConfig, AstAuditorsConfig, PureFunctionsConfig, GraphicsConfig, MakefileConfig, PaddingAuditConfig, RestrictionsConfig, DoxygenConfig, CustomToolConfig  # noqa: F401
+from ripley.config_modelos import GeneralConfig, CompilerConfig, LimitsConfig, TemplatesConfig, CppcheckConfig, StyleConfig, P1RulesConfig, LintersConfig, ValgrindConfig, RubricConfig, SecurityConfig, SandboxConfig, FlowchartConfig, MemoryVisualizerConfig, CallgraphConfig, PropertyTestingConfig, AstAuditorsConfig, PureFunctionsConfig, GraphicsConfig, MakefileConfig, PaddingAuditConfig, RestrictionsConfig, DoxygenConfig, CustomToolConfig  # noqa: F401
 
 
 @dataclass
 class RipleyConfig:
+    general: GeneralConfig = field(default_factory=GeneralConfig)
     compiler: CompilerConfig = field(default_factory=CompilerConfig)
     limits: LimitsConfig = field(default_factory=LimitsConfig)
     templates: TemplatesConfig = field(default_factory=TemplatesConfig)
@@ -86,6 +87,7 @@ KNOWN_CONFIG_SECTIONS = {
 }
 
 KNOWN_SECTION_KEYS = {
+    "general": {"pistas"},
     "compiler": {"enabled", "executable", "flags"},
     "limits": {"timeout_segundos", "limite_memoria_mb", "max_tamano_ejecutable_mb"},
     "templates": {"ruta_plantillas"},
@@ -167,6 +169,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
                     stacklevel=2,
                 )
 
+    general_data = data.get("general", {})
     compiler_data = data.get("compiler", {})
     limits_data = data.get("limits", {})
     templates_data = data.get("templates", {})
@@ -190,6 +193,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
     graphics_data = data.get("graphics", {})
 
     cfg = RipleyConfig(
+        general=GeneralConfig(pistas=bool(general_data.get("pistas", False))),
         compiler=CompilerConfig(
             enabled=compiler_data.get("enabled", True),
             executable=compiler_data.get("executable", "gcc"),

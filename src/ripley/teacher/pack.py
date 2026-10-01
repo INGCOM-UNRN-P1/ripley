@@ -70,6 +70,7 @@ def pack_practice(
             "target": cfg.makefile.target,
             "expected_binary": cfg.makefile.expected_binary,
         } if cfg.makefile.enabled else None,
+        pistas=cfg.general.pistas,
     )
     if sign_key:
         manifest.setdefault("integrity", {})["unsigned"] = False
