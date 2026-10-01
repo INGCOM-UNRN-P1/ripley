@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -205,6 +206,11 @@ def build(output: Path, con_dependencias: bool = True) -> Path:
     return output
 
 
+# La salida del zipapp se lee como UTF-8 y el hijo la escribe así: en Windows, con la salida
+# redirigida, Python usa cp1252 y la ayuda en español no se podía decodificar (N-ECO-10).
+UTF8 = {"encoding": "utf-8", "errors": "replace", "env": {**os.environ, "PYTHONIOENCODING": "utf-8"}}
+
+
 def smoke_test(app_path: Path, autocontenido: bool = True) -> bool:
     """Verifica que el zipapp responde --help.
 
@@ -212,7 +218,7 @@ def smoke_test(app_path: Path, autocontenido: bool = True) -> bool:
     comprueba que no depende de nada instalado, como en la máquina del estudiante.
     """
     opciones = ["-S"] if autocontenido else []
-    proc = subprocess.run([sys.executable, *opciones, str(app_path), "--help"], capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, *opciones, str(app_path), "--help"], capture_output=True, **UTF8)
     ok = proc.returncode == 0 and ("Verificación temprana" in proc.stdout or "ripley" in proc.stdout)
     if not ok:
         print(proc.stdout, proc.stderr)
@@ -230,7 +236,7 @@ def smoke_test(app_path: Path, autocontenido: bool = True) -> bool:
                 "    except Exception as e:\n"
                 "        fallas.append(f'{m}: {e!r}')\n"
                 "print('\\n'.join(fallas))\n")
-    proc = subprocess.run([sys.executable, *opciones, "-c", programa], capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, *opciones, "-c", programa], capture_output=True, **UTF8)
     if proc.returncode != 0 or proc.stdout.strip():
         print("Módulos del zipapp que no importan:", proc.stdout, proc.stderr, sep="\n")
         return False
