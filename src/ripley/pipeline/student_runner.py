@@ -138,6 +138,8 @@ def run_bundle(
         ctx.set("compile", {"success": result.success})
         manager.dispatch("post_compile", ctx)
         report.compiled_ok = result.success
+        if result.binary_path:
+            binary = result.binary_path  # en Windows, con .exe
         if not result.success:
             report.compile_errors = result.stderr.strip()[:4000]
             translated = translate_stderr(result.stderr)

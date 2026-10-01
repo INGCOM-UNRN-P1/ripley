@@ -13,6 +13,11 @@ try:
 except ImportError:  # pragma: no cover - Windows (Python nativo o el de MSYS2 UCRT64)
     resource = None  # type: ignore[assignment]
 
+ES_WINDOWS = os.name == "nt"
+# Señales de que el toolchain no tiene los sanitizers (glibc: «cannot find libasan…»; MinGW: «cannot
+# find -lasan»): se reintenta sin -fsanitize.
+SIN_SANITIZERS = ("libasan", "libubsan", "-lasan", "-lubsan")
+
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig
 
 
@@ -156,7 +161,7 @@ class Compiler:
             )
 
             # Si falla por falta de libasan/libubsan en el sistema, reintentar sin flags de sanitización
-            if proc.returncode != 0 and ("cannot find" in proc.stderr and ("libasan" in proc.stderr or "libubsan" in proc.stderr)):
+            if proc.returncode != 0 and "cannot find" in proc.stderr and any(s in proc.stderr for s in SIN_SANITIZERS):
                 clean_flags = [f for f in self.compiler_cfg.flags if not f.startswith("-fsanitize=")]
                 fallback_cmd = [compiler_bin] + clean_flags + [str(s) for s in sources] + ["-o", str(out_bin)]
                 proc = subprocess.run(
@@ -166,6 +171,9 @@ class Compiler:
                     timeout=self.limits_cfg.timeout_segundos * 2,
                 )
 
+            # En Windows gcc agrega .exe al binario (N-ECO-10).
+            if ES_WINDOWS and not out_bin.exists() and out_bin.with_name(out_bin.name + ".exe").exists():
+                out_bin = out_bin.with_name(out_bin.name + ".exe")
             success = proc.returncode == 0 and out_bin.exists()
 
 
