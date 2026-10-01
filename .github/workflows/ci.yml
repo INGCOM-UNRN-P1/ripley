@@ -85,7 +85,11 @@ jobs:
           enable-cache: true
 
       - name: Sincronizar dependencias
-        run: uv sync
+        # Los mismos satélites que instala el job de Linux: sin ellos, los tests de integración no
+        # tienen compilador (daedalus) ni sandbox (nostromo).
+        run: |
+          uv sync
+          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git"
 
       - name: Diagnóstico del entorno
         run: uv run ripley doctor

@@ -10,6 +10,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
+
 import ripley.core.compiler as compiler
 
 
@@ -29,5 +31,6 @@ def test_sin_resource_no_hay_preexec_fn(monkeypatch):
     compiler.set_process_limits(64, 2)  # no hace nada ni falla
 
 
+@pytest.mark.skipif(compiler.resource is None, reason="en Windows no hay límites POSIX")
 def test_con_resource_aplica_los_limites():
     assert callable(compiler.limites_para_subprocess(64, 2))
