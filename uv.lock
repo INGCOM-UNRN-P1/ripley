@@ -138,12 +138,13 @@ wheels = [
 
 [[package]]
 name = "nostromo"
-version = "0.1.0"
-source = { git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=803726033d31d6a1b5e64545bb6a15c6cbe21d0a#803726033d31d6a1b5e64545bb6a15c6cbe21d0a" }
+version = "0.2.0"
+source = { git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=6469841e133c0ef63ceffdfd9dabb440d7cbaf8c#6469841e133c0ef63ceffdfd9dabb440d7cbaf8c" }
 dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "typer" },
+    { name = "yutani" },
 ]
 
 [[package]]
@@ -309,7 +310,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1.3" },
-    { name = "nostromo", marker = "extra == 'ecosistema'", git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=803726033d31d6a1b5e64545bb6a15c6cbe21d0a" },
+    { name = "nostromo", marker = "extra == 'ecosistema'", git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=6469841e133c0ef63ceffdfd9dabb440d7cbaf8c" },
     { name = "python-slugify", specifier = ">=8.0.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=13.7.0" },
