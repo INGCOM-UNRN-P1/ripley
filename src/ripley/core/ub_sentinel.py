@@ -177,7 +177,7 @@ def _nivel2_clang_analyze(fuentes: Sequence[Path], reporte: ReporteUB) -> None:
             reporte.omitidos.append("clang --analyze (timeout)")
             continue
         patron = re.compile(
-            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*warning:\s*(?P<msg>[^\n]+)",
+            r"(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):\d+:\s*warning:\s*(?P<msg>[^\n]+)",
             re.MULTILINE,
         )
         for m in patron.finditer(proc.stdout + proc.stderr):

@@ -37,7 +37,7 @@ class SanitizerAnalyzer:
 
         # Regex para advertencias de GCC -Wuninitialized
         pattern = re.compile(
-            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*(?:warning|error):\s*'(?P<var>[^']+)'\s*(?:is|may be)\s*used uninitialized",
+            r"(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):\d+:\s*(?:warning|error):\s*'(?P<var>[^']+)'\s*(?:is|may be)\s*used uninitialized",
             re.MULTILINE,
         )
 
@@ -68,7 +68,7 @@ class SanitizerAnalyzer:
 
         # 1. Desbordamiento de enteros con signo
         overflow_pattern = re.compile(
-            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*signed integer overflow:\s*(?P<expr>[^\n]+)",
+            r"(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*signed integer overflow:\s*(?P<expr>[^\n]+)",
             re.MULTILINE,
         )
         for match in overflow_pattern.finditer(stderr):
@@ -88,7 +88,7 @@ class SanitizerAnalyzer:
 
         # 2. División por cero
         div_zero_pattern = re.compile(
-            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*division by zero",
+            r"(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*division by zero",
             re.MULTILINE,
         )
         for match in div_zero_pattern.finditer(stderr):
@@ -105,7 +105,7 @@ class SanitizerAnalyzer:
 
         # 3. Desalineación de memoria (UBSan -fsanitize=alignment)
         align_pattern = re.compile(
-            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*(?P<msg>(?:member access within|load of|store to)\s+misaligned address\s+0x[0-9a-fA-F]+[^\n]*)",
+            r"(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):\d+:\s*runtime error:\s*(?P<msg>(?:member access within|load of|store to)\s+misaligned address\s+0x[0-9a-fA-F]+[^\n]*)",
             re.MULTILINE,
         )
         for match in align_pattern.finditer(stderr):
@@ -130,7 +130,7 @@ class SanitizerAnalyzer:
         findings: List[SanitizerFinding] = []
 
         pattern = re.compile(
-            r"(?P<file>[^:\n]+):(?P<line>\d+):\d+:\s*(?:warning|error):\s*(?P<msg>conversion (?:to|from) '[^']+' (?:to|from) '[^']+'[^\n]*)",
+            r"(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):\d+:\s*(?:warning|error):\s*(?P<msg>conversion (?:to|from) '[^']+' (?:to|from) '[^']+'[^\n]*)",
             re.MULTILINE,
         )
 

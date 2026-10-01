@@ -167,7 +167,7 @@ _RULES: List[tuple] = [
 _COMPILED = [(re.compile(p, re.IGNORECASE), t, e, s) for p, t, e, s in _RULES]
 
 _DIAG_LINE = re.compile(
-    r"^(?P<file>[^:\n]+):(?P<line>\d+):(?:(?P<col>\d+):)?\s*(?P<level>error|warning|note|fatal error):\s*(?P<body>.+)$"
+    r"^(?P<file>(?:[A-Za-z]:)?[^:\n]+):(?P<line>\d+):(?:(?P<col>\d+):)?\s*(?P<level>error|warning|note|fatal error):\s*(?P<body>.+)$"
 )
 
 
