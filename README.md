@@ -173,6 +173,10 @@ uv run pytest
 
 Ayuda de cada comando: `ripley <comando> -h`.
 
+### Salida JSON de `ripley`
+
+Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `ripley doctor`, `ripley check`, `ripley gcc-explain`. El de `doctor --json` lleva `schema_version` y `ok`.
+
 ### Comandos de `ripley-check`
 
 | Comando | Descripción |
@@ -195,5 +199,17 @@ Ayuda de cada comando: `ripley <comando> -h`.
 | `ripley-check plugins` | Plugins de usuario en plugins/: hooks de ciclo de vida y git hooks. |
 
 Ayuda de cada comando: `ripley-check <comando> -h`.
+
+### Salida JSON de `ripley-check`
+
+Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `ripley-check doctor`, `ripley-check check`, `ripley-check gcc-explain`. El de `doctor --json` lleva `schema_version` y `ok`.
+
+### Códigos de salida
+
+| Código | Significado |
+|:--|:--|
+| `0` | Terminó bien (en `doctor`: está todo lo requerido). |
+| `1` | El comando encontró problemas (hallazgos, pruebas que fallan, un umbral que no se alcanza) o un dato no se pudo usar (un archivo ilegible, un formato inválido). |
+| `2` | Error de uso: comando, opción o argumento inválido. |
 
 <!-- p1:referencia:fin -->
