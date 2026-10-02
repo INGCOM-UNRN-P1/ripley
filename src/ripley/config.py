@@ -388,7 +388,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
             for item in data.get("custom_tools", [])
             if isinstance(item, dict) and "command" in item
         ],
-        origen_configuracion=f"Archivo de configuración: '{path}'",
+        origen_configuracion=f"Archivo de configuración: '{path.as_posix()}'",
     )
 
     cfg.validate()

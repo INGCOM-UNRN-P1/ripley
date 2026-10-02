@@ -1,5 +1,6 @@
 """Tests for the lifecycle plugin system and git-hook shims."""
 
+import os
 import stat
 from pathlib import Path
 
@@ -97,7 +98,8 @@ def test_git_hook_install_preserves_previous_and_uninstall_restores(tmp_path):
     shim = original.read_text(encoding="utf-8")
     assert "Instalado por Ripley" in shim
     assert "pre_commit_git" in shim
-    assert original.stat().st_mode & stat.S_IXUSR
+    if os.name != "nt":  # Windows no tiene bit de ejecución (Git for Windows corre el hook igual)
+        assert original.stat().st_mode & stat.S_IXUSR
 
     backup = hooks / "pre-commit.ripley.bak"
     assert backup.exists() and "hook del profe" in backup.read_text()
@@ -145,3 +147,14 @@ def test_collect_staged_sources_filters_c(tmp_path, monkeypatch):
 
 def test_all_declared_hooks_are_documented_names():
     assert HOOKS[0] == "session_start" and HOOKS[-2] == "session_end" and HOOKS[-1] == "pre_commit_git"
+
+
+def test_uninstall_no_falla_con_un_hook_ajeno_en_latin1(tmp_path):
+    """Un hook del docente en cp1252/Latin-1 hacía fallar uninstall con UnicodeDecodeError (apareció
+    en el CI de Windows, donde write_text sin encoding escribe en cp1252)."""
+    hooks = tmp_path / ".git" / "hooks"
+    hooks.mkdir(parents=True)
+    ajeno = hooks / "pre-commit"
+    ajeno.write_bytes("#!/bin/sh\necho mío\n".encode("cp1252"))
+    assert uninstall_git_hook(tmp_path, "pre-commit") is False
+    assert ajeno.read_bytes() == "#!/bin/sh\necho mío\n".encode("cp1252")

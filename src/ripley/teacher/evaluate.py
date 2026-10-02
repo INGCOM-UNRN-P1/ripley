@@ -191,6 +191,9 @@ class Evaluator:
                     bin_out = temp_path / f"bin_v{v_num}_{src.stem}"
                     if act_cfg.compiler.enabled:
                         comp_res = compiler.compile([src], bin_out)
+                        # En Windows gcc escribe bin_out.exe: lo que vale es la ruta que devuelve el
+                        # compilador (N-ECO-10); con bin_out, los casos corrían un archivo inexistente.
+                        bin_out = comp_res.binary_path or bin_out
                         file_compilation_status[src.name] = comp_res.success
 
                         if comp_res.success:

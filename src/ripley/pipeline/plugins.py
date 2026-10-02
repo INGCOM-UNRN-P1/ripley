@@ -239,7 +239,8 @@ def uninstall_git_hook(repo_dir: Path | str, hook: str) -> bool:
     backup = target.with_suffix(target.suffix + ".ripley.bak")
     if not target.exists():
         return False
-    content = target.read_text(encoding="utf-8")
+    # Un hook ajeno puede no estar en UTF-8 (cp1252, Latin-1): solo hace falta buscar la marca.
+    content = target.read_text(encoding="utf-8", errors="replace")
     if "Instalado por Ripley" not in content:
         return False  # hook ajeno: no tocar
     if backup.exists():
