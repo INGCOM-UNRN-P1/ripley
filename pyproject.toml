@@ -32,14 +32,14 @@ dependencies = [
     "tomli-w>=1.0.0",
     "pyyaml>=6.0.3",
     # Núcleo común del ecosistema (N-ECO-14): contrato de línea de comandos y textos en español.
-    "yutani @ git+https://github.com/INGCOM-UNRN-P1/yutani@4b99a428c28ab5f3c3013b770b9692ade6182fc2",
+    "yutani @ git+https://github.com/INGCOM-UNRN-P1/yutani@31f79c904ac33065cc1c2b9fd34b4c513f0028d9",
 ]
 
 [project.optional-dependencies]
 # Herramientas del ecosistema que se usan como biblioteca (N-ECO-01). Referencias git fijadas
 # a commits publicados; sin el extra se usa el camino propio (gcc, sin sandbox de nostromo…).
 ecosistema = [
-    "nostromo @ git+https://github.com/INGCOM-UNRN-P1/nostromo@6469841e133c0ef63ceffdfd9dabb440d7cbaf8c",
+    "nostromo @ git+https://github.com/INGCOM-UNRN-P1/nostromo@ec62a77c6452750df644b78382e0ec6fb12a0f00",
 ]
 
 [project.urls]
