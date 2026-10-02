@@ -1,5 +1,6 @@
 """Unit tests for student Makefile auditing and modular builds."""
 
+import os
 import shutil
 
 import pytest
@@ -78,7 +79,8 @@ def test_make_build_discovers_binary(tmp_path):
     )
     result = make_build(tmp_path, timeout_sec=30)
     assert result.success
-    assert result.binary_path is not None and result.binary_path.name == "app"
+    # En Windows gcc escribe app.exe, y es el que se encuentra.
+    assert result.binary_path is not None and result.binary_path.name == ("app.exe" if os.name == "nt" else "app")
 
 
 @pytest.mark.skipif(not _gcc_make(), reason="gcc/make no disponibles")

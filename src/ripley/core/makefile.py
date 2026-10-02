@@ -193,6 +193,29 @@ class MakeVerificationReport:
         )
 
 
+# Se consulta en tiempo de ejecución para poder simular Windows en los tests.
+_EN_WINDOWS = os.name == "nt"
+
+
+def _es_artefacto(p: Path) -> bool:
+    """Lo que `make clean` debería borrar: objetos y ejecutables. En Windows no hay bit de
+    ejecución (os.access(X_OK) vale para cualquier archivo, también el Makefile): ahí los
+    ejecutables son los .exe."""
+    if not p.is_file():
+        return False
+    if p.suffix in (".o", ".obj", ".out", ".exe"):
+        return True
+    return not _EN_WINDOWS and p.suffix == "" and os.access(p, os.X_OK)
+
+
+def _objetivo_sin_exe(binary_path: Optional[Path], targets: Sequence[str]) -> Optional[str]:
+    """En Windows gcc escribe `app.exe` aunque el Makefile diga `-o app`: un objetivo `app` no
+    existe nunca como archivo y make lo reconstruye siempre. Devuelve ese objetivo, si lo hay."""
+    if not _EN_WINDOWS or binary_path is None or binary_path.suffix.lower() != ".exe":
+        return None
+    return binary_path.stem if binary_path.stem in targets else None
+
+
 def _run_make(directory: Path, *args: str, executable: str = "make",
               timeout: int = 30) -> "subprocess.CompletedProcess":
     return subprocess.run(
@@ -303,9 +326,15 @@ def verify_project(
     # 3. Idempotencia: -q sale 0 si está al día, 1 si habría trabajo, 2 = error
     q = _run_make(d, "-q", executable=executable, timeout=timeout)
     report.idempotent = (q.returncode == 0)
+    # En Windows, con un objetivo `app` que gcc escribe como app.exe, make -q dice siempre que hay
+    # trabajo: ni la idempotencia ni las dependencias de headers se pueden verificar así, y no es
+    # un error del Makefile (N-ECO-10).
+    objetivo_sin_exe = _objetivo_sin_exe(build.binary_path, targets) if not report.idempotent else None
+    if objetivo_sin_exe:
+        report.idempotent = None
 
     # 4. Headers: tocar cada .h incluido debe hacer que make quiera reconstruir
-    for header in _included_headers(d, sources)[:8]:
+    for header in ([] if objetivo_sin_exe else _included_headers(d, sources)[:8]):
         saved = header.stat().st_mtime_ns
         bumped = saved + 1_000_000_000  # +1s
         try:
@@ -329,10 +358,7 @@ def verify_project(
 
     # 7. Clean al final: deja el workspace prístino y valida limpieza
     if "clean" in targets:
-        artefactos_antes = {
-            p for p in d.rglob("*")
-            if p.is_file() and p.suffix in (".o", ".out") or (p.is_file() and os.access(p, os.X_OK) and p.suffix == "")
-        }
+        artefactos_antes = {p for p in d.rglob("*") if _es_artefacto(p)}
         _run_make(d, "clean", executable=executable, timeout=timeout)
         restantes = {p for p in artefactos_antes if p.exists()}
         report.clean_ok = (len(restantes) == 0)
@@ -341,6 +367,10 @@ def verify_project(
     partes.append("build OK" if report.build_ok else "build FALLÓ")
     if report.idempotent is False:
         partes.append("re-build innecesario detectado (deps redundantes)")
+    if objetivo_sin_exe:
+        partes.append(f"idempotencia y dependencias de headers sin verificar: en Windows el objetivo "
+                      f"`{objetivo_sin_exe}` genera {objetivo_sin_exe}.exe y make lo reconstruye siempre "
+                      f"(nombrarlo {objetivo_sin_exe}.exe lo evita)")
     if report.missing_header_deps:
         partes.append(f"headers sin dependencia: {', '.join(report.missing_header_deps)}")
     if report.orphan_sources:
