@@ -1,0 +1,339 @@
+{
+ "tests/caracterizacion/reglas_p1.c": [
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   18,
+   "ADVERTENCIA",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra no descriptiva: `x` (Requiere revisión manual obligatoria).",
+   "Renombrá la variable `x` por un identificador representativo del dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   39,
+   "ADVERTENCIA",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra no descriptiva: `x` (Requiere revisión manual obligatoria).",
+   "Renombrá la variable `x` por un identificador representativo del dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   40,
+   "ADVERTENCIA",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra no descriptiva: `z` (Requiere revisión manual obligatoria).",
+   "Renombrá la variable `z` por un identificador representativo del dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   43,
+   "ESTILO",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Nombre de variable corto (3 letras): `vla` (A mejorar).",
+   "Se recomienda utilizar identificadores más descriptivos y expresivos que expliciten el propósito de la variable (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   46,
+   "ESTILO",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra: `i` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
+   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   61,
+   "ESTILO",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra: `j` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
+   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "reglas_p1.c",
+   85,
+   "ESTILO",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra: `k` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
+   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0002h",
+   "reglas_p1.c",
+   9,
+   "ESTILO",
+   "Una declaración de variable por línea",
+   "Múltiples declaraciones de variables en la misma línea.",
+   "Declarar cada variable en su propia línea (ej. `int a;\\nint b;`)."
+  ],
+  [
+   "0x0004h",
+   "reglas_p1.c",
+   44,
+   "ESTILO",
+   "Un espacio antes y después de cada operador binario",
+   "Falta espacio alrededor del operador binario `==`.",
+   "Colocá un espacio antes y después: `x == y`."
+  ],
+  [
+   "0x0004h",
+   "reglas_p1.c",
+   45,
+   "ESTILO",
+   "Un espacio antes y después de cada operador binario",
+   "Falta espacio alrededor del operador binario `<=`.",
+   "Colocá un espacio antes y después: `x <= y`."
+  ],
+  [
+   "0x0004h",
+   "reglas_p1.c",
+   47,
+   "ESTILO",
+   "Un espacio antes y después de cada operador binario",
+   "Falta espacio alrededor del operador binario `!=`.",
+   "Colocá un espacio antes y después: `x != y`."
+  ],
+  [
+   "0x0006h",
+   "reglas_p1.c",
+   25,
+   "ESTILO",
+   "El asterisco de los punteros debe declararse junto al identificador",
+   "El asterisco de puntero está pegado al tipo (`tipo* ptr`) en lugar del identificador.",
+   "Escribí `tipo *ptr` para mantener la convención estándar de la cátedra."
+  ],
+  [
+   "0x0007h",
+   "reglas_p1.c",
+   41,
+   "ESTILO",
+   "Argumentos y variables locales deben usar snake_case en minúsculas",
+   "La variable `nombreLargo` usa camelCase en lugar de snake_case.",
+   "Renombrala en minúsculas separadas por guión bajo (ej. `nombre_largo`)."
+  ],
+  [
+   "0x0009h",
+   "reglas_p1.c",
+   1,
+   "ESTILO",
+   "Las líneas de código no deben exceder los 79 caracteres",
+   "La línea excede los 79 caracteres (90 columnas).",
+   "Dividí la instrucción o cadena en múltiples líneas para respetar el estándar de 80 columnas."
+  ],
+  [
+   "0x0009h",
+   "reglas_p1.c",
+   2,
+   "ESTILO",
+   "Las líneas de código no deben exceder los 79 caracteres",
+   "La línea excede los 79 caracteres (84 columnas).",
+   "Dividí la instrucción o cadena en múltiples líneas para respetar el estándar de 80 columnas."
+  ],
+  [
+   "0x0009h",
+   "reglas_p1.c",
+   76,
+   "ESTILO",
+   "Las líneas de código no deben exceder los 79 caracteres",
+   "La línea excede los 79 caracteres (89 columnas).",
+   "Dividí la instrucción o cadena en múltiples líneas para respetar el estándar de 80 columnas."
+  ],
+  [
+   "0x0009h",
+   "reglas_p1.c",
+   81,
+   "ESTILO",
+   "Las líneas de código no deben exceder los 79 caracteres",
+   "La línea excede los 79 caracteres (106 columnas).",
+   "Dividí la instrucción o cadena en múltiples líneas para respetar el estándar de 80 columnas."
+  ],
+  [
+   "0x1001h",
+   "reglas_p1.c",
+   44,
+   "ESTILO",
+   "Todas las estructuras de control deben utilizar llaves",
+   "Estructura de control `if` en una sola línea sin llaves {}.",
+   "Envolvé siempre el cuerpo de la estructura con llaves `{ ... }` en líneas propias."
+  ],
+  [
+   "0x1001h",
+   "reglas_p1.c",
+   45,
+   "ESTILO",
+   "Todas las estructuras de control deben utilizar llaves",
+   "Estructura de control `while` en una sola línea sin llaves {}.",
+   "Envolvé siempre el cuerpo de la estructura con llaves `{ ... }` en líneas propias."
+  ],
+  [
+   "0x1001h",
+   "reglas_p1.c",
+   46,
+   "ESTILO",
+   "Todas las estructuras de control deben utilizar llaves",
+   "Estructura de control `for` en una sola línea sin llaves {}.",
+   "Envolvé siempre el cuerpo de la estructura con llaves `{ ... }` en líneas propias."
+  ],
+  [
+   "0x1002h",
+   "reglas_p1.c",
+   63,
+   "ADVERTENCIA",
+   "Evitá continue y break descontrolado; preferí banderas lógicas",
+   "Uso prohibido de la sentencia `continue`.",
+   "Reestructurá el lazo utilizando una condición lógica o bandera booleana."
+  ],
+  [
+   "0x1006h",
+   "reglas_p1.c",
+   67,
+   "ERROR",
+   "No utilizar la instrucción goto",
+   "Uso prohibido de la instrucción `goto`.",
+   "Reemplazá `goto` por estructuras de control estructuradas estándar (`while`, `for`, `if`)."
+  ],
+  [
+   "0x1007h",
+   "reglas_p1.c",
+   48,
+   "ESTILO",
+   "No utilizar el operador condicional (ternario) ?:",
+   "Uso desaconsejado del operador condicional ternario `?:`.",
+   "Reemplazá el operador ternario por un bloque estructurado `if / else`."
+  ],
+  [
+   "0x1008h",
+   "reglas_p1.c",
+   50,
+   "ADVERTENCIA",
+   "Toda instrucción switch debe incluir un caso default",
+   "Bloque `switch` sin cláusula `default:` obligatoria.",
+   "Agregá `default:` al final del `switch` para manejar estados imprevistos."
+  ],
+  [
+   "0x2004h",
+   "reglas_p1.c",
+   8,
+   "ERROR",
+   "No se permite el uso de variables globales mutables",
+   "Declaración de variable global mutable.",
+   "Eliminá la variable global; pasá el estado explícitamente mediante parámetros de función."
+  ],
+  [
+   "0x3001h",
+   "reglas_p1.c",
+   25,
+   "ERROR",
+   "Siempre verificá la asignación exitosa de memoria dinámica",
+   "Asignación dinámica de `p` sin verificación inmediata contra `NULL`.",
+   "Agregá `if (p == NULL) { /* manejo de error */ }` antes de usar el puntero."
+  ],
+  [
+   "0x3003h",
+   "reglas_p1.c",
+   72,
+   "ESTILO",
+   "No mezcles asignación y comparación en una sola línea",
+   "Asignación y comparación combinadas en una sola línea dentro del `if`.",
+   "Separá la asignación en la línea anterior y evaluá la condición en una sentencia limpia."
+  ],
+  [
+   "0x3004h",
+   "reglas_p1.c",
+   12,
+   "ESTILO",
+   "Utilizá typedef para definir tipos de estructuras con sufijo _t o t_",
+   "Estructura `nodo` declarada sin `typedef` ni sufijo `_t` / prefijo `t_`.",
+   "Definila como `typedef struct { ... } nodo_t;`."
+  ],
+  [
+   "0x5001h",
+   "reglas_p1.c",
+   43,
+   "ERROR",
+   "Arreglos estáticos con tamaño fijo en compilación (prohibido VLA)",
+   "Uso de Arreglo de Longitud Variable (VLA).",
+   "Los VLAs están prohibidos. Utilizá una constante `#define TAM 100` o asignación dinámica con `malloc`."
+  ],
+  [
+   "0x5006h",
+   "reglas_p1.c",
+   69,
+   "ERROR",
+   "Preferí fgets sobre gets y scanf para leer cadenas",
+   "Uso de la función obsoleta e insegura `gets()`.",
+   "Reemplazá `gets()` por `fgets(buffer, sizeof(buffer), stdin)`."
+  ]
+ ],
+ "tests/golden/violaciones.c": [
+  [
+   "0x0001h",
+   "violaciones.c",
+   11,
+   "ESTILO",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra: `i` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
+   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "violaciones.c",
+   22,
+   "ESTILO",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Nombre de variable corto (3 letras): `lit` (A mejorar).",
+   "Se recomienda utilizar identificadores más descriptivos y expresivos que expliciten el propósito de la variable (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "violaciones.c",
+   29,
+   "ADVERTENCIA",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra no descriptiva: `x` (Requiere revisión manual obligatoria).",
+   "Renombrá la variable `x` por un identificador representativo del dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x0001h",
+   "violaciones.c",
+   38,
+   "ADVERTENCIA",
+   "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
+   "Variable de 1 letra no descriptiva: `r` (Requiere revisión manual obligatoria).",
+   "Renombrá la variable `r` por un identificador representativo del dominio (Regla 0x0001h)."
+  ],
+  [
+   "0x1006h",
+   "violaciones.c",
+   15,
+   "ERROR",
+   "No utilizar la instrucción goto",
+   "Uso prohibido de la instrucción `goto`.",
+   "Reemplazá `goto` por estructuras de control estructuradas estándar (`while`, `for`, `if`)."
+  ],
+  [
+   "0x3004h",
+   "violaciones.c",
+   4,
+   "ESTILO",
+   "Utilizá typedef para definir tipos de estructuras con sufijo _t o t_",
+   "Estructura `registro` declarada sin `typedef` ni sufijo `_t` / prefijo `t_`.",
+   "Definila como `typedef struct { ... } registro_t;`."
+  ],
+  [
+   "0x5006h",
+   "violaciones.c",
+   24,
+   "ERROR",
+   "Preferí fgets sobre gets y scanf para leer cadenas",
+   "Uso de la función obsoleta e insegura `gets()`.",
+   "Reemplazá `gets()` por `fgets(buffer, sizeof(buffer), stdin)`."
+  ]
+ ]
+}
