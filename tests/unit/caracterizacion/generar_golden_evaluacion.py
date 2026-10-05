@@ -18,7 +18,8 @@ def evaluar() -> dict:
     from ripley.teacher.db import DatabaseManager, StudentRecord
     from ripley.teacher.evaluate import Evaluator
 
-    with tempfile.TemporaryDirectory() as tmp:
+    # En Windows la base SQLite puede seguir abierta al borrar el directorio.
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         ws = Path(tmp)
         act, alumno = "entrega-1_1228009", "perez-juan_12345"
         sdir = ws / act / alumno
