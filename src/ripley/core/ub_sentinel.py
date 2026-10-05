@@ -143,6 +143,16 @@ def _nivel1_sanitizers(fuentes: Sequence[Path], tests: Sequence[Path],
                 archivo=f.filename, linea=f.line,
                 mensaje=f.message, sugerencia=f.pedagogical_hint,
             ))
+        traducidos = _asan_con_tetsuo(stderr)
+        if traducidos is not None:
+            # tetsuo es el dueño de los sanitizers (N-ECO-12): su traducción, en lugar del mensaje crudo.
+            for d in traducidos:
+                reporte.hallazgos.append(HallazgoUB(
+                    nivel=1, categoria=f"{categoria_prefix}.ASAN",
+                    archivo=d.file_path or nombre, linea=d.line_number,
+                    mensaje=f"{d.title_es}: {d.explanation_es}", sugerencia=d.suggestion_es,
+                ))
+            continue
         asan_error = re.search(
             r"==\d+==ERROR: AddressSanitizer: ([^\n]+)", stderr)
         if asan_error:
@@ -154,6 +164,15 @@ def _nivel1_sanitizers(fuentes: Sequence[Path], tests: Sequence[Path],
                 mensaje=f"AddressSanitizer: {asan_error.group(1).strip()}",
                 sugerencia="Leé la traza completa del reporte: marca la operación inválida y dónde fue reservada/liberada la memoria.",
             ))
+
+
+def _asan_con_tetsuo(stderr: str):
+    """Los errores de ASan/LSan traducidos por tetsuo, o None si tetsuo no está instalado."""
+    try:
+        from tetsuo.core.sanitizer_parser import parse_sanitizer_output
+    except ImportError:
+        return None
+    return [d for d in parse_sanitizer_output(stderr) if d.sanitizer_type.name in ("ASAN", "LSAN")]
 
 
 def _falta_runtime_sanitizers(stderr: str) -> bool:
