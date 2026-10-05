@@ -65,6 +65,9 @@ class AnalysisResult:
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["schema_version"] = "1.0.0"
+        # El sobre común: cada observación en la forma de yutani.hallazgos (categoría y enlace al apunte).
+        from ripley.core.perfil_actividad import a_hallazgos
+        d["hallazgos"] = a_hallazgos(self.ast_findings)
         return d
 
     def to_json(self, indent: int = 2) -> str:

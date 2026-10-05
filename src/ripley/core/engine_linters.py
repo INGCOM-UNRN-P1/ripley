@@ -70,7 +70,17 @@ def run_ast_linters(
         from ripley.core.entrypoints import plugins_de_fase
 
         static_plugins = plugins_de_fase("estatico")
-        if plugins_dinamicos:
+        # Perfil de la actividad ([actividad] tema/satelites en ripley.toml): solo esos satélites,
+        # incluidos los dinámicos del tema (bishop y tetsuo en punteros).
+        from ripley.core.entrypoints import SATELLITE_CATALOG
+        from ripley.core.perfil_actividad import incluido, satelites_de_la_actividad
+
+        perfil = satelites_de_la_actividad(workspace)
+        if perfil is not None:
+            todos = plugins_de_fase("estatico") | plugins_de_fase("dinamico")
+            static_plugins = {n for n in todos
+                              if incluido(n, SATELLITE_CATALOG.get(n, {}).get("tool"), perfil)}
+        if plugins_dinamicos and perfil is None:
             static_plugins |= plugins_de_fase("dinamico")
 
         for p in discovered:
