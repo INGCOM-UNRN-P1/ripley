@@ -1,7 +1,6 @@
 """End-to-end tests for .ripkg practice bundles: teacher pack -> student run."""
 
 import shutil
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -9,7 +8,7 @@ import pytest
 from ripley.pipeline import bundle as bundle_mod
 from ripley.pipeline.bundle import BundleError, load_bundle, write_bundle
 from ripley.pipeline.student_runner import run_bundle
-from ripley.teacher.pack import _enabled_check_ids, pack_practice
+from ripley.teacher.pack import pack_practice
 
 
 def _gcc() -> bool:

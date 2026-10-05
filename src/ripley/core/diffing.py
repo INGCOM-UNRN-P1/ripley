@@ -2,8 +2,7 @@
 
 import difflib
 from pathlib import Path
-import re
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from ripley.core.security import strip_c_comments_and_strings
 

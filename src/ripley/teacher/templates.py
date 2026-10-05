@@ -1,6 +1,5 @@
 """Template manager for Ripley Jinja2 Markdown templates."""
 
-import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 import jinja2

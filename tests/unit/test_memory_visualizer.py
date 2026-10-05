@@ -1,6 +1,5 @@
 """Unit tests for DynamicMemoryVisualizer."""
 
-from pathlib import Path
 from ripley.core.memory_visualizer import DynamicMemoryVisualizer
 
 

@@ -12,13 +12,12 @@ la autenticidad de origen queda cubierta por la firma cuando existe.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
-import io
 import shutil
 import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import zipfile
 
 MANIFEST_NAME = "manifest.toml"

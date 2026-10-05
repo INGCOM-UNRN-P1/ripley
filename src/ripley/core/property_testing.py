@@ -1,10 +1,10 @@
 """Property-Based Testing framework and harness generator for C assignments."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import tempfile
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from ripley.core.compiler import Compiler
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig

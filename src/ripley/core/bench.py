@@ -13,7 +13,6 @@ import re
 import shutil
 import statistics
 import subprocess
-import tempfile
 import time
 from pathlib import Path
 from typing import Dict, Optional, Sequence

@@ -1,7 +1,5 @@
 """Unit tests for Compiler module."""
 
-from pathlib import Path
-import subprocess
 
 from ripley.core.compiler import Compiler
 from ripley.config import CompilerConfig, LimitsConfig, SandboxConfig

@@ -5,7 +5,7 @@ Convierte la salida cruda del compilador en diagnósticos didácticos
 original para trazabilidad.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import re
 from typing import List, Optional
 

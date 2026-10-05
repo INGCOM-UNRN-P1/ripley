@@ -101,7 +101,6 @@ def test_root_capture_pipeline_self_compare(tmp_path):
     ev = RootOnlyEvaluator(cfg)
 
     def _capture_root_only(self, workdir):
-        import os
         import subprocess
         import time
 

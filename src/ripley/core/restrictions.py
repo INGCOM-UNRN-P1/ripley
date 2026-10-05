@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Dict, List, Optional, Set
+from typing import List, Optional
 
 from ripley.core.c_tokens import tokenize_c_code
 from ripley.core.security import strip_c_comments_and_strings

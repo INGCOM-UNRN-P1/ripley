@@ -1,4 +1,3 @@
-import pytest
 from ripley.core.sarif import exportar_sarif
 from ripley.core.badge import calcular_puntaje_calidad, generar_badge_svg
 

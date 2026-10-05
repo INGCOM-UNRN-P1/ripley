@@ -9,15 +9,15 @@ aprobados.
 from dataclasses import dataclass, field
 from pathlib import Path
 import tempfile
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from ripley.pipeline import bundle as bundle_mod
 from ripley.pipeline.availability import available_map
 from ripley.pipeline.bundle import BundleError, RipkgBundle
 from ripley.core.gcc_translator import summarize_for_humans, translate_stderr
 import ripley.pipeline.checks  # noqa: F401  (pobla el registro)
-from ripley.pipeline.plugins import HOOKS, PluginContext, PluginManager
-from ripley.pipeline.registry import all_checks, get, is_runnable, iter_uniform_static
+from ripley.pipeline.plugins import PluginContext, PluginManager
+from ripley.pipeline.registry import get, is_runnable, iter_uniform_static
 from ripley.core.compiler import Compiler
 from ripley.core.makefile import make_build
 from ripley.core.runner import DynamicTestRunner

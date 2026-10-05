@@ -1,24 +1,18 @@
 """Unit tests for DynamicTestRunner, ValgrindRunner, CppcheckRunner and RubricCalculator."""
 
-from pathlib import Path
-import subprocess
 
 from ripley.core.compiler import Compiler
 from ripley.config import (
     CompilerConfig,
-    CppcheckConfig,
     CustomToolConfig,
     LimitsConfig,
     RubricConfig,
     SandboxConfig,
-    ValgrindConfig,
 )
 from ripley.core.runner import (
-    CppcheckRunner,
     CustomToolRunner,
     DynamicTestRunner,
     RubricCalculator,
-    ValgrindRunner,
     compare_outputs,
     normalize_output_text,
 )

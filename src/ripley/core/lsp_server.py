@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from ripley import __version__
-from ripley.core.engine import analyze_target, run_ast_linters
+from ripley.core.engine import run_ast_linters
 
 
 def diagnostico_to_lsp(diag: Dict[str, Any]) -> Dict[str, Any]:

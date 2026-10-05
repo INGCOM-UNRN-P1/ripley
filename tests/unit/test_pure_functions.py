@@ -1,6 +1,5 @@
 """Unit tests for PureFunctionAnalyzer."""
 
-from pathlib import Path
 from ripley.core.pure_functions import PureFunctionAnalyzer
 
 

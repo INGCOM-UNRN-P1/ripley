@@ -2,10 +2,9 @@
 
 from pathlib import Path
 from typer.testing import CliRunner
-import pytest
 
 from ripley.cli.student import app as student_app
-from ripley.core.p1_rules import P1RuleChecker, P1_RULES_CATALOG
+from ripley.core.p1_rules import P1RuleChecker
 from ripley.core.html_reporter import generate_interactive_html_report
 from ripley.pipeline.plugins import discover_plugins, PluginManager, PluginContext
 

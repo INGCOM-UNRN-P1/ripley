@@ -1,6 +1,5 @@
 """Unit tests for Markdown reporter and Jinja2 rendering."""
 
-from pathlib import Path
 from ripley.teacher.reporter import (
     MarkdownReporter,
     StudentReportContext,

@@ -1,7 +1,6 @@
 """Unit tests for traditional flowchart generator."""
 
-from pathlib import Path
-from ripley.core.flowchart import FlowNodeType, FlowchartBuilder, FlowchartGenerator
+from ripley.core.flowchart import FlowchartBuilder, FlowchartGenerator
 from ripley.core.semantic_diff import extract_c_functions
 
 

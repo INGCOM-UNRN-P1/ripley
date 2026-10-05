@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import warnings
-from typing import Callable, List, Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 try:
     import resource  # solo POSIX

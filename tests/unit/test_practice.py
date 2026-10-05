@@ -1,6 +1,5 @@
 """Unit tests for practice initialization and management module."""
 
-from pathlib import Path
 import pytest
 
 from ripley.teacher.practice import (

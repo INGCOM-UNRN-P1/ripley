@@ -1,6 +1,5 @@
 """Unit tests for Call Graph generator."""
 
-from pathlib import Path
 from ripley.core.callgraph import CallGraphGenerator
 
 

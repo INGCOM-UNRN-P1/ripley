@@ -1,7 +1,6 @@
 """Unit tests for the poll-based watch session (no external deps)."""
 
 import time
-from pathlib import Path
 
 from ripley.core.watcher import (
     ChangeSet,

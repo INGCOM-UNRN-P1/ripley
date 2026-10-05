@@ -1,7 +1,6 @@
 """Static auditor for struct padding bytes sent to files or sockets without zero-initialization."""
 
 from dataclasses import dataclass, field
-from pathlib import Path
 import re
 from typing import Dict, List, Optional, Tuple
 

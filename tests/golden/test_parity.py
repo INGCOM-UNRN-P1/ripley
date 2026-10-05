@@ -15,7 +15,7 @@ from ripley.core.ast_auditors import (
 )
 from ripley.core.padding_audit import StructPaddingAuditor
 import ripley.pipeline.checks  # noqa: F401  (pobla el catálogo)
-from ripley.pipeline.registry import get, iter_uniform_static
+from ripley.pipeline.registry import iter_uniform_static
 from ripley.teacher.pack import _enabled_check_ids
 
 GOLDEN = Path(__file__).resolve().parents[1] / "golden" / "violaciones.c"
@@ -68,7 +68,6 @@ def test_registry_matches_direct_analyzers():
 
 def test_manifest_enables_exactly_the_golden_checks():
     """Con todos los toggles activos, el manifiesto debe incluir los checks dorados."""
-    from dataclasses import replace as dc_replace
 
     from ripley.config import AstAuditorsConfig, PaddingAuditConfig, RipleyConfig
 

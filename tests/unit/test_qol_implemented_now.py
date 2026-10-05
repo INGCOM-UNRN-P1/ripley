@@ -6,7 +6,6 @@
 """
 
 from pathlib import Path
-import pytest
 from typer.testing import CliRunner
 
 from ripley.cli.student import app

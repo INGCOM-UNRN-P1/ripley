@@ -1,9 +1,8 @@
 """Specialized linters for magic numbers, internal code duplication, and naming conventions."""
 
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set
 
 from ripley.models import LinterObservation  # noqa: F401  (re-exportado por compatibilidad)
 from ripley.core.c_tokens import tokenize_c_code

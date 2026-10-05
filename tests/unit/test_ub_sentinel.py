@@ -2,11 +2,9 @@
 
 from types import SimpleNamespace
 
-import pytest
 
 from ripley.core import ub_sentinel
 from ripley.core.ub_sentinel import (
-    HallazgoUB,
     ReporteUB,
     _falta_runtime_sanitizers,
     auditar_ub,

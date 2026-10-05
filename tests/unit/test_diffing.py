@@ -1,6 +1,5 @@
 """Unit tests for diffing module."""
 
-from pathlib import Path
 from ripley.core.diffing import clean_content_for_diff, generate_unified_diff
 
 

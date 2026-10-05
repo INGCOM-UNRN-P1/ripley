@@ -7,9 +7,9 @@ import re
 import shutil
 import subprocess
 import tempfile
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 
-from ripley.core.semantic_diff import CFunctionAST, extract_c_functions
+from ripley.core.semantic_diff import extract_c_functions
 
 
 @dataclass

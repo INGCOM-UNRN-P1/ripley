@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import html
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 
 def generate_interactive_html_report(

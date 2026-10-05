@@ -1,10 +1,8 @@
 """Unit tests for evaluation orchestrator."""
 
-from pathlib import Path
 from ripley.config import RipleyConfig
 from ripley.teacher.db import DatabaseManager, StudentRecord
 from ripley.teacher.evaluate import Evaluator
-from ripley.core.testcases import create_testcase_skeleton
 
 
 def test_evaluator_evaluates_student_successfully(tmp_path):

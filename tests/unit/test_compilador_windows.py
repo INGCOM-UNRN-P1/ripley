@@ -8,7 +8,6 @@ aunque el .exe existiera. Se imita a MinGW con un compilador falso.
 import os
 import stat
 import sys
-from pathlib import Path
 
 import pytest
 

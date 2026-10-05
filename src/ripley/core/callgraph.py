@@ -1,6 +1,6 @@
 """Call graph generator for C source code."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 import re
 from typing import Dict, List, Optional, Set, Tuple

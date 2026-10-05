@@ -1,8 +1,5 @@
 """Integration tests for the complete Ripley grading and evaluation pipeline."""
 
-from pathlib import Path
-import zipfile
-import pytest
 
 from ripley.config import RipleyConfig
 from ripley.teacher.evaluate import Evaluator

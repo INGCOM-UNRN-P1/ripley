@@ -1,7 +1,6 @@
 """Unified check registry: single source of truth shared by teacher evaluate and student CLI."""
 
-from dataclasses import dataclass, field
-import shutil
+from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Optional
 
 

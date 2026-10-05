@@ -3,8 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 try:
     import tomli_w
 except ImportError:
@@ -31,8 +30,7 @@ except ImportError:
 
 from slugify import slugify
 
-from ripley.config import RipleyConfig, load_config
-from ripley.core.testcases import create_testcase_skeleton
+from ripley.config import load_config
 
 
 @dataclass

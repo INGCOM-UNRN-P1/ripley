@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import re
 import tempfile
-from typing import Any, Dict, List, Optional, Set
+from typing import List, Optional, Set
 
 from ripley.config import StyleConfig
 

@@ -158,7 +158,6 @@ def test_satellite_plugin_adapter_fail_open_resilience(tmp_path: Path):
 
 
 def test_fuzzing_entrypoint_resolves_to_drake(monkeypatch):
-    import shutil
     from ripley.core.entrypoints import SatellitePluginAdapter
 
     monkeypatch.setattr("shutil.which", lambda cmd: f"/usr/bin/{cmd}" if cmd == "drake" else None)

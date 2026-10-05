@@ -31,7 +31,7 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 DISABLE_ENV = "RIPLEY_DISABLE_PLUGINS"
 

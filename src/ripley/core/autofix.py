@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from rich.console import Console
-from rich.syntax import Syntax
 
 
 def proponer_correcciones(fuente_c: Path) -> List[Tuple[str, str, str]]:

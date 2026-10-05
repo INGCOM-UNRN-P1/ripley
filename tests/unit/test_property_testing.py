@@ -1,6 +1,5 @@
 """Unit tests for Property-Based Testing framework in C."""
 
-from pathlib import Path
 from ripley.core.property_testing import PropertyTestRunner
 
 

@@ -1,6 +1,5 @@
 """Tests for the teacher audit workflow state machine."""
 
-from pathlib import Path
 
 import pytest
 

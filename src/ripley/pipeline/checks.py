@@ -17,7 +17,6 @@ from ripley.core.ast_auditors import (
     StringNullPointerLinter,
     VariableShadowingLinter,
 )
-from ripley.core.doxygen import DoxygenAuditor
 from ripley.core.padding_audit import StructPaddingAuditor
 from ripley.pipeline.registry import CheckSpec, register
 

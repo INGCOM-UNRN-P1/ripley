@@ -75,7 +75,7 @@ def snapshot_mtimes(files: List[Path]) -> dict:
 
 
 from dataclasses import dataclass, field
-from typing import Callable, Iterator, Set
+from typing import Callable, Iterator
 
 
 @dataclass
