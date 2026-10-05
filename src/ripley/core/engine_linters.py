@@ -263,4 +263,8 @@ def run_ast_linters(
                 "sugerencia": "Extraé la lógica común en una función auxiliar.",
             })
 
-    return findings
+    # Las reglas que la actividad no evalúa ([reglas] ignorar o .ripleyignore, QoL #808).
+    from ripley.core.reglas_ignoradas import filtrar_ignoradas, patrones_de_la_actividad
+
+    return filtrar_ignoradas(findings, patrones_de_la_actividad(workspace))
+

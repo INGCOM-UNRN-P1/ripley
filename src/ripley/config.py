@@ -6,12 +6,13 @@ from typing import Any, List
 import tomllib
 import warnings
 
-from ripley.config_modelos import GeneralConfig, CompilerConfig, LimitsConfig, TemplatesConfig, CppcheckConfig, StyleConfig, P1RulesConfig, LintersConfig, ValgrindConfig, RubricConfig, SecurityConfig, SandboxConfig, FlowchartConfig, MemoryVisualizerConfig, CallgraphConfig, PropertyTestingConfig, AstAuditorsConfig, PureFunctionsConfig, GraphicsConfig, MakefileConfig, PaddingAuditConfig, RestrictionsConfig, DoxygenConfig, CustomToolConfig  # noqa: F401
+from ripley.config_modelos import GeneralConfig, CompilerConfig, LimitsConfig, TemplatesConfig, CppcheckConfig, StyleConfig, P1RulesConfig, LintersConfig, ValgrindConfig, RubricConfig, SecurityConfig, SandboxConfig, FlowchartConfig, MemoryVisualizerConfig, CallgraphConfig, PropertyTestingConfig, AstAuditorsConfig, PureFunctionsConfig, GraphicsConfig, MakefileConfig, PaddingAuditConfig, RestrictionsConfig, DoxygenConfig, CustomToolConfig, ReglasConfig  # noqa: F401
 
 
 @dataclass
 class RipleyConfig:
     general: GeneralConfig = field(default_factory=GeneralConfig)
+    reglas: ReglasConfig = field(default_factory=ReglasConfig)
     compiler: CompilerConfig = field(default_factory=CompilerConfig)
     limits: LimitsConfig = field(default_factory=LimitsConfig)
     templates: TemplatesConfig = field(default_factory=TemplatesConfig)
@@ -84,6 +85,7 @@ KNOWN_CONFIG_SECTIONS = {
     "general",
     "moodle",
     "ub_sentinel",
+    "reglas",
 }
 
 KNOWN_SECTION_KEYS = {
@@ -194,6 +196,7 @@ def load_config(config_path: str | Path = "ripley.toml") -> RipleyConfig:
 
     cfg = RipleyConfig(
         general=GeneralConfig(pistas=bool(general_data.get("pistas", False))),
+        reglas=ReglasConfig(ignorar=[str(r) for r in data.get("reglas", {}).get("ignorar", [])]),
         compiler=CompilerConfig(
             enabled=compiler_data.get("enabled", True),
             executable=compiler_data.get("executable", "gcc"),

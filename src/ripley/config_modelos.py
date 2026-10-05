@@ -13,6 +13,13 @@ class GeneralConfig:
 
 
 @dataclass
+class ReglasConfig:
+    # Reglas que la actividad no evalúa (QoL #808): códigos (`0x1001h`), comodines (`0x40*h`) o
+    # `herramienta:código` (`gaff:0x0101h`). También se leen de un `.ripleyignore` junto al proyecto.
+    ignorar: List[str] = field(default_factory=list)
+
+
+@dataclass
 class CompilerConfig:
     enabled: bool = True
     executable: str = "gcc"
