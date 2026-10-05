@@ -272,6 +272,47 @@ def generar_seccion_markdown(result) -> str:
     return "\n".join(lines)
 
 
+@app.command("diff-check")
+def cmd_diff_check(
+    target: Path = typer.Argument(Path("."), exists=True, file_okay=False, help="Proyecto (repositorio git) a verificar."),
+    base: str = typer.Option("HEAD", "--base", "-b", help="Referencia de git contra la que comparar (HEAD: lo no commiteado; main, HEAD~1…)."),
+    as_json: bool = typer.Option(False, "--json", help="Emitir el resultado en JSON."),
+) -> None:
+    """Verificación incremental: solo las observaciones en lo que cambió desde --base (QoL #818)."""
+    from ripley.core.diff_check import SinGit, filtrar, lineas_cambiadas
+    from ripley.core.engine import analyze_target
+
+    try:
+        cambios = lineas_cambiadas(target, base)
+    except SinGit as exc:
+        console.print(f"[bold red]No se puede comparar con git:[/bold red] {exc}")
+        raise typer.Exit(code=2)
+    if not cambios:
+        if as_json:
+            print(json.dumps({"schema_version": "1.0.0", "base": base, "archivos": [], "ast_findings": []}))
+        else:
+            console.print(f"[green]No hay cambios en archivos C desde {base}.[/green]")
+        return
+    result = analyze_target(target)
+    propias = filtrar(result.ast_findings, cambios)
+    errores = [h for h in propias if str(h.get("severity", "")).upper() == "ERROR"]
+    compila = result.compilation.get("success", False)
+    if as_json:
+        from ripley.core.perfil_actividad import a_hallazgos
+        print(json.dumps({"schema_version": "1.0.0", "base": base, "archivos": sorted(cambios), "compila": compila,
+                          "ast_findings": propias, "hallazgos": a_hallazgos(propias)}, indent=2, ensure_ascii=False))
+    else:
+        console.print(f"[bold cyan]Cambios desde {base}:[/bold cyan] {', '.join(sorted(cambios))}")
+        if not compila:
+            console.print("[bold red]✗ El proyecto no compila.[/bold red]")
+        for h in propias:
+            console.print(f"  {h.get('file')}:{h.get('line')} [{h.get('rule_code')}] {h.get('message')}")
+        if compila and not propias:
+            console.print("[green]✓ Sin observaciones en lo que cambió.[/green]")
+    if errores or not compila:
+        raise typer.Exit(code=1)
+
+
 @app.command("check")
 def cmd_check(
     target: Path = typer.Argument(Path("."), exists=True, help="Ruta al archivo .c o directorio del proyecto a verificar."),

@@ -14,6 +14,7 @@ Motor de análisis estático, reglas de cátedra P1 (0xXXXXh), compilación sand
 - Modo pedagógico socrático (`--socratic`) que entrega pistas graduales sin revelar la solución directa.
 - Modo pista para evaluaciones (`[general] pistas = true` en el `ripley.toml` de la práctica, o `ripley-check check --pista`): exporta `P1_PISTA=1` a daedalus, tetsuo y hal, que dicen el tipo de error y la función sin la línea ni la corrección; el `.ripkg` lo lleva al estudiante.
 - Reglas que la actividad no evalúa (`[reglas] ignorar = ["0x40*h", "gaff:0x0101h"]` en el `ripley.toml`, o un `.ripleyignore` con un patrón por línea): para el TP1 sin reglas de módulos. La supresión puntual del estudiante sigue siendo `// ripley:disable-line=0x1001h`.
+- Verificación incremental (`ripley-check diff-check --base main`): analiza el proyecto pero informa solo las observaciones en las líneas que cambiaron desde la referencia de git (por defecto, lo no commiteado) y en los archivos nuevos; pensado para sulaco en cada push.
 - Perfil de satélites por actividad: `[actividad] tema = "punteros"` en el `ripley.toml` corre los de base (gaff, spunkmeyer, kaneda) y los del tema (bishop y tetsuo para punteros; motoko, corbel y wierzbowski para TAD; kane y vasquez para archivos…), incluidos los dinámicos; `satelites = ["gaff", "motoko"]` los fija a mano.
 - Sobre JSON único: además de `ast_findings`, `--json` emite `hallazgos`, cada observación en la forma común del ecosistema (`yutani.hallazgos`: id, categoría y enlace al apunte).
 - Modo observador en vivo (`ripley watch`) para desarrollo guiado por pruebas (TDD).
@@ -155,6 +156,7 @@ uv run pytest
 | `ripley evaluate` | Ejecuta la compilación, linters, estilo, pruebas y calificación de los estudiantes. |
 | `ripley doctor` | Diagnóstico del entorno: herramientas externas presentes y checks afectados. |
 | `ripley run` | Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto. |
+| `ripley diff-check` | Verificación incremental: solo las observaciones en lo que cambió desde --base (QoL #818). |
 | `ripley check` | Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer. |
 | `ripley show` | Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg. |
 | `ripley watch` | Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir). |
@@ -178,7 +180,7 @@ Ayuda de cada comando: `ripley <comando> -h`.
 
 ### Salida JSON de `ripley`
 
-Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `ripley doctor`, `ripley check`, `ripley gcc-explain`. El de `doctor --json` lleva `schema_version` y `ok`.
+Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `ripley doctor`, `ripley diff-check`, `ripley check`, `ripley gcc-explain`. El de `doctor --json` lleva `schema_version` y `ok`.
 
 ### Comandos de `ripley-check`
 
@@ -186,6 +188,7 @@ Con `--json`, estos comandos emiten el resultado como JSON por la salida estánd
 |:--|:--|
 | `ripley-check doctor` | Diagnóstico del entorno: herramientas externas presentes y checks afectados. |
 | `ripley-check run` | Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto. |
+| `ripley-check diff-check` | Verificación incremental: solo las observaciones en lo que cambió desde --base (QoL #818). |
 | `ripley-check check` | Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer. |
 | `ripley-check show` | Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg. |
 | `ripley-check watch` | Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir). |
@@ -205,7 +208,7 @@ Ayuda de cada comando: `ripley-check <comando> -h`.
 
 ### Salida JSON de `ripley-check`
 
-Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `ripley-check doctor`, `ripley-check check`, `ripley-check gcc-explain`. El de `doctor --json` lleva `schema_version` y `ok`.
+Con `--json`, estos comandos emiten el resultado como JSON por la salida estándar, para usarlo desde scripts, ripley o dredd: `ripley-check doctor`, `ripley-check diff-check`, `ripley-check check`, `ripley-check gcc-explain`. El de `doctor --json` lleva `schema_version` y `ok`.
 
 ### Códigos de salida
 
