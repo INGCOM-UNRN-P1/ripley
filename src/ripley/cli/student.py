@@ -188,7 +188,7 @@ def cmd_run(
         report = run_bundle(Path(practica), [Path(s) for s in sources], verify_signature=verify_signature)
     except BundleError as e:
         console.print(f"[bold red]Paquete inválido: {e}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     console.print(f"\n[bold]Verificación temprana — {report.practica}[/bold]")
     estado = "[green]OK[/green]" if report.compiled_ok else "[red]FALLÓ[/red]"
@@ -286,7 +286,7 @@ def cmd_diff_check(
         cambios = lineas_cambiadas(target, base)
     except SinGit as exc:
         console.print(f"[bold red]No se puede comparar con git:[/bold red] {exc}")
-        raise typer.Exit(code=2)
+        raise typer.Exit(code=2) from exc
     if not cambios:
         if as_json:
             print(json.dumps({"schema_version": "1.0.0", "base": base, "archivos": [], "ast_findings": []}))

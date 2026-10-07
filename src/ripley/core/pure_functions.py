@@ -96,7 +96,7 @@ class PureFunctionAnalyzer:
 
         attr = "__attribute__((pure))" if mode == "pure" else "__attribute__((const))"
 
-        for fname, fobj in functions.items():
+        for fname, _fobj in functions.items():
             if fname == "main":
                 continue
             # Inyectar el atributo antes del tipo de retorno

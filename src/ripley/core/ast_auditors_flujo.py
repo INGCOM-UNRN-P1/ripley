@@ -352,7 +352,7 @@ class LoopTerminationLinter:
 
             cond_vars = self._condition_vars(cond)
 
-            def _mutated_anywhere(v: str) -> bool:
+            def _mutated_anywhere(v: str, body: str = body, incr: str = incr) -> bool:
                 return self._is_mutated(v, body) or _mutated_in_increment(v, incr)
 
             non_mutated = [v for v in cond_vars if not _mutated_anywhere(v)]

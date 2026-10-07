@@ -43,7 +43,7 @@ class SatellitePluginAdapter:
         cat_info = SATELLITE_CATALOG.get(self.name, {})
         if not cat_info:
             # Buscar si self.name es el nombre del binario o herramienta en el catálogo
-            for k, v in SATELLITE_CATALOG.items():
+            for _k, v in SATELLITE_CATALOG.items():
                 if v.get("tool") == self.name or v.get("cli_cmd") == self.name:
                     cat_info = v
                     break
@@ -54,7 +54,7 @@ class SatellitePluginAdapter:
             if pkg:
                 cat_info = SATELLITE_CATALOG.get(pkg, {})
                 if not cat_info:
-                    for k, v in SATELLITE_CATALOG.items():
+                    for _k, v in SATELLITE_CATALOG.items():
                         if v.get("tool") == pkg or v.get("cli_cmd") == pkg:
                             cat_info = v
                             break

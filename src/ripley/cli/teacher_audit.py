@@ -72,7 +72,7 @@ def cmd_audit_transition(
         ev = workflow.transicionar(actividad, alumno, destino, nota=note, actor=actor, force=force)
     except (EstadoInvalido, TransicionInvalida) as e:
         console.print(f"[bold red]{e}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
     forzado = " [yellow](FORZADA)[/yellow]" if ev.forzado else ""
     console.print(
         f"[green]✓[/green] {alumno} @ {actividad}: "

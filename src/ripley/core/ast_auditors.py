@@ -211,7 +211,7 @@ class DeepFreeLinter:
 
         # Buscar llamadas a free(x) donde x es un struct con campos puntero
         functions = extract_c_functions(code)
-        for fname, fobj in functions.items():
+        for _fname, fobj in functions.items():
             free_calls = re.findall(r"free\s*\(\s*(?P<var>[a-zA-Z0-9_]+)\s*\)", fobj.raw_body)
             for v in free_calls:
                 # Comprobar si v es del tipo struct con punteros

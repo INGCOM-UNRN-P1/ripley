@@ -215,7 +215,7 @@ def cmd_evaluate(
         )
     except Exception as e:
         console.print(f"[bold red]Error durante la evaluación:[/bold red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     if not results:
         console.print("[yellow]No se encontraron estudiantes para evaluar en la actividad indicada.[/yellow]")

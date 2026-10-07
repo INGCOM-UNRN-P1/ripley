@@ -43,7 +43,7 @@ def generate_interactive_html_report(
         header_color = "#ef4444"
 
     obs_cards = []
-    for i, obs in enumerate(observations, start=1):
+    for _i, obs in enumerate(observations, start=1):
         sev = obs.get("severity", "INFO").upper()
         sev_badge = "sev-error" if sev in ("ERROR", "FATAL") else ("sev-warn" if sev == "ADVERTENCIA" else "sev-style")
         rule_code = obs.get("rule_code") or obs.get("code") or "OBS"

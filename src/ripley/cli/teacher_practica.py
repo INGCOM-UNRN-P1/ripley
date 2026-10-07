@@ -135,7 +135,7 @@ def cmd_practice_init(
             console.print(f"   * [cyan]{ex.slug}[/cyan] (enunciado, solucion_modelo.c, {cases} testcases en {p_dir}/ejercicios/{ex.slug}/tests/)")
     except Exception as e:
         console.print(f"[bold red]Error al inicializar la práctica:[/bold red] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
 
 @practica_app.command("list")
@@ -204,7 +204,7 @@ def cmd_practica_pack(
         result = pack_practice(pdir, sign_key=sign_key)
     except FileNotFoundError as e:
         console.print(f"[bold red]{e}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     out = Path(output) if output else result.output_path
     if output and out != result.output_path:

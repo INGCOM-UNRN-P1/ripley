@@ -52,7 +52,7 @@ def cmd_show_ripkg(
         bundle = load_bundle(p, verify_signature=verify_signature)
     except BundleError as e:
         console.print(f"[bold red]Error al abrir el paquete '{p}': {e}[/bold red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from e
 
     if todos:
         enunciado = pistas = tests = checks = archivos = meta = True
@@ -246,7 +246,7 @@ def cmd_watch(
             bundle_payload = bundle_mod.payload_of(loaded)
         except Exception as e:  # BundleError u otros
             console.print(f"[bold red]Paquete inválido: {e}[/bold red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from e
 
     def quick_verify() -> bool:
         """Ciclo rápido de verificación; devuelve True si todo está verde."""

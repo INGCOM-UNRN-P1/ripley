@@ -137,7 +137,7 @@ class Evaluator:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
 
-            for i, rev in enumerate(revisions):
+            for _i, rev in enumerate(revisions):
                 resultado = self._evaluar_revision(
                     act_cfg=act_cfg,
                     activity_slug=activity_slug,

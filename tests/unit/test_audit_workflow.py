@@ -74,10 +74,6 @@ def test_circuito_apelacion_y_observada(workspace):
     wf.transicionar("entrega-1", "gonzalo_123", "en_revision")
 
     # observada → reentrega re-ingresa
-    wf2 = AuditWorkflow(workspace_dir=workspace)
-    for d in ("observada",):
-        # desde en_revision actual
-        pass
     wf.transicionar("entrega-1", "gonzalo_123", "observada")
     wf.transicionar("entrega-1", "gonzalo_123", "ingresada")
     assert wf.estado_actual("entrega-1", "gonzalo_123") == "ingresada"
