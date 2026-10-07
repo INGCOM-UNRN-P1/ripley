@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 import re
-from typing import Any
+from typing import Any, Optional
 
 from ripley.core.security import strip_c_comments_and_strings
 from ripley.core.semantic_diff import extract_c_functions
@@ -363,7 +363,7 @@ class P1RuleChecker:
     def __init__(self) -> None:
         try:
             from ripley.core.entrypoints import get_satellite_plugin
-            self.satellite = get_satellite_plugin("style")
+            self.satellite: Optional[Any] = get_satellite_plugin("style")
         except Exception:
             self.satellite = None
 

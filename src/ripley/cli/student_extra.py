@@ -28,9 +28,9 @@ def cmd_explain(
         table.add_column("Categoría")
         table.add_column("Severidad", justify="center")
         table.add_column("Título")
-        for code, rule in sorted(P1_RULES_CATALOG.items()):
-            sev_color = "red" if rule.severity == "ERROR" else ("yellow" if rule.severity == "ADVERTENCIA" else "blue")
-            table.add_row(code, rule.category, f"[{sev_color}]{rule.severity}[/{sev_color}]", rule.title)
+        for code, regla in sorted(P1_RULES_CATALOG.items()):
+            sev_color = "red" if regla.severity == "ERROR" else ("yellow" if regla.severity == "ADVERTENCIA" else "blue")
+            table.add_row(code, regla.category, f"[{sev_color}]{regla.severity}[/{sev_color}]", regla.title)
         console.print(table)
         return
 

@@ -19,9 +19,11 @@ app = crear_app(
 def _merge(target: typer.Typer, source: typer.Typer) -> None:
     """Copia comandos planos y grupos preservando nombres originales."""
     for cmd in source.registered_commands:
-        target.command(name=cmd.name)(cmd.callback)
+        if cmd.callback is not None:
+            target.command(name=cmd.name)(cmd.callback)
     for grp in source.registered_groups:
-        target.add_typer(grp.typer_instance, name=grp.name)
+        if grp.typer_instance is not None:
+            target.add_typer(grp.typer_instance, name=grp.name)
 
 
 _merge(app, _teacher.app)

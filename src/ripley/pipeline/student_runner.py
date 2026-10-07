@@ -186,6 +186,8 @@ def run_bundle(
             report.omitted.append(spec.check_id)
             continue
         findings: List[dict] = []
+        if spec.runner is None:
+            continue
         for src in source_files:
             code = Path(src).read_text(encoding="utf-8", errors="replace")
             for obs in spec.runner(code, Path(src).name):
@@ -216,10 +218,10 @@ def run_bundle(
     # cuando sus herramientas no están; los dinámicos avanzados quedan para CLIs.
     static_ids = {s.check_id for s in iter_uniform_static()}
     for cid in sorted(enabled_ids - static_ids):
-        spec = get(cid)
-        if spec is None:
+        spec_manifiesto = get(cid)
+        if spec_manifiesto is None:
             continue
-        if not is_runnable(spec, tools):
+        if not is_runnable(spec_manifiesto, tools):
             report.omitted.append(cid)
 
     return report

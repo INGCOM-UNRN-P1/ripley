@@ -18,7 +18,7 @@ from ripley.cli._common import console
 
 
 # Contrato de línea de comandos del ecosistema desde yutani (N-ECO-14).
-app = crear_app(
+app: typer.Typer = crear_app(
     "ripley-check",
     __version__,
     "Verificación temprana de entregas C desde la computadora del estudiante.",

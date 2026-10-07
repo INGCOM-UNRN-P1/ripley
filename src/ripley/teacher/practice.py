@@ -26,7 +26,7 @@ except ImportError:
                             lines.append(f"{k} = [{items}]")
                     lines.append("")
             return "\n".join(lines)
-    tomli_w = _TomliWFallback()
+    tomli_w = _TomliWFallback()  # type: ignore[assignment]  # sin tomli_w instalado
 
 from slugify import slugify
 

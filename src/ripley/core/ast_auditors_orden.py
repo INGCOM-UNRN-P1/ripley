@@ -47,7 +47,9 @@ class EvaluationOrderLinter:
             return ""
 
         def _split_top_level(args_text: str) -> List[str]:
-            parts, current, depth = [], [], 0
+            parts: List[str] = []
+            current: List[str] = []
+            depth = 0
             for ch in args_text:
                 if ch == "(":
                     depth += 1
@@ -195,11 +197,11 @@ class StringLiteralWriteLinter:
                 if root_kind_or_root == "literal"
                 else f"el alias `{var_name}` (apunta al literal declarado con `{root_kind_or_root}`)"
             )
-            for line_idx, line in enumerate(lines):
+            for line_idx, texto in enumerate(lines):
                 line_num = line_idx + 1
-                if line_num == decl_line or line.strip().startswith("char "):
+                if line_num == decl_line or texto.strip().startswith("char "):
                     continue
-                if _write_targets(var_name, line):
+                if _write_targets(var_name, texto):
                     observations.append(
                         LinterObservation(
                             linter_name="rodata_string_write",

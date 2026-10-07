@@ -293,10 +293,10 @@ class DeadCodeLinter:
             body_lines = fobj.raw_body.splitlines()
             found_return = False
             for idx, raw_line in enumerate(body_lines):
-                line = raw_line.strip()
-                if not line or line.startswith("//") or line.startswith("/*") or line.startswith("*"):
+                linea_txt = raw_line.strip()
+                if not linea_txt or linea_txt.startswith("//") or linea_txt.startswith("/*") or linea_txt.startswith("*"):
                     continue
-                if found_return and line not in ("}", "{", "else", "else {") and not line.startswith("case ") and not line.startswith("default:"):
+                if found_return and linea_txt not in ("}", "{", "else", "else {") and not linea_txt.startswith("case ") and not linea_txt.startswith("default:"):
                     observations.append(
                         LinterObservation(
                             linter_name="dead_code",
@@ -308,9 +308,9 @@ class DeadCodeLinter:
                         )
                     )
                     break
-                if line.startswith("return") or line.startswith("exit("):
+                if linea_txt.startswith("return") or linea_txt.startswith("exit("):
                     found_return = True
-                elif "}" in line or "else" in line:
+                elif "}" in linea_txt or "else" in linea_txt:
                     found_return = False
 
         return observations

@@ -7,7 +7,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ripley.core.semantic_diff import extract_c_functions
 
@@ -88,7 +88,7 @@ class DoxygenAuditor:
         return observaciones
 
     @staticmethod
-    def _faltantes_desde_corbel(code: str, filename: str) -> Optional[List[Dict[str, object]]]:
+    def _faltantes_desde_corbel(code: str, filename: str) -> Optional[List[Dict[str, Any]]]:
         """Obtiene los faltantes de corbel por import y, si no está instalado, por CLI."""
         try:
             from corbel.core.placeholder import analyze_missing_documentation

@@ -1,5 +1,7 @@
 """Check catalog registration: binds every analyzer to the unified registry."""
 
+from typing import Any, List, Tuple
+
 from ripley.core.ast_auditors import (
     BackwardGotoLinter,
     ConstCorrectnessLinter,
@@ -24,7 +26,7 @@ from ripley.pipeline.registry import CheckSpec, register
 # Auditores AST estáticos uniformes: runner(code, filename) -> [LinterObservation]
 # Los toggles replican 1:1 las claves de [ast_auditors] en ripley.toml.
 # ---------------------------------------------------------------------------
-_AST_CHECKS = [
+_AST_CHECKS: List[Tuple[str, str, str, str, str, Any]] = [
     ("ast.const_correctness", "Const-correctness en parámetros puntero", "const_correctness", "const_correctness", "[AST:ConstCorrectness]", ConstCorrectnessLinter),
     ("ast.short_circuit", "Cortocircuitos con efectos colaterales", "short_circuit", "short_circuit", "[AST:ShortCircuit]", ShortCircuitLinter),
     ("ast.deep_free", "Liberación profunda de estructuras anidadas", "deep_free", "deep_free", "[AST:DeepFree]", DeepFreeLinter),
@@ -81,7 +83,7 @@ from ripley.core.antipatterns import (
     StrlenAllocationLinter,
 )
 
-_ANTIPATTERN_CHECKS = [
+_ANTIPATTERN_CHECKS: List[Tuple[str, str, str, str, Any]] = [
     ("antipattern.malloc_cast",
      "Cast innecesario del retorno de malloc/calloc/realloc",
      "malloc_cast", "[Antipattern:MallocCast]", MallocCastLinter),

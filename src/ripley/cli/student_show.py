@@ -294,8 +294,9 @@ def cmd_watch(
                         continue
                     in_path = Path(td) / f"{stem}.in"
                     out_path = Path(td) / f"{stem}.out"
-                    in_path.write_text(bundle_payload[in_name], encoding="utf-8")
-                    out_path.write_text(bundle_payload[[n for n in bundle_payload if Path(n).stem == stem and n.endswith('.out')][0]], encoding="utf-8")
+                    # payload_of devuelve bytes: write_text fallaba con TypeError en cada caso.
+                    in_path.write_bytes(bundle_payload[in_name])
+                    out_path.write_bytes(bundle_payload[[n for n in bundle_payload if Path(n).stem == stem and n.endswith('.out')][0]])
                     detail = runner.run_case(binary, TestCaseInfo(
                         exercise="watch", case_name=stem,
                         in_file=in_path, out_file=out_path, argv_file=None))

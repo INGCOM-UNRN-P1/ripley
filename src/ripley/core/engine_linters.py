@@ -146,7 +146,7 @@ def run_ast_linters(
 
     # 2. Linters AST internos y reglas P1 (con desduplicación jerárquica)
     p1_checker = P1RuleChecker()
-    linters = [
+    linters: List[Any] = [
         FloatComparisonLinter(),
         ConstCorrectnessLinter(),
         DeepFreeLinter(),
@@ -189,32 +189,32 @@ def run_ast_linters(
             continue
 
         # Reglas P1 (0xXXXXh)
-        for p in p1_checker.analyze(code, filename=c_file.name):
-            norm_code = normalize_rule_code(p.rule_code)
-            key = (c_file.name, p.line, norm_code)
+        for obs_p1 in p1_checker.analyze(code, filename=c_file.name):
+            norm_code = normalize_rule_code(obs_p1.rule_code)
+            key = (c_file.name, obs_p1.line, norm_code)
             if key in seen_keys:
                 continue
             seen_keys.add(key)
 
-            rule_title = getattr(p, "title", p.rule_code)
+            rule_title = getattr(obs_p1, "title", obs_p1.rule_code)
             findings.append({
-                "rule_id": p.rule_code,
-                "rule_code": p.rule_code,
-                "codigo": p.rule_code,
+                "rule_id": obs_p1.rule_code,
+                "rule_code": obs_p1.rule_code,
+                "codigo": obs_p1.rule_code,
                 "rule_name": rule_title,
                 "titulo": rule_title,
-                "severity": p.severity,
-                "severidad": p.severity,
+                "severity": obs_p1.severity,
+                "severidad": obs_p1.severity,
                 "file": c_file.name,
                 "archivo": c_file.name,
-                "line": p.line,
-                "linea": p.line,
+                "line": obs_p1.line,
+                "linea": obs_p1.line,
                 "column": 0,
                 "columna": 0,
-                "message": f"{p.rule_code}: {p.message}",
-                "mensaje": f"{p.rule_code}: {p.message}",
-                "suggestion": p.suggestion,
-                "sugerencia": p.suggestion,
+                "message": f"{obs_p1.rule_code}: {obs_p1.message}",
+                "mensaje": f"{obs_p1.rule_code}: {obs_p1.message}",
+                "suggestion": obs_p1.suggestion,
+                "sugerencia": obs_p1.suggestion,
             })
 
         # Linters de Calidad y AST

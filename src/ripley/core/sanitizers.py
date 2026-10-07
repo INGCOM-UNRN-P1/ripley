@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 import re
-from typing import List
+from typing import Any, List, Optional
 
 
 
@@ -22,8 +22,8 @@ class SanitizerAnalyzer:
     def __init__(self) -> None:
         try:
             from ripley.core.entrypoints import get_satellite_plugin
-            self.compiler = get_satellite_plugin("compiler")
-            self.satellite = get_satellite_plugin("sanitizer_translator")
+            self.compiler: Optional[Any] = get_satellite_plugin("compiler")
+            self.satellite: Optional[Any] = get_satellite_plugin("sanitizer_translator")
         except Exception:
             self.compiler = None
             self.satellite = None

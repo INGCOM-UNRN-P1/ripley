@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ripley.core.semantic_diff import extract_c_functions
 
@@ -30,7 +30,7 @@ class CallGraphGenerator:
     def __init__(self) -> None:
         try:
             from ripley.core.entrypoints import get_satellite_plugin
-            self.satellite = get_satellite_plugin("callgraph")
+            self.satellite: Optional[Any] = get_satellite_plugin("callgraph")
         except Exception:
             self.satellite = None
 

@@ -17,7 +17,7 @@ from ripley.core.testcases import (
 )
 
 
-app = typer.Typer(
+app: typer.Typer = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     name="ripley-teacher",
     help="Comandos del flujo docente.",
@@ -25,7 +25,7 @@ app = typer.Typer(
 )
 template_app = typer.Typer(name="template", help="Gestión y verificación de plantillas Markdown Jinja2.", no_args_is_help=True)
 testcase_app = typer.Typer(name="testcase", help="Gestión y esqueletos de casos de prueba.", no_args_is_help=True)
-practica_app = typer.Typer(name="practica", help="Gestión de prácticas en ./practicas.", no_args_is_help=True)
+practica_app: typer.Typer = typer.Typer(name="practica", help="Gestión de prácticas en ./practicas.", no_args_is_help=True)
 
 app.add_typer(template_app, name="template")
 app.add_typer(testcase_app, name="testcase")

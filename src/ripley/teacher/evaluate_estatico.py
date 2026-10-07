@@ -80,7 +80,7 @@ def analizar_fuente(
             continue  # Sección sin master enabled (p. ej. padding off).
         if spec.config_section == "ast_auditors" and not act_cfg.ast_auditors.enabled:
             continue
-        if not getattr(section, spec.toggle, False):
+        if not getattr(section, spec.toggle, False) or spec.runner is None:
             continue
         for obs in spec.runner(src_content, src.name):
             all_style_obs.append({

@@ -357,7 +357,7 @@ class DatabaseManager:
                 (actividad, alumno, estado_anterior, estado_nuevo, actor, nota, int(forzado)),
             )
             conn.commit()
-            return int(cur.lastrowid)
+            return int(cur.lastrowid or 0)
 
     def get_audit_history(self, actividad: str, alumno: str) -> List[Dict[str, Any]]:
         with self._get_connection() as conn:

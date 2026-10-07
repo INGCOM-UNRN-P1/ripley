@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ripley.core.linters import LinterObservation
 from ripley.core.security import strip_c_comments_and_strings
@@ -47,7 +47,7 @@ class StructPaddingAuditor:
     def __init__(self) -> None:
         try:
             from ripley.core.entrypoints import get_satellite_plugin
-            self.satellite = get_satellite_plugin("padding")
+            self.satellite: Optional[Any] = get_satellite_plugin("padding")
         except Exception:
             self.satellite = None
 

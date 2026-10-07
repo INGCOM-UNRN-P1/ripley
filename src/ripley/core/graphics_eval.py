@@ -158,6 +158,8 @@ class GraphicsEvaluator:
             time.sleep(self.cfg.settle_seconds)
 
             import_bin = shutil.which(self.cfg.capture_executable)
+            if import_bin is None:
+                return CaptureResult(ok=False, message=f"No se encontró {self.cfg.capture_executable} en el PATH.")
             cap = subprocess.run(
                 [import_bin, "-display", display, "-window", "root", str(shot)],
                 capture_output=True, text=True, timeout=30,

@@ -172,7 +172,7 @@ class SatellitePluginAdapter:
         """Ejecuta la herramienta secundaria como subproceso CLI solicitando salida JSON."""
         cmd = self.cli_command or self.tool_name or self.name
         timeout = float(manifest_config.get("timeout", 20.0))
-        cat = SATELLITE_CATALOG.get(self.name) or SATELLITE_CATALOG.get(self.tool_name, {})
+        cat = SATELLITE_CATALOG.get(self.name) or SATELLITE_CATALOG.get(self.tool_name or "", {})
 
         # Un satélite que necesita configuración que no recibió se saltea. Si se
         # lo invocara igual, su error de uso ("Missing argument 'modelo'")

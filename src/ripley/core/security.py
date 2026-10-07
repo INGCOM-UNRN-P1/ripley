@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 import re
-from typing import List, Sequence
+from typing import Any, List, Optional, Sequence
 
 from ripley.config import SecurityConfig
 
@@ -42,7 +42,7 @@ class SecurityScanner:
         self.config = config
         try:
             from ripley.core.entrypoints import get_satellite_plugin
-            self.satellite = get_satellite_plugin("security")
+            self.satellite: Optional[Any] = get_satellite_plugin("security")
         except Exception:
             self.satellite = None
 
