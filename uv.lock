@@ -21,6 +21,16 @@ wheels = [
 ]
 
 [[package]]
+name = "daedalus"
+version = "0.2.0"
+source = { git = "https://github.com/INGCOM-UNRN-P1/daedalus?rev=426b88036b939bf820b4031228bddac831a957cb#426b88036b939bf820b4031228bddac831a957cb" }
+dependencies = [
+    { name = "rich" },
+    { name = "typer" },
+    { name = "yutani" },
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -139,7 +149,7 @@ wheels = [
 [[package]]
 name = "nostromo"
 version = "0.2.0"
-source = { git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=c4c3bfcfdf709de9f3892e503ae2f208bf166f51#c4c3bfcfdf709de9f3892e503ae2f208bf166f51" }
+source = { git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=4db7196159682ab13762b8122f5423d3b681fb62#4db7196159682ab13762b8122f5423d3b681fb62" }
 dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
@@ -298,6 +308,7 @@ dependencies = [
 
 [package.optional-dependencies]
 ecosistema = [
+    { name = "daedalus" },
     { name = "nostromo" },
 ]
 
@@ -309,8 +320,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "daedalus", marker = "extra == 'ecosistema'", git = "https://github.com/INGCOM-UNRN-P1/daedalus?rev=426b88036b939bf820b4031228bddac831a957cb" },
     { name = "jinja2", specifier = ">=3.1.3" },
-    { name = "nostromo", marker = "extra == 'ecosistema'", git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=c4c3bfcfdf709de9f3892e503ae2f208bf166f51" },
+    { name = "nostromo", marker = "extra == 'ecosistema'", git = "https://github.com/INGCOM-UNRN-P1/nostromo?rev=4db7196159682ab13762b8122f5423d3b681fb62" },
     { name = "python-slugify", specifier = ">=8.0.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=13.7.0" },

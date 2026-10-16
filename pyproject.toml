@@ -39,7 +39,8 @@ dependencies = [
 # Herramientas del ecosistema que se usan como biblioteca (N-ECO-01). Referencias git fijadas
 # a commits publicados; sin el extra se usa el camino propio (gcc, sin sandbox de nostromo…).
 ecosistema = [
-    "nostromo @ git+https://github.com/INGCOM-UNRN-P1/nostromo@c4c3bfcfdf709de9f3892e503ae2f208bf166f51",
+    "nostromo @ git+https://github.com/INGCOM-UNRN-P1/nostromo@4db7196159682ab13762b8122f5423d3b681fb62",
+    "daedalus @ git+https://github.com/INGCOM-UNRN-P1/daedalus@426b88036b939bf820b4031228bddac831a957cb",
 ]
 
 [project.urls]

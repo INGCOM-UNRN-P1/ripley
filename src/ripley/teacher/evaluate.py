@@ -11,9 +11,10 @@ from typing import Tuple, Any, Callable, Dict, List, Optional
 
 import ripley.pipeline.checks  # noqa: F401  (registra el catálogo unificado)
 
-from ripley.core.compiler import CompilationResult, Compiler
+from ripley.core.compiler import CompilationResult
 from ripley.config import RipleyConfig, load_config
 from ripley.teacher.db import DatabaseManager
+from ripley.teacher.compilacion import CompiladorActividad
 from ripley.core.diffing import generate_unified_diff
 SPECIAL_AUXILIARY = "[AUXILIAR]"
 SPECIAL_IGNORE = "[IGNORAR]"
@@ -116,7 +117,8 @@ class Evaluator:
         # Cargar configuración específica de la actividad y sus herramientas activas
         act_cfg = self.get_activity_config(clean_act_slug)
 
-        compiler = Compiler(act_cfg.compiler, act_cfg.limits, act_cfg.sandbox)
+        # Compila daedalus (aislado en nostromo si la actividad pide sandbox): N-RIPLEY-03.
+        compiler = CompiladorActividad(act_cfg.compiler, act_cfg.limits, act_cfg.sandbox)
         security_scanner = SecurityScanner(act_cfg.security)
         style_analyzer = StyleAnalyzer(act_cfg.style)
         p1_checker = P1RuleChecker() if act_cfg.p1_rules.enabled else None
