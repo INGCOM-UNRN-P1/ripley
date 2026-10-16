@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 from yutani.cli import crear_app
 
@@ -285,7 +286,8 @@ def cmd_diff_check(
     try:
         cambios = lineas_cambiadas(target, base)
     except SinGit as exc:
-        console.print(f"[bold red]No se puede comparar con git:[/bold red] {exc}")
+        # El mensaje viene de git y puede traer corchetes: sin escape, Rich lo toma por markup.
+        console.print(f"[bold red]No se puede comparar con git:[/bold red] {escape(str(exc))}")
         raise typer.Exit(code=2) from exc
     if not cambios:
         if as_json:

@@ -30,3 +30,34 @@ def test_lineas_cambiadas_y_filtro(tmp_path):
 def test_sin_git(tmp_path):
     with pytest.raises(SinGit):
         lineas_cambiadas(tmp_path)
+
+
+def test_cli_sin_git_muestra_el_aviso_y_no_un_traceback(tmp_path, monkeypatch):
+    """N-RIPLEY-13: el mensaje de git trae corchetes (`[/<m>]` en el uso de git diff) y Rich lo
+    interpretaba como markup: MarkupError en lugar del aviso."""
+    from typer.testing import CliRunner
+
+    from ripley.cli import student
+    from ripley.core import diff_check
+
+    def falla(*_a, **_k):
+        raise SinGit("usage: git diff [<options>] [<commit>] [--] [<path>...] [/<m>]")
+
+    monkeypatch.setattr(diff_check, "lineas_cambiadas", falla)
+    (tmp_path / "a.c").write_text("int a;\n", encoding="utf-8")
+    res = CliRunner().invoke(student.app, ["diff-check", str(tmp_path)])
+    assert res.exit_code == 2, res.output
+    assert res.exception is None or isinstance(res.exception, SystemExit)
+    assert "No se puede comparar con git" in res.output
+    assert "[/<m>]" in res.output
+
+
+def test_cli_fuera_de_un_repo_git(tmp_path):
+    from typer.testing import CliRunner
+
+    from ripley.cli import student
+
+    (tmp_path / "a.c").write_text("int a;\n", encoding="utf-8")
+    res = CliRunner().invoke(student.app, ["diff-check", str(tmp_path)])
+    assert res.exit_code == 2, res.output
+    assert "No se puede comparar con git" in res.output
