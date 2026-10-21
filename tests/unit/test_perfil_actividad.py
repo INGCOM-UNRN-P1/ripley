@@ -32,3 +32,25 @@ def test_sobre_json_con_hallazgos():
     assert hallazgos[0]["categoria"] == "memoria" and hallazgos[0]["enlace"].endswith("/x3001h")
     assert hallazgos[1]["categoria"] == "seguridad" and hallazgos[1]["severidad"] == "error"
     assert a_hallazgos([{"message": "sin código"}]) == []
+
+
+def test_hallazgos_con_el_archivo_relativo_al_directorio_de_trabajo(tmp_path, monkeypatch):
+    """Ola 7: los analizadores informan sólo el nombre del archivo («m.c»); el hallazgo lleva la
+    ruta relativa al directorio de trabajo, la misma que usan jonesy y las otras herramientas."""
+    from ripley.core.engine import AnalysisResult
+
+    (tmp_path / "proy" / "ej1").mkdir(parents=True)
+    (tmp_path / "proy" / "ej1" / "m.c").write_text("int main(void){return 0;}\n")
+    monkeypatch.chdir(tmp_path)
+    obs = {"rule_code": "0x0007h", "severity": "ESTILO", "file": "m.c", "line": 1, "column": 15,
+           "message": "Llave", "suggestion": "Allman", "source_plugin": "style"}
+    r = AnalysisResult(target=str(tmp_path / "proy"), is_directory=True, c_files=["ej1/m.c"], ast_findings=[obs])
+    (h,) = r.to_dict()["hallazgos"]
+    assert (h["archivo"], h["linea"], h["columna"], h["sugerencia"]) == ("proy/ej1/m.c", 1, 15, "Allman")
+    r = AnalysisResult(target=str(tmp_path / "proy" / "ej1" / "m.c"), c_files=["m.c"], ast_findings=[obs])
+    assert r.to_dict()["hallazgos"][0]["archivo"] == "proy/ej1/m.c"
+    try:
+        from yutani.hallazgos import validar_salida  # type: ignore[attr-defined]
+    except ImportError:  # yutani anterior a 3fb723d
+        return
+    assert validar_salida(r.to_dict(), tmp_path) == []

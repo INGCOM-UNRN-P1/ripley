@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 import tomllib
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 BASE = ("gaff", "spunkmeyer", "kaneda")
 TEMAS: Dict[str, tuple] = {
@@ -70,9 +70,46 @@ _POR_HERRAMIENTA = {"kaneda": "seguridad", "security": "seguridad", "tetsuo": "m
                     "wierzbowski": "compilacion", "zhora": "compilacion", "compiler": "compilacion"}
 
 
-def a_hallazgos(observaciones: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def ruta_relativa(ruta: Optional[str]) -> Optional[str]:
+    """El archivo como lo esperan jonesy y los demás clientes (yutani.hallazgos.ruta_archivo):
+    relativo al directorio de trabajo, con / y sin ./; afuera de él, absoluto."""
+    import os
+
+    if not ruta:
+        return None
+    p = Path(ruta.replace("\\", "/") if not ruta.startswith("/") else ruta)
+    if p.is_absolute():
+        try:
+            relativa = os.path.relpath(p, Path.cwd())
+        except ValueError:  # otra unidad en Windows
+            return p.as_posix()
+        if relativa == os.pardir or relativa.startswith(os.pardir + os.sep):
+            return p.as_posix()
+        p = Path(relativa)
+    return Path(os.path.normpath(p)).as_posix()
+
+
+def resolver_archivo(archivo: Any, base: Optional[Path], fuentes: Iterable[str] = ()) -> Optional[str]:
+    """La ruta real de una observación: los analizadores informan el archivo a su manera (sólo el
+    nombre, relativo al proyecto o absoluto). Con `base` (la carpeta analizada) y `fuentes` (sus .c,
+    relativos a `base`) se encuentra el archivo aunque venga sólo el nombre."""
+    if not archivo:
+        return None
+    p = Path(str(archivo))
+    if base is not None and not p.is_absolute():
+        if (base / p).exists():
+            p = base / p
+        else:
+            iguales = [f for f in fuentes if Path(f).name == p.name]
+            p = base / (iguales[0] if len(iguales) == 1 else p)
+    return ruta_relativa(str(p))
+
+
+def a_hallazgos(observaciones: List[Dict[str, Any]], base: Optional[Path] = None,
+                fuentes: Iterable[str] = ()) -> List[Dict[str, Any]]:
     from yutani.hallazgos import hallazgo
 
+    fuentes = list(fuentes)
     resultado = []
     for o in observaciones:
         codigo = str(o.get("rule_code") or o.get("codigo") or "").strip()
@@ -82,10 +119,17 @@ def a_hallazgos(observaciones: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         categoria = (_POR_FAMILIA.get(codigo[2], "estilo") if _REGLA.match(codigo)
                      else _POR_HERRAMIENTA.get(herramienta, "estilo"))
         severidad = str(o.get("severity") or o.get("severidad") or "advertencia")
+        archivo = resolver_archivo(o.get("file") or o.get("archivo"), base, fuentes)
+        mensaje = str(o.get("message") or o.get("mensaje") or "")
+        sugerencia = str(o.get("suggestion") or o.get("sugerencia") or "") or None
         try:
-            resultado.append(hallazgo(herramienta, codigo, categoria, severidad, str(o.get("message") or ""),
-                                      archivo=o.get("file"), linea=o.get("line") or None))
+            h = hallazgo(herramienta, codigo, categoria, severidad, mensaje, archivo=archivo,
+                         linea=o.get("line") or None, sugerencia=sugerencia)
         except ValueError:
-            resultado.append(hallazgo(herramienta, codigo, categoria, "advertencia", str(o.get("message") or ""),
-                                      archivo=o.get("file"), linea=o.get("line") or None))
+            h = hallazgo(herramienta, codigo, categoria, "advertencia", mensaje, archivo=archivo,
+                         linea=o.get("line") or None, sugerencia=sugerencia)
+        columna = o.get("column") or o.get("columna")
+        if isinstance(columna, int) and columna > 0:
+            h["columna"] = columna
+        resultado.append(h)
     return resultado

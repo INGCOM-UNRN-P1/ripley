@@ -302,7 +302,10 @@ def cmd_diff_check(
     if as_json:
         from ripley.core.perfil_actividad import a_hallazgos
         print(json.dumps({"schema_version": "1.0.0", "base": base, "archivos": sorted(cambios), "compila": compila,
-                          "ast_findings": propias, "hallazgos": a_hallazgos(propias)}, indent=2, ensure_ascii=False))
+                          "ast_findings": propias,
+                          "hallazgos": a_hallazgos(propias, Path(result.target) if result.is_directory
+                                                   else Path(result.target).parent, result.c_files)},
+                         indent=2, ensure_ascii=False))
     else:
         console.print(f"[bold cyan]Cambios desde {base}:[/bold cyan] {', '.join(sorted(cambios))}")
         if not compila:

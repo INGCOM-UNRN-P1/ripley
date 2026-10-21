@@ -67,7 +67,10 @@ class AnalysisResult:
         d["schema_version"] = "1.0.0"
         # El sobre común: cada observación en la forma de yutani.hallazgos (categoría y enlace al apunte).
         from ripley.core.perfil_actividad import a_hallazgos
-        d["hallazgos"] = a_hallazgos(self.ast_findings)
+        base = None
+        if self.target:
+            base = Path(self.target) if self.is_directory else Path(self.target).parent
+        d["hallazgos"] = a_hallazgos(self.ast_findings, base, self.c_files)
         return d
 
     def to_json(self, indent: int = 2) -> str:
