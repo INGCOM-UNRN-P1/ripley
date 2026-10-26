@@ -205,3 +205,30 @@ def test_p1_rules_good_practices_and_functions():
     """
     obs_gets = checker.analyze(code_gets)
     assert any(o.rule_code == "0x5006h" for o in obs_gets)
+
+
+def test_0x0002h_no_confunde_los_argumentos_de_una_llamada_con_declaraciones():
+    """`int divisor = mcd(numerador, denominador);` es una sola declaración (TP6 real)."""
+    checker = P1RuleChecker()
+    codigo = (
+        "int f(int numerador, int denominador)\n{\n"
+        "    int divisor = mcd(numerador, denominador);\n"
+        "    int a = g(1), b = 2;\n"
+        "    return divisor + a + b;\n}\n"
+    )
+    lineas = [o.line for o in checker.analyze(codigo, filename="fraccion.c") if o.rule_code == "0x0002h"]
+    assert lineas == [4]
+
+
+def test_hallazgos_con_la_ruta_relativa_a_la_carpeta_analizada(tmp_path):
+    """Con un main.c por ejercicio, cada hallazgo dice de cuál se trata (antes, sólo `main.c`)."""
+    from ripley.core.engine_linters import run_ast_linters
+
+    for ej in ("ejercicio1", "ejercicio2"):
+        (tmp_path / "ejercicios" / ej).mkdir(parents=True)
+        (tmp_path / "ejercicios" / ej / "main.c").write_text(
+            "int main(void)\n{\n    int a, b;\n    return 0;\n}\n", encoding="utf-8")
+    fuentes = sorted(tmp_path.glob("**/*.c"))
+    hallazgos = run_ast_linters(fuentes, target_path=tmp_path, include_plugins=False)
+    archivos = {h["archivo"] for h in hallazgos if h["codigo"] == "0x0002h"}
+    assert archivos == {"ejercicios/ejercicio1/main.c", "ejercicios/ejercicio2/main.c"}

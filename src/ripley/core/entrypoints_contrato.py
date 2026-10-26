@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Dict, List, Union
 
 
@@ -151,7 +150,7 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
         msg = str(raw_obs.get("message") or f"Estructura '{struct_name}' desperdicia {wasted} bytes de padding.")
         sug = str(raw_obs.get("suggestion") or (f"Reordenar campos para ahorrar {wasted} bytes." if wasted > 0 else ""))
         raw_file = str(raw_obs.get("file_path") or raw_obs.get("file") or raw_obs.get("archivo") or "")
-        f_name = Path(raw_file).name if raw_file else ""
+        f_name = raw_file  # la ruta completa: engine_linters la deja relativa a la carpeta analizada
         line = int(raw_obs.get("line_number") or raw_obs.get("line") or raw_obs.get("linea") or 0)
         return {
             "rule_code": rule_code,
@@ -212,7 +211,7 @@ def normalize_finding(raw_obs: Dict[str, Any], source_plugin: str) -> Dict[str, 
         or raw_obs.get("file_path")
         or ""
     )
-    f_name = Path(raw_file).name if raw_file else ""
+    f_name = raw_file  # la ruta completa: engine_linters la deja relativa a la carpeta analizada
     line = int(raw_obs.get("line") or raw_obs.get("linea") or raw_obs.get("line_number") or 0)
     col = int(raw_obs.get("column") or raw_obs.get("columna") or raw_obs.get("col_offset") or 0)
     msg = str(raw_obs.get("message") or raw_obs.get("mensaje") or raw_obs.get("explicacion") or "")

@@ -71,8 +71,11 @@ def _ejecutar(monkeypatch, tmp_path, nombre, herramienta, salida):
 @pytest.mark.parametrize(
     "nombre, herramienta, salida, esperadas",
     [
-        ("portability", "crowe", SALIDA_CROWE, [("CRW001", "p.c", 3), ("CRW002", "p.c", 4)]),
-        ("tda_encapsulation", "motoko", SALIDA_MOTOKO, [("MOT001", "lista.h", 1), ("MOT002", "main.c", 3)]),
+        # La ruta como la informa la herramienta (antes se recortaba al nombre y no se distinguían los
+        # main.c de cada ejercicio); engine_linters la deja relativa a la carpeta analizada.
+        ("portability", "crowe", SALIDA_CROWE, [("CRW001", "proy/p.c", 3), ("CRW002", "proy/p.c", 4)]),
+        ("tda_encapsulation", "motoko", SALIDA_MOTOKO,
+         [("MOT001", "proy/lista.h", 1), ("MOT002", "proy/main.c", 3)]),
     ],
 )
 def test_la_ubicacion_de_cada_hallazgo_llega_al_reporte(

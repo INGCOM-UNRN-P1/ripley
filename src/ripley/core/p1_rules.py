@@ -107,8 +107,11 @@ def _regla_0001h_nombres_cortos(f: _Fuente) -> list[P1RuleObservation]:
     return observations
 
 
+# El inicializador admite llamadas con paréntesis balanceados: con `[^,;]+` la coma entre los
+# argumentos de `int d = mcd(a, b);` parecía separar dos declaraciones.
 _DECLARACION_MULTIPLE = re.compile(
-    r"^[ \t]*(?:int|char|float|double|size_t|long|short)\s+([a-zA-Z_][a-zA-Z0-9_]*\s*(?:=\s*[^,;]+)?\s*,\s*)+[a-zA-Z_][a-zA-Z0-9_]*",
+    r"^[ \t]*(?:int|char|float|double|size_t|long|short)\s+"
+    r"([a-zA-Z_][a-zA-Z0-9_]*\s*(?:=\s*(?:[^,;()]|\([^()]*\))+)?\s*,\s*)+[a-zA-Z_][a-zA-Z0-9_]*",
     re.MULTILINE,
 )
 

@@ -25,6 +25,30 @@ from ripley.core.p1_rules import P1RuleChecker
 from ripley.core.engine import normalize_rule_code
 
 
+def _ruta_en(workspace: Path, is_single_file: bool, archivo: str, c_files: List[Path]) -> str:
+    """El archivo de una observación relativo a la carpeta analizada (con /), o su nombre si se
+    analiza un solo archivo. Antes se guardaba siempre el nombre y, en un proyecto con un `main.c`
+    y un `prueba.c` por ejercicio, el informe no permitía saber de cuál se trataba."""
+    if not archivo:
+        return ""
+    ruta = Path(archivo)
+    if is_single_file:
+        return ruta.name
+    candidatos = [ruta] if ruta.is_absolute() else [workspace / ruta, Path.cwd() / ruta]
+    for cand in candidatos:
+        try:
+            relativa = cand.resolve().relative_to(workspace.resolve())
+        except (ValueError, OSError):
+            continue
+        if cand.exists():
+            return relativa.as_posix()
+    if len(ruta.parts) == 1:  # sólo el nombre: se resuelve si es único entre las fuentes
+        iguales = [f for f in c_files if f.name == ruta.name]
+        if len(iguales) == 1:
+            return _ruta_en(workspace, False, str(iguales[0]), c_files)
+    return ruta.as_posix()
+
+
 def run_ast_linters(
     c_files: List[Path],
     target_path: Optional[Path] = None,
@@ -95,6 +119,7 @@ def run_ast_linters(
                 for obs in raw_obs:
                     raw_f = str(obs.get("archivo") or obs.get("file") or obs.get("location") or "")
                     f_name = Path(raw_f).name if raw_f else (c_files[0].name if c_files else "")
+                    f_ruta = _ruta_en(workspace, is_single_file, raw_f, c_files) if raw_f else f_name
 
                     # En modo archivo individual, filtrar observaciones de otros archivos
                     if is_single_file and allowed_filenames and f_name not in allowed_filenames:
@@ -116,7 +141,7 @@ def run_ast_linters(
                     sug = str(obs.get("sugerencia") or obs.get("suggestion") or "")
 
                     norm_code = normalize_rule_code(rule_code)
-                    key = (f_name, line, norm_code)
+                    key = (f_ruta, line, norm_code)
                     if key in seen_keys:
                         continue
                     seen_keys.add(key)
@@ -129,8 +154,8 @@ def run_ast_linters(
                         "titulo": rule_name,
                         "severity": severity,
                         "severidad": severity,
-                        "file": f_name,
-                        "archivo": f_name,
+                        "file": f_ruta,
+                        "archivo": f_ruta,
                         "line": line,
                         "linea": line,
                         "column": col,
@@ -164,6 +189,7 @@ def run_ast_linters(
         ])
 
     for c_file in c_files:
+        ruta = _ruta_en(workspace, is_single_file, str(c_file), c_files)
         try:
             code = c_file.read_text(encoding="utf-8", errors="replace")
         except Exception as e:
@@ -175,8 +201,8 @@ def run_ast_linters(
                 "titulo": "Error de Lectura",
                 "severity": "ERROR",
                 "severidad": "ERROR",
-                "file": c_file.name,
-                "archivo": c_file.name,
+                "file": ruta,
+                "archivo": ruta,
                 "line": 0,
                 "linea": 0,
                 "column": 0,
@@ -191,7 +217,7 @@ def run_ast_linters(
         # Reglas P1 (0xXXXXh)
         for obs_p1 in p1_checker.analyze(code, filename=c_file.name):
             norm_code = normalize_rule_code(obs_p1.rule_code)
-            key = (c_file.name, obs_p1.line, norm_code)
+            key = (ruta, obs_p1.line, norm_code)
             if key in seen_keys:
                 continue
             seen_keys.add(key)
@@ -205,8 +231,8 @@ def run_ast_linters(
                 "titulo": rule_title,
                 "severity": obs_p1.severity,
                 "severidad": obs_p1.severity,
-                "file": c_file.name,
-                "archivo": c_file.name,
+                "file": ruta,
+                "archivo": ruta,
                 "line": obs_p1.line,
                 "linea": obs_p1.line,
                 "column": 0,
@@ -221,7 +247,7 @@ def run_ast_linters(
         for linter in linters:
             for obs in linter.analyze(code, filename=c_file.name):
                 norm_code = normalize_rule_code(obs.linter_name)
-                key = (c_file.name, obs.line, norm_code)
+                key = (ruta, obs.line, norm_code)
                 if key in seen_keys:
                     continue
                 seen_keys.add(key)
@@ -234,8 +260,8 @@ def run_ast_linters(
                     "titulo": obs.linter_name,
                     "severity": obs.severity,
                     "severidad": obs.severity,
-                    "file": c_file.name,
-                    "archivo": c_file.name,
+                    "file": ruta,
+                    "archivo": ruta,
                     "line": obs.line,
                     "linea": obs.line,
                     "column": 0,
@@ -248,7 +274,7 @@ def run_ast_linters(
 
         # Detector de código duplicado
         for d in InternalCloneLinter().analyze(code, filename=c_file.name):
-            key = (c_file.name, d.line_a, "copy_paste_clone")
+            key = (ruta, d.line_a, "copy_paste_clone")
             if key in seen_keys:
                 continue
             seen_keys.add(key)
@@ -261,8 +287,8 @@ def run_ast_linters(
                 "titulo": "Código Duplicado",
                 "severity": "ADVERTENCIA",
                 "severidad": "ADVERTENCIA",
-                "file": c_file.name,
-                "archivo": c_file.name,
+                "file": ruta,
+                "archivo": ruta,
                 "line": d.line_a,
                 "linea": d.line_a,
                 "column": 0,
