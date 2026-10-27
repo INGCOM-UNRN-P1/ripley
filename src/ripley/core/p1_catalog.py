@@ -460,3 +460,18 @@ P1_RULES_CATALOG: Dict[str, P1Rule] = {
         severity="ERROR",
     ),
 }
+
+from ripley.core._p1_catalog_v2 import MAPA_RENUMERACION_V2, REGLAS_CANONICAS_V2  # noqa: E402
+
+for _cod, (_dir, _sev, _tit) in REGLAS_CANONICAS_V2.items():
+    if _cod not in P1_RULES_CATALOG:
+        P1_RULES_CATALOG[_cod] = P1Rule(
+            code=_cod,
+            category=_dir,
+            title=_tit,
+            description=_tit,
+            severity=_sev,
+        )
+
+__all__ = ["MAPA_RENUMERACION_V2", "P1Rule", "P1_RULES_CATALOG", "REGLAS_CANONICAS_V2"]
+

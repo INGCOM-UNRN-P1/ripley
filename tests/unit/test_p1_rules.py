@@ -232,3 +232,14 @@ def test_hallazgos_con_la_ruta_relativa_a_la_carpeta_analizada(tmp_path):
     hallazgos = run_ast_linters(fuentes, target_path=tmp_path, include_plugins=False)
     archivos = {h["archivo"] for h in hallazgos if h["codigo"] == "0x0002h"}
     assert archivos == {"ejercicios/ejercicio1/main.c", "ejercicios/ejercicio2/main.c"}
+
+
+def test_p1_catalog_incluye_las_176_reglas_canonicas_v2():
+    from ripley.core.p1_catalog import P1_RULES_CATALOG, REGLAS_CANONICAS_V2
+
+    assert len(REGLAS_CANONICAS_V2) == 176
+    assert set(REGLAS_CANONICAS_V2).issubset(set(P1_RULES_CATALOG))
+    assert "0x0101h" in P1_RULES_CATALOG
+    assert "0x7001h" in P1_RULES_CATALOG
+    assert "0x8004h" in P1_RULES_CATALOG
+
