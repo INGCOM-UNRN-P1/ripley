@@ -1,3 +1,4 @@
+from pathlib import Path
 from ripley.core.sarif import exportar_sarif
 from ripley.core.badge import calcular_puntaje_calidad, generar_badge_svg
 
@@ -108,3 +109,35 @@ def test_style_compliance(tmp_path):
     assert "indice_conformidad" in res
     assert res["indice_conformidad"] >= 0.0
 
+
+
+def test_sarif_para_code_scanning(tmp_path, monkeypatch):
+    """Ola 25: ruta relativa a la raíz (no sólo el nombre), enlace al apunte y nivel por severidad."""
+    from ripley.core.engine import analyze_target
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.c").write_text(
+        "#include <stdio.h>\n\nint main(void)\n{\n    goto fin;\nfin:\n    return 0;\n}\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    sarif = exportar_sarif(analyze_target(Path("src")))
+    run = sarif["runs"][0]
+    assert run["originalUriBaseIds"]["%SRCROOT%"]
+    ubicaciones = [r["locations"][0]["physicalLocation"]["artifactLocation"] for r in run["results"]]
+    assert ubicaciones and all(u == {"uri": "src/main.c", "uriBaseId": "%SRCROOT%"} for u in ubicaciones)
+    goto = next(r for r in run["results"] if r["ruleId"] == "0x1006h")
+    assert goto["level"] == "error" and goto["locations"][0]["physicalLocation"]["region"]["startLine"] == 5
+    regla = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "0x1006h")
+    assert regla["helpUri"].startswith("https://")
+    assert {r["level"] for r in run["results"]} <= {"error", "warning", "note"}
+
+
+def test_sarif_con_errores_de_compilacion(tmp_path, monkeypatch):
+    from ripley.core.engine import analyze_target
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "main.c").write_text("int main(void)\n{\n    int x = 3\n    return x;\n}\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    run = exportar_sarif(analyze_target(Path("src")))["runs"][0]
+    compilacion = [r for r in run["results"] if r["ruleId"] == "compilacion"]
+    assert compilacion and compilacion[0]["level"] == "error"
+    assert compilacion[0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "src/main.c"
