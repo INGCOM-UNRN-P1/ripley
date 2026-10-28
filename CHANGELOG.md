@@ -4,6 +4,18 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/);
 versiones según [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Agregado
+
+- **check**: `--sarif ARCHIVO` escribe el SARIF en la misma corrida que `--md` (sulaco, Ola 25).
+- **check**: la devolución Markdown resume arriba y deja el detalle en secciones colapsables (compilación, observaciones, pruebas y «Para estudiar» con enlaces al apunte).
+
+### Corregido
+
+- **sarif**: la ruta de cada resultado es relativa a la raíz del repositorio (`%SRCROOT%`), no sólo el nombre del archivo, para que GitHub Code Scanning la ubique; enlace al apunte, nivel por severidad y errores de compilación como resultados (N-RIPLEY-15).
+- **check**: con `--md` el código de salida sigue el veredicto del perfil; antes sólo fallaba si no compilaba (N-RIPLEY-16).
+
 ## [1.2.2] - 2026-09-30
 
 ### Corregido
