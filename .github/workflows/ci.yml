@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
       - run: |
@@ -21,7 +21,7 @@ jobs:
 
       - run: |
           uv sync
-          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git"
+          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git@426b88036b939bf820b4031228bddac831a957cb" "git+https://github.com/INGCOM-UNRN-P1/gaff.git@8655e9d9094add28ff41d2260e0ea3b5b6c404d5" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git@4db7196159682ab13762b8122f5423d3b681fb62" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git@e22eb047d3912a244eac3053f59fb71762fe6330"
       - run: uv run pytest -q
 
 
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
       # Simula la notebook del estudiante: solo gcc; sin valgrind, cppcheck,
@@ -88,7 +88,7 @@ jobs:
         # tienen compilador (daedalus) ni sandbox (nostromo).
         run: |
           uv sync
-          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git" "git+https://github.com/INGCOM-UNRN-P1/gaff.git" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git"
+          uv pip install "git+https://github.com/INGCOM-UNRN-P1/daedalus.git@426b88036b939bf820b4031228bddac831a957cb" "git+https://github.com/INGCOM-UNRN-P1/gaff.git@8655e9d9094add28ff41d2260e0ea3b5b6c404d5" "git+https://github.com/INGCOM-UNRN-P1/nostromo.git@4db7196159682ab13762b8122f5423d3b681fb62" "git+https://github.com/INGCOM-UNRN-P1/kaneda.git@e22eb047d3912a244eac3053f59fb71762fe6330"
 
       - name: Diagnóstico del entorno
         run: uv run ripley doctor
