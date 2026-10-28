@@ -243,33 +243,99 @@ def _pistas_de_la_practica(target: Path) -> bool:
     return False
 
 
-def generar_seccion_markdown(result) -> str:
-    """Genera sección de auditoría estática, reglas P1 y compilación de Ripley para Dredd."""
-    comp_ok = result.compilation.get("success", False)
-    status = "ok" if comp_ok and not any(f.get("severity") == "ERROR" for f in result.ast_findings) else "fail"
-    lines = [f"<!-- dredd-section: ripley, tool=ripley, version=1.0.0, status={status} -->\n## Evaluación Pedagógica Integral (Ripley)\n"]
-    estado_comp = "✓ Compilación Exitosa" if comp_ok else "❌ Falló Compilación"
-    lines.append(f"- **Compilación GCC:** {estado_comp}")
-    lines.append(f"- **Hallazgos de estilo y AST:** {len(result.ast_findings)}")
-    tests_tot = result.tests.get("total", 0)
-    if tests_tot > 0:
-        lines.append(f"- **Pruebas automáticas:** {result.tests.get('passed', 0)}/{tests_tot} pasadas")
+def tiene_errores(result, profile: str = "strict") -> bool:
+    """Veredicto del perfil: no compila, o (salvo relaxed) hay errores de reglas o pruebas que fallan;
+    en exam, cualquier observación. Es el mismo para la consola, --md y --sarif."""
+    errores = not result.compilation.get("success", False) or (
+        profile != "relaxed" and (result.metrics.get("ast_errors_count", 0) > 0 or result.tests.get("failed", 0) > 0))
+    if profile == "exam":
+        errores = errores or result.metrics.get("ast_findings_count", 0) > 0
+    return errores
+
+
+def _celda(texto: object) -> str:
+    return str(texto).replace("|", "\\|").replace("\n", " ")
+
+
+def generar_seccion_markdown(result, profile: str = "strict") -> str:
+    """Devolución en Markdown: resumen arriba y el detalle en secciones colapsables.
+
+    La lee el alumno en el comentario del PR y en el resumen del job (sulaco), y dredd la fusiona
+    en el informe (marcador `dredd-section`). Cada sección (`<details>`) se abre a pedido:
+    compilación, observaciones, pruebas y qué estudiar del apunte según las reglas incumplidas.
+    """
+    comp = result.compilation
+    comp_ok = comp.get("success", False)
+    errores = tiene_errores(result, profile)
+    status = "fail" if errores else "ok"
+    lines = [f"<!-- dredd-section: ripley, tool=ripley, version=1.1.0, status={status} -->\n## Evaluación Pedagógica Integral (Ripley)\n"]
+    lines.append(f"- **Compilación GCC:** {'✓ Compilación Exitosa' if comp_ok else '❌ Falló Compilación'}")
+    hallazgos = result.to_dict().get("hallazgos", [])
+    por_sev: dict = {}
+    for h in hallazgos:
+        por_sev[str(h.get("severidad"))] = por_sev.get(str(h.get("severidad")), 0) + 1
+    detalle = ", ".join(f"{n} {sev}" for sev, n in sorted(por_sev.items()))
+    lines.append(f"- **Hallazgos de estilo y AST:** {len(result.ast_findings)}" + (f" ({detalle})" if detalle else ""))
+    tests = result.tests
+    if tests.get("total", 0) > 0:
+        lines.append(f"- **Pruebas automáticas:** {tests.get('passed', 0)}/{tests['total']} pasadas")
     lines.append("")
 
-    if not result.ast_findings and comp_ok:
+    if not errores and not result.ast_findings:
         lines.append("> [!TIP]\n> **Excelente Calidad:** El código cumple con todas las reglas P1 y estándares arquitectónicos sin observaciones.\n")
-    elif result.ast_findings:
-        lines.append("> [!WARNING]\n> **Observaciones Pedagógicas y Reglas P1:**\n")
+    elif errores:
+        lines.append("> [!CAUTION]\n> **Hay errores que impiden la entrega:** revisá las secciones de abajo.\n")
+    else:
+        lines.append("> [!WARNING]\n> **Observaciones Pedagógicas y Reglas P1:** la entrega pasa, pero hay detalles para corregir.\n")
+
+    if not comp_ok:
+        diags = comp.get("translated_diagnostics", []) or []
+        lines.append(f"<details open>\n<summary>❌ Compilación ({len(diags)} diagnósticos)</summary>\n")
+        if comp.get("human_summary"):
+            lines.append(f"{comp['human_summary']}\n")
+        from ripley.core.perfil_actividad import resolver_archivo
+        base = Path(result.target) if result.is_directory else Path(result.target).parent
+        for d in diags:
+            sug = f" — 💡 {d['suggestion']}" if d.get("suggestion") else ""
+            archivo = resolver_archivo(d.get("file"), base, result.c_files) or d.get("file")
+            lines.append(f"- `{archivo}:{d.get('line')}` {d.get('translated_message') or d.get('message', '')}{sug}")
+        lines.append("\n</details>\n")
+
+    if result.ast_findings:
+        lines.append(f"<details{' open' if errores else ''}>\n<summary>🔎 Observaciones ({len(result.ast_findings)})</summary>\n")
         lines.append("| Ubicación | Regla | Severidad | Mensaje / Sugerencia |")
         lines.append("| :--- | :---: | :---: | :--- |")
         for f in result.ast_findings:
-            loc = f"`{Path(f.get('file', '')).name}:{f.get('line', '')}`".replace("|", "\\|")
-            sug = f" — *Sugerencia:* {f.get('suggestion')}".replace("|", "\\|") if f.get("suggestion") else ""
-            rule_id = str(f.get("rule_id", "")).replace("|", "\\|")
-            sev = str(f.get("severity", "WARN")).replace("|", "\\|")
-            msg = str(f.get("message", "")).replace("|", "\\|")
-            lines.append(f"| {loc} | `{rule_id}` | **{sev}** | {msg}{sug} |")
-        lines.append("")
+            loc = _celda(f"`{Path(f.get('file', '')).name}:{f.get('line', '')}`")
+            sug = f" — *Sugerencia:* {_celda(f.get('suggestion'))}" if f.get("suggestion") else ""
+            lines.append(f"| {loc} | `{_celda(f.get('rule_id', ''))}` | **{_celda(f.get('severity', 'WARN'))}** | "
+                         f"{_celda(f.get('message', ''))}{sug} |")
+        lines.append("\n</details>\n")
+
+    casos = tests.get("cases", []) or []
+    if casos:
+        fallidos = [c for c in casos if not c.get("passed")]
+        lines.append(f"<details{' open' if fallidos else ''}>\n<summary>🧪 Pruebas ({tests.get('passed', 0)}/{tests.get('total', len(casos))})</summary>\n")
+        for c in casos:
+            if c.get("passed"):
+                lines.append(f"- ✓ {_celda(c.get('name', 'caso'))}")
+                continue
+            motivo = ("tiempo agotado" if c.get("timed_out") else "pérdida de memoria" if c.get("memory_leak")
+                      else "error de memoria" if c.get("sanitizer_error") else "salida distinta de la esperada")
+            lines.append(f"- ❌ {_celda(c.get('name', 'caso'))}: {motivo}")
+        lines.append("\n</details>\n")
+
+    temas: dict = {}
+    for h in hallazgos:
+        if h.get("enlace"):
+            temas.setdefault(str(h.get("categoria") or "estilo"), {})[str(h["codigo"])] = h["enlace"]
+    if temas:
+        lines.append("<details>\n<summary>📚 Para estudiar</summary>\n")
+        lines.append("Las reglas que conviene repasar en el apunte, agrupadas por tema:\n")
+        for categoria, reglas in sorted(temas.items(), key=lambda kv: -len(kv[1])):
+            enlaces = ", ".join(f"[{codigo}]({url})" for codigo, url in sorted(reglas.items()))
+            lines.append(f"- **{categoria}**: {enlaces}")
+        lines.append("\n</details>\n")
     return "\n".join(lines)
 
 
@@ -331,6 +397,7 @@ def cmd_check(
     ub_timeout: int = typer.Option(30, "--ub-timeout", help="Timeout en segundos por testcase del ub-sentinel."),
     html: Optional[Path] = typer.Option(None, "--html", help="Generar informe interactivo HTML con badges de cátedra."),
     output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", "-o", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
+    sarif_out: Optional[Path] = typer.Option(None, "--sarif", help="Escribir además el SARIF 2.1.0 en este archivo (en la misma corrida; para GitHub Code Scanning)."),
     profile: str = typer.Option("strict", "--profile", "-p", help="Perfil de rigurosidad: 'strict', 'relaxed' o 'exam'."),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Modo silencioso sin volcado a consola (para pre-commit hooks)."),
     exit_zero: bool = typer.Option(False, "--exit-zero", help="Forzar código de salida 0 incluso ante advertencias o fallas."),
@@ -350,13 +417,22 @@ def cmd_check(
 
     result = analyze_target(target, pista=pista or _pistas_de_la_practica(target))
 
+    if sarif_out:
+        from ripley.core.sarif import exportar_sarif
+        sarif_out.parent.mkdir(parents=True, exist_ok=True)
+        sarif_out.write_text(json.dumps(exportar_sarif(result), indent=2, ensure_ascii=False), encoding="utf-8")
+        if not quiet:
+            console.print(f"[green]✓ SARIF generado en:[/green] [cyan]{sarif_out}[/cyan]")
+
     if output_md:
-        md_text = generar_seccion_markdown(result)
+        md_text = generar_seccion_markdown(result, profile)
         output_md.parent.mkdir(parents=True, exist_ok=True)
         output_md.write_text(md_text, encoding="utf-8")
         if not quiet:
             console.print(f"[green]✓ Sección Markdown generada en:[/green] [cyan]{output_md}[/cyan]")
-        raise typer.Exit(code=0 if (exit_zero or result.compilation.get("success", False)) else 1)
+        # Mismo veredicto que la consola: antes sólo fallaba si no compilaba, así que el modo
+        # bloqueante de sulaco no frenaba una entrega con errores de reglas o pruebas que fallan.
+        raise typer.Exit(code=1 if (tiene_errores(result, profile) and not exit_zero) else 0)
 
     if output_format.lower() == "sarif":
         from ripley.core.sarif import exportar_sarif
@@ -501,9 +577,7 @@ def cmd_check(
             console.print(f"  [bold green]✓ Reporte HTML interactivo generado en:[/bold green] [cyan]{html}[/cyan]")
 
     # Veredicto final
-    has_errors = not comp.get("success", False) or (profile != "relaxed" and (result.metrics.get("ast_errors_count", 0) > 0 or tests.get("failed", 0) > 0))
-    if profile == "exam":
-        has_errors = has_errors or result.metrics.get("ast_findings_count", 0) > 0
+    has_errors = tiene_errores(result, profile)
 
     if has_errors:
         if not quiet:
