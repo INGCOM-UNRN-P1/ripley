@@ -103,8 +103,8 @@ def diagnose_runtime_crash(
             )
         return DiagnosticResult(
             diagnosis=DiagnosisType.TIMEOUT,
-            message="Tiempo límite de ejecución excedido (Timeout / Bucle Infinito).",
-            pedagogical_hint="El programa entró en un bucle infinito de procesamiento o tardó más del tiempo asignado.",
+            message="Tiempo límite de ejecución excedido (lazo infinito).",
+            pedagogical_hint="El programa entró en un lazo infinito de procesamiento o tardó más del tiempo asignado.",
         )
 
 

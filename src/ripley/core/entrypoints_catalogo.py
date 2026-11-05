@@ -220,7 +220,7 @@ SATELLITE_CATALOG: Dict[str, Dict[str, Any]] = {
         "tool": "sebastian",
         "cli_cmd": "sebastian",
         "cli_subcmd": "check",
-        "description": "Auditoría de funciones recursivas, profundidad de pila y riesgos de stack overflow.",
+        "description": "Auditoría de funciones recursivas, profundidad de pila y riesgos de desborde de pila.",
     },
 }
 

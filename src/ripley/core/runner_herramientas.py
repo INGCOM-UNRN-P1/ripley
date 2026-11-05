@@ -106,8 +106,8 @@ class ValgrindRunner:
             return ValgrindResult(
                 enabled=True,
                 passed=False,
-                summary="Timeout en Valgrind",
-                full_output="Ejecución de Valgrind abortada por timeout.",
+                summary="Valgrind superó el tiempo límite",
+                full_output="Ejecución de Valgrind cortada por superar el tiempo límite.",
             )
         except Exception as e:
             return ValgrindResult(

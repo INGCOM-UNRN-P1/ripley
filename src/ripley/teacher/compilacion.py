@@ -74,9 +74,9 @@ class CompiladorActividad:
                 success=False,
                 binary_path=None,
                 stdout="",
-                stderr=f"Timeout durante la compilación ({timeout}s excedidos).",
+                stderr=f"Se superó el tiempo límite de compilación ({timeout}s excedidos).",
                 returncode=-1,
-                error_message="Timeout de compilación.",
+                error_message="Se superó el tiempo límite de compilación.",
             )
         # En Windows gcc agrega .exe al binario (N-ECO-10).
         if ES_WINDOWS and not out_bin.exists() and out_bin.with_name(out_bin.name + ".exe").exists():

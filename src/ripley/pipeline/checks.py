@@ -39,7 +39,7 @@ _AST_CHECKS: List[Tuple[str, str, str, str, str, Any]] = [
     ("ast.backward_goto", "Saltos hacia atrás con goto", "backward_goto", "backward_goto", "[AST:BackwardGoto]", BackwardGotoLinter),
     ("ast.deprecated_api", "API C obsoleta o insegura", "deprecated_api", "deprecated_api", "[AST:DeprecatedAPI]", DeprecatedAPILinter),
     ("ast.enum_bitmask", "Enums usados como máscaras de bits sin potencias de dos", "enum_bitmask", "enum_bitmask", "[AST:EnumBitmask]", EnumBitmaskLinter),
-    ("ast.loop_termination", "Heurística de terminación de bucles", "loop_termination", "loop_termination", "[AST:LoopTermination]", LoopTerminationLinter),
+    ("ast.loop_termination", "Heurística de terminación de lazos", "loop_termination", "loop_termination", "[AST:LoopTermination]", LoopTerminationLinter),
 ]
 
 for check_id, title, toggle, _cfg_key, prefix, cls in _AST_CHECKS:

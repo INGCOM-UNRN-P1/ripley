@@ -176,7 +176,7 @@ def cmd_run(
     strict: bool = typer.Option(False, "--strict", help="Salir con código 1 si hay hallazgos, no solo errores."),
     verify_signature: bool = typer.Option(False, "--verify-signature", help="Exigir firma GPG válida del paquete."),
 ) -> None:
-    """Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto."""
+    """Verificación temprana completa: compila, corre los casos de prueba públicos y aplica los checks del manifiesto."""
     from ripley.pipeline.bundle import BundleError
     from ripley.pipeline.student_runner import run_bundle
 
@@ -200,9 +200,9 @@ def cmd_run(
         console.print(f"  [dim]{detalle}[/dim]")
     if report.tests_total:
         color = "green" if report.tests_passed == report.tests_total else "red"
-        console.print(f"  Testcases públicos: [{color}]{report.tests_passed}/{report.tests_total}[/{color}]")
+        console.print(f"  Casos de prueba públicos: [{color}]{report.tests_passed}/{report.tests_total}[/{color}]")
     else:
-        console.print("  Testcases públicos: ninguno incluido en el paquete")
+        console.print("  Casos de prueba públicos: ninguno incluido en el paquete")
 
     for check_id, obs in report.findings.items():
         if not obs:
@@ -394,7 +394,7 @@ def cmd_check(
     bench_pattern: str = typer.Option("{n}\\n", "--bench-pattern", help="Entrada por tamaño; '{n}' se reemplaza por N."),
     strict_ub: bool = typer.Option(False, "--strict-ub", help="ub-sentinel: auditoría de comportamiento indefinido tras compilar."),
     ub_level: int = typer.Option(2, "--ub-level", min=1, max=4, help="Nivel máximo del pipeline ub-sentinel (1=sanitizers, 2=+clang-analyzer, 3=+Frama-C, 4=+TSan)."),
-    ub_timeout: int = typer.Option(30, "--ub-timeout", help="Timeout en segundos por testcase del ub-sentinel."),
+    ub_timeout: int = typer.Option(30, "--ub-timeout", help="Tiempo límite en segundos por caso de prueba del ub-sentinel."),
     html: Optional[Path] = typer.Option(None, "--html", help="Generar informe interactivo HTML con badges de cátedra."),
     output_md: Optional[Path] = typer.Option(None, "--md", "--output-md", "-o", help="Generar sección de reporte en formato Markdown para fusión en Dredd."),
     sarif_out: Optional[Path] = typer.Option(None, "--sarif", help="Escribir además el SARIF 2.1.0 en este archivo (en la misma corrida; para GitHub Code Scanning)."),

@@ -67,7 +67,7 @@ class FormalContractAnalyzer:
                 timeout=timeout_sec,
             )
         except subprocess.TimeoutExpired:
-            return FramaCResult(available=True, message="Timeout del demostrador WP.")
+            return FramaCResult(available=True, message="El demostrador WP superó el tiempo límite.")
         except OSError as e:
             return FramaCResult(available=True, message=f"Error ejecutando Frama-C: {e}")
 

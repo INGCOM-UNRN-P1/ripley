@@ -14,7 +14,7 @@ def _observaciones_de_sebastian(item: Dict[str, Any]) -> List[Dict[str, Any]]:
         raw_obs.append({
             "rule_code": "STACK_OVERFLOW_RISK",
             "severity": "ERROR" if riesgo == "CRITICO" else "ADVERTENCIA",
-            "message": f"Función '{item.get('funcion')}' presenta riesgo {riesgo} de stack overflow.",
+            "message": f"Función '{item.get('funcion')}' presenta riesgo {riesgo} de desborde de pila.",
             "file": item.get("archivo", ""),
             "line": int(item.get("linea_inicio", 1)),
         })

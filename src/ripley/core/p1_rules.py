@@ -94,7 +94,7 @@ def _regla_0001h_nombres_cortos(f: _Fuente) -> list[P1RuleObservation]:
                 observations.append(f.observacion(
                     "0x0001h", line_num,
                     f"Variable de 1 letra: `{vname}` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
-                    "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h).",
+                    "Conservar únicamente como contador o índice local de lazo; no emplear para datos de dominio (Regla 0x0001h).",
                     severity="ESTILO",
                 ))
             else:

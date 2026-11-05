@@ -132,7 +132,7 @@ def _nivel1_sanitizers(fuentes: Sequence[Path], tests: Sequence[Path],
             reporte.hallazgos.append(HallazgoUB(
                 nivel=1, categoria=f"{categoria_prefix}.TIMEOUT",
                 archivo=nombre, linea=None,
-                mensaje=f"El binario instrumentado excedió {timeout}s con el testcase {nombre}.",
+                mensaje=f"El binario instrumentado excedió {timeout}s con el caso de prueba {nombre}.",
                 sugerencia="Un ciclo sin progreso o una espera infinita también es comportamiento a corregir.",
                 severidad="ERROR",
             ))

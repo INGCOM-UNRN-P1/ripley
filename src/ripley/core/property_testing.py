@@ -172,5 +172,5 @@ class PropertyTestRunner:
                     passed=False,
                     iterations_run=0,
                     property_name=property_type,
-                    message="Timeout durante la ejecución de las pruebas de propiedades.",
+                    message="Las pruebas de propiedades superaron el tiempo límite.",
                 )

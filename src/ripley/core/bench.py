@@ -143,7 +143,7 @@ def verificar_cota(binario: Path, cota_esperada: str,
                     f"la cota {cota} o está muy lejos de ella"
                 )
             return False, (
-                f"timeout con N={n}: tras crecer ×{FACTOR_DUPLICACION} el tiempo ya "
+                f"tiempo límite superado con N={n}: tras crecer ×{FACTOR_DUPLICACION} el tiempo ya "
                 f"no respeta la cota {cota} ({ultimo_resumen})"
             )
         if anterior is not None:

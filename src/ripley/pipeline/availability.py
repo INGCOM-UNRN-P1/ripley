@@ -23,7 +23,7 @@ _BINARIOS_DEL_SISTEMA: Dict[str, str] = {
 # Herramientas del ecosistema que no son satélites de ripley, pero cuya
 # presencia informa `doctor`.
 _HERRAMIENTAS_EXTRA: Dict[str, str] = {
-    "hal": "Forense de core dumps y análisis pedagógico post-mortem de segfaults",
+    "hal": "Forense de core dumps y análisis pedagógico post-mortem de violaciones de segmento",
 }
 
 

@@ -155,10 +155,10 @@ uv run pytest
 |:--|:--|
 | `ripley evaluate` | Ejecuta la compilación, linters, estilo, pruebas y calificación de los estudiantes. |
 | `ripley doctor` | Diagnóstico del entorno: herramientas externas presentes y checks afectados. |
-| `ripley run` | Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto. |
+| `ripley run` | Verificación temprana completa: compila, corre los casos de prueba públicos y aplica los checks del manifiesto. |
 | `ripley diff-check` | Verificación incremental: solo las observaciones en lo que cambió desde --base (QoL #818). |
 | `ripley check` | Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer. |
-| `ripley show` | Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg. |
+| `ripley show` | Inspecciona y muestra el contenido, metadatos, enunciado y casos de prueba de un paquete .ripkg. |
 | `ripley watch` | Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir). |
 | `ripley explain` | Explica una regla pedagógica de cátedra o busca por palabras clave en el catálogo canónico. |
 | `ripley gcc-explain` | Traduce mensajes de error y advertencias de GCC/ld a explicaciones claras en español. |
@@ -187,10 +187,10 @@ Con `--json`, estos comandos emiten el resultado como JSON por la salida estánd
 | Comando | Descripción |
 |:--|:--|
 | `ripley-check doctor` | Diagnóstico del entorno: herramientas externas presentes y checks afectados. |
-| `ripley-check run` | Verificación temprana completa: compila, corre testcases públicos y aplica los checks del manifiesto. |
+| `ripley-check run` | Verificación temprana completa: compila, corre los casos de prueba públicos y aplica los checks del manifiesto. |
 | `ripley-check diff-check` | Verificación incremental: solo las observaciones en lo que cambió desde --base (QoL #818). |
 | `ripley-check check` | Verificación unificada y pedagógica de código C: AST, reglas P1, compilación y AddressSanitizer. |
-| `ripley-check show` | Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg. |
+| `ripley-check show` | Inspecciona y muestra el contenido, metadatos, enunciado y casos de prueba de un paquete .ripkg. |
 | `ripley-check watch` | Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir). |
 | `ripley-check explain` | Explica una regla pedagógica de cátedra o busca por palabras clave en el catálogo canónico. |
 | `ripley-check gcc-explain` | Traduce mensajes de error y advertencias de GCC/ld a explicaciones claras en español. |

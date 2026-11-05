@@ -62,7 +62,7 @@ def cmd_practice_init(
         help="Directorio base donde se almacenan las prácticas.",
     ),
 ) -> None:
-    """Inicializa una práctica completa con enunciados, corrección, testcases y pautas en ./practicas."""
+    """Inicializa una práctica completa con enunciados, corrección, casos de prueba y pautas en ./practicas."""
     # Si no se pasó nombre, solicitarlo interactivamente
     p_name = name or Prompt.ask("Nombre de la práctica", default="Práctica 1 - Introducción a C").strip()
     p_id = practice_id or Prompt.ask("ID de la actividad (opcional)", default="").strip()
@@ -132,7 +132,7 @@ def cmd_practice_init(
         console.print(f" - [bold]Configuración de corrección:[/bold] {p_dir}/ripley.toml")
         console.print(f" - [bold]Ejercicios generados ({len(ex_list)}):[/bold]")
         for ex in ex_list:
-            console.print(f"   * [cyan]{ex.slug}[/cyan] (enunciado, solucion_modelo.c, {cases} testcases en {p_dir}/ejercicios/{ex.slug}/tests/)")
+            console.print(f"   * [cyan]{ex.slug}[/cyan] (enunciado, solucion_modelo.c, {cases} casos de prueba en {p_dir}/ejercicios/{ex.slug}/tests/)")
     except Exception as e:
         console.print(f"[bold red]Error al inicializar la práctica:[/bold red] {e}")
         raise typer.Exit(code=1) from e
@@ -196,7 +196,7 @@ def cmd_practica_pack(
     output: Optional[str] = typer.Option(None, "--output", "-o", help="Ruta del .ripkg (default: junto a la práctica)."),
     sign_key: Optional[str] = typer.Option(None, "--sign-key", help="Huella GPG para firmar el manifiesto."),
 ) -> None:
-    """Empaqueta una práctica (.ripkg) con checks y testcases públicos para el estudiante."""
+    """Empaqueta una práctica (.ripkg) con checks y casos de prueba públicos para el estudiante."""
     from ripley.teacher.pack import pack_practice
 
     pdir = Path("practicas") / practica_slug
@@ -232,7 +232,7 @@ def cmd_practica_show(
     verify_signature: bool = typer.Option(False, "--verify-signature", help="Verificar firma GPG del paquete."),
     raw: bool = typer.Option(False, "--raw", help="Salida en texto plano sin formato Rich."),
 ) -> None:
-    """Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un .ripkg."""
+    """Inspecciona y muestra el contenido, metadatos, enunciado y casos de prueba de un .ripkg."""
     from ripley.cli.student import cmd_show_ripkg
 
     cmd_show_ripkg(

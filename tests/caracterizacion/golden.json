@@ -43,7 +43,7 @@
    "ESTILO",
    "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
    "Variable de 1 letra: `i` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
-   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+   "Conservar únicamente como contador o índice local de lazo; no emplear para datos de dominio (Regla 0x0001h)."
   ],
   [
    "0x0001h",
@@ -52,7 +52,7 @@
    "ESTILO",
    "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
    "Variable de 1 letra: `j` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
-   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+   "Conservar únicamente como contador o índice local de lazo; no emplear para datos de dominio (Regla 0x0001h)."
   ],
   [
    "0x0001h",
@@ -61,7 +61,7 @@
    "ESTILO",
    "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
    "Variable de 1 letra: `k` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
-   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+   "Conservar únicamente como contador o índice local de lazo; no emplear para datos de dominio (Regla 0x0001h)."
   ],
   [
    "0x0002h",
@@ -279,7 +279,7 @@
    "ESTILO",
    "Los identificadores deben ser descriptivos (Variables < 5 letras y revisión de 1 letra)",
    "Variable de 1 letra: `i` (Aceptable para contadores `i`, `j`, `k`, pero requiere revisión manual de contexto).",
-   "Conservar únicamente como contador o índice local de bucle; no emplear para datos de dominio (Regla 0x0001h)."
+   "Conservar únicamente como contador o índice local de lazo; no emplear para datos de dominio (Regla 0x0001h)."
   ],
   [
    "0x0001h",

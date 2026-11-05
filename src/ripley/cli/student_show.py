@@ -23,7 +23,7 @@ def cmd_show_ripkg(
     verify_signature: bool = typer.Option(False, "--verify-signature", help="Verificar criptográficamente la firma GPG del paquete."),
     raw: bool = typer.Option(False, "--raw", help="Salida en texto plano sin formato Rich."),
 ) -> None:
-    """Inspecciona y muestra el contenido, metadatos, enunciado y testcases de un paquete .ripkg."""
+    """Inspecciona y muestra el contenido, metadatos, enunciado y casos de prueba de un paquete .ripkg."""
     from rich.markdown import Markdown
     from rich.panel import Panel
     from rich.table import Table
@@ -224,7 +224,7 @@ def cmd_show_ripkg(
 @app.command("watch")
 def cmd_watch(
     paths: Optional[List[Path]] = typer.Argument(None, exists=True, help="Archivos o directorios .c a vigilar (por defecto: .)."),
-    practica: Optional[str] = typer.Option(None, "--practica", "-p", help="Paquete .ripkg para flags oficiales y testcases públicos."),
+    practica: Optional[str] = typer.Option(None, "--practica", "-p", help="Paquete .ripkg para flags oficiales y casos de prueba públicos."),
     interval: float = typer.Option(1.0, "--interval", "-i", help="Segundos entre sondeos de cambios."),
 ) -> None:
     """Modo Live TDD: recompila y verifica automáticamente al guardar (Ctrl+C para salir)."""
@@ -301,12 +301,12 @@ def cmd_watch(
                         exercise="watch", case_name=stem,
                         in_file=in_path, out_file=out_path, argv_file=None))
                     marca = "[green]✓[/green]" if detail.resultado == "PASSED" else "[red]✗[/red]"
-                    console.print(f"  {marca} testcase {stem}")
+                    console.print(f"  {marca} caso de prueba {stem}")
                     if detail.resultado != "PASSED":
                         fallos += 1
 
         if not fallos:
-            console.print("[bold green]✓ Compila y pasa los testcases públicos.[/bold green]")
+            console.print("[bold green]✓ Compila y pasa los casos de prueba públicos.[/bold green]")
         return fallos == 0
 
     console.print(f"[bold]ripley watch[/bold] · vigilando {len(session.files)} fuentes · intervalo {interval}s · Ctrl+C para salir\n")

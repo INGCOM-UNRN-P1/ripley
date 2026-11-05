@@ -117,12 +117,12 @@ _RULES: List[tuple] = [
         r"array subscript .*? above array bounds|exceeds array bound",
         "Índice fuera de los límites del arreglo",
         "El compilador detectó un acceso más allá del tamaño declarado del arreglo.",
-        "Recordá que los índices válidos van de 0 a N-1; verificá condiciones de bucle.",
+        "Recordá que los índices válidos van de 0 a N-1; verificá las condiciones del lazo.",
     ),
     (
         r"format (?P<fmt>'%[a-z]*') expects argument of type (?P<want>[^,]+), but argument (?P<n>\d+) has type (?P<have>[^ ;]+)",
         "Formato {fmt} incompatible con el argumento {n}",
-        "printf/scanf esperaba {want} para {fmt} pero recibe {have}: salida corrupta o crash seguro.",
+        "printf/scanf esperaba {want} para {fmt} pero recibe {have}: salida corrupta o una falla segura.",
         "Hacé coincidir especificador y tipo: %d↔int, %f↔double, %s↔char*, %zu↔size_t.",
     ),
     (

@@ -44,7 +44,7 @@ class BackwardGotoLinter:
                             filename=filename,
                             line=goto_line,
                             severity="ADVERTENCIA",
-                            message=f"Salto hacia atrás con `goto {lbl};` hacia la línea {target_line} (bucle desestructurado).",
+                            message=f"Salto hacia atrás con `goto {lbl};` hacia la línea {target_line} (lazo desestructurado).",
                             suggestion="Los saltos hacia atrás generan código espagueti. Reemplazá el `goto` por estructuras de control estructuradas estándar (`while`, `for`, `do-while`).",
                         )
                     )
@@ -282,8 +282,8 @@ class LoopTerminationLinter:
                         filename=filename,
                         line=line,
                         severity="ADVERTENCIA",
-                        message=f"Posible bucle infinito: ninguna variable de la condición `{cond.strip()}` es modificada dentro del cuerpo del `while`.",
-                        suggestion="Asegurate de que alguna variable de la condición de corte se actualice dentro del bucle (contador, centinela con lectura, etc.).",
+                        message=f"Posible lazo infinito: ninguna variable de la condición `{cond.strip()}` es modificada dentro del cuerpo del `while`.",
+                        suggestion="Asegurate de que alguna variable de la condición de corte se actualice dentro del lazo (contador, centinela con lectura, etc.).",
                     )
                 )
 
@@ -305,7 +305,7 @@ class LoopTerminationLinter:
                         filename=filename,
                         line=line,
                         severity="ADVERTENCIA",
-                        message=f"Posible bucle infinito: ninguna variable de la condición `{cond.strip()}` es modificada dentro del cuerpo del `do-while`.",
+                        message=f"Posible lazo infinito: ninguna variable de la condición `{cond.strip()}` es modificada dentro del cuerpo del `do-while`.",
                         suggestion="Verificá que la condición del `do-while` dependa de una variable actualizada dentro del bloque.",
                     )
                 )
@@ -327,7 +327,7 @@ class LoopTerminationLinter:
                         filename=filename,
                         line=line,
                         severity="ADVERTENCIA",
-                        message="Bucle `for` sin condición de corte (`for (;;)`): infinito salvo `break` interno.",
+                        message="Lazo `for` sin condición de corte (`for (;;)`): infinito salvo `break` interno.",
                         suggestion="Agregá una condición explícita o documentá el `break` que garantiza la salida.",
                     )
                 )
@@ -364,8 +364,8 @@ class LoopTerminationLinter:
                         filename=filename,
                         line=line,
                         severity="ADVERTENCIA",
-                        message=f"Posible bucle infinito: ninguna variable de la condición `{cond.strip()}` se actualiza en el cuerpo ni en el incremento del `for`.",
-                        suggestion="Mové la actualización de la variable de control al incremento o al cuerpo del bucle.",
+                        message=f"Posible lazo infinito: ninguna variable de la condición `{cond.strip()}` se actualiza en el cuerpo ni en el incremento del `for`.",
+                        suggestion="Mové la actualización de la variable de control al incremento o al cuerpo del lazo.",
                     )
                 )
 

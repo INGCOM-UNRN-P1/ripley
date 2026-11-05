@@ -149,7 +149,7 @@ def cmd_analyze(
     if not target.exists():
         error_res = {
             "version": __version__,
-            "error": f"Target not found: {target}",
+            "error": f"No se encontró el objetivo: {target}",
             "compilation": {"success": False},
         }
         print(json.dumps(error_res, indent=2))

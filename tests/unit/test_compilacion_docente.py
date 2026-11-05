@@ -66,7 +66,7 @@ def test_timeout(falso, tmp_path, monkeypatch):
     c, _ = falso
     monkeypatch.setattr(c, "_compilar", lambda *a, **k: _resultado(exito=False, codigo_retorno=124))
     res = c.compile([tmp_path / "a.c"], tmp_path / "a")
-    assert not res.success and res.error_message == "Timeout de compilación."
+    assert not res.success and res.error_message == "Se superó el tiempo límite de compilación."
 
 
 def test_compilador_inexistente(tmp_path, monkeypatch):

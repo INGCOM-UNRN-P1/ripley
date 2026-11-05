@@ -204,9 +204,9 @@ class Compiler:
                 success=False,
                 binary_path=None,
                 stdout="",
-                stderr=f"Timeout durante la compilación ({self.limits_cfg.timeout_segundos * 2}s excedidos).",
+                stderr=f"Se superó el tiempo límite de compilación ({self.limits_cfg.timeout_segundos * 2}s excedidos).",
                 returncode=-1,
-                error_message="Timeout de compilación.",
+                error_message="Se superó el tiempo límite de compilación.",
             )
         except Exception as e:
             return CompilationResult(
